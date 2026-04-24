@@ -251,12 +251,223 @@ const InventoryView = ({ inventory }) => (
   </div>
 );
 
-const PaymentsView = ({ payments }) => (
-  <div className="space-y-8">
-    <PageHeader title="Pagos" subtitle="Conciliación financiera" />
-    <Table cols={['Fecha', 'Monto', 'Método', 'Estado']} rows={payments} render={p => (<><td className="px-8 py-5 text-slate-400">{p.payment_date ? new Date(p.payment_date).toLocaleDateString() : '—'}</td><td className="px-8 py-5 font-black">${Number(p.amount || 0).toLocaleString()}</td><td className="px-8 py-5 text-slate-500">{p.method || '—'}</td><td className="px-8 py-5"><Badge status={p.status} /></td></>)} />
-  </div>
-);
+const PaymentsView = ({ payments, onEdit, onCreate }) => {
+  const [filter, setFilter] = useState('all');
+  
+  const filtered = payments.filter(p => {
+    if (filter === 'all') return true;
+    if (filter === 'accepted') return ['Paid', 'Validated', 'Accepted', 'Aceptado', 'VALIDATED'].includes(p.status);
+    if (filter === 'unassigned') return ['Unassigned', 'No asignado', 'PENDING_ASSIGNMENT'].includes(p.status);
+    if (filter === 'failed') return ['Failed', 'Fallado', 'REJECTED', 'CANCELED'].includes(p.status);
+    return true;
+  });
+
+  return (
+    <div className="space-y-8">
+      <div className="flex justify-between items-end">
+        <PageHeader title="Pagos" subtitle={`${filtered.length} transacciones registradas`} />
+        <div className="flex gap-2 bg-slate-100 p-1.5 rounded-2xl mb-10">
+          {[
+            { id: 'all', label: 'Todos' },
+            { id: 'accepted', label: 'Aceptados' },
+            { id: 'unassigned', label: 'No Asignados' },
+            { id: 'failed', label: 'Fallados' }
+          ].map(f => (
+            <button 
+              key={f.id} 
+              onClick={() => setFilter(f.id)} 
+              className={`px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${filter === f.id ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
+            >
+              {f.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="flex justify-end mb-4">
+        <button onClick={onCreate} className="flex items-center gap-2 bg-blue-600 text-white px-8 py-4 rounded-2xl font-black uppercase tracking-widest text-[10px] shadow-lg shadow-blue-600/20 hover:scale-105 transition-all">
+          <Plus size={16} /> Nuevo Pago
+        </button>
+      </div>
+
+      <Table 
+        cols={['Fecha', 'Monto', 'Método', 'Estado', 'Acciones']} 
+        rows={filtered} 
+        render={p => (
+          <>
+            <td className="px-8 py-5">
+              <p className="font-bold text-slate-800">{p.payment_date ? new Date(p.payment_date).toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'}</p>
+              <p className="text-[10px] text-slate-400 font-medium">{p.payment_date ? new Date(p.payment_date).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' }) : ''}</p>
+            </td>
+            <td className="px-8 py-5 font-black text-slate-900">${Number(p.amount || 0).toLocaleString()}</td>
+            <td className="px-8 py-5">
+              <div className="flex items-center gap-2">
+                <div className="p-1.5 bg-slate-50 rounded-lg text-slate-400"><CreditCard size={14} /></div>
+                <span className="text-slate-600 font-medium">{p.method || '—'}</span>
+              </div>
+            </td>
+            <td className="px-8 py-5"><Badge status={p.status} /></td>
+            <td className="px-8 py-5">
+              <button 
+                onClick={() => onEdit(p)} 
+                className={`p-2 rounded-lg transition-all ${['Paid', 'Validated', 'Accepted', 'Aceptado', 'VALIDATED'].includes(p.status) ? 'text-slate-200 cursor-not-allowed' : 'hover:bg-blue-50 text-slate-300 hover:text-blue-600'}`}
+                title={['Paid', 'Validated', 'Accepted', 'Aceptado', 'VALIDATED'].includes(p.status) ? 'No se puede editar un pago aceptado' : 'Editar pago'}
+              >
+                <Settings2 size={16} />
+              </button>
+            </td>
+          </>
+        )} 
+      />
+    </div>
+  );
+};
+
+const PaymentModal = ({ isOpen, onClose, payment, onSave }) => {
+  const [formData, setFormData] = useState({
+    amount: 0, method: 'Transferencia', status: 'Pending', contract_id: '', client_id: '',
+    payment_date: new Date().toISOString().split('T')[0],
+    account_number: '', card_holder: '', is_recurring: false, recurring_dates: []
+  });
+
+  useEffect(() => {
+    if (payment) {
+      setFormData({
+        ...payment,
+        payment_date: payment.payment_date ? new Date(payment.payment_date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+        recurring_dates: payment.recurring_dates ? (typeof payment.recurring_dates === 'string' ? JSON.parse(payment.recurring_dates) : payment.recurring_dates) : []
+      });
+    } else {
+      setFormData({
+        amount: 0, method: 'Transferencia', status: 'Pending', contract_id: '', client_id: '',
+        payment_date: new Date().toISOString().split('T')[0],
+        account_number: '', card_holder: '', is_recurring: false, recurring_dates: []
+      });
+    }
+  }, [payment]);
+
+  if (!isOpen) return null;
+
+  const isAccepted = ['Paid', 'Validated', 'Accepted', 'Aceptado', 'VALIDATED'].includes(formData.status);
+
+  return (
+    <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-6">
+      <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="bg-white w-full max-w-4xl rounded-[40px] shadow-2xl overflow-hidden flex flex-col max-h-[95vh]">
+        <div className="p-8 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 bg-blue-600 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-blue-600/20"><CreditCard size={24} /></div>
+            <div>
+              <h3 className="text-xl font-black text-slate-900 tracking-tighter">{payment ? 'Editar Pago' : 'Nuevo Registro de Pago'}</h3>
+              <p className="text-slate-400 text-[10px] font-bold uppercase tracking-widest mt-0.5">Gestión de Cobranza & Conciliación</p>
+            </div>
+          </div>
+          <button onClick={onClose} className="p-3 hover:bg-white rounded-2xl transition-all text-slate-400"><X size={20} /></button>
+        </div>
+
+        <div className="p-8 overflow-y-auto grid grid-cols-2 gap-10">
+          <div className="space-y-6">
+            <p className="text-[10px] font-black text-blue-600 uppercase tracking-[0.2em] mb-4">Información del Pago</p>
+            
+            <div className="grid grid-cols-2 gap-5">
+              <div className="col-span-2 space-y-1.5">
+                <label className="text-[9px] font-black uppercase tracking-widest text-slate-400 ml-1">Monto ($)</label>
+                <input disabled={isAccepted} type="number" className="w-full bg-slate-50 border-2 border-slate-100 rounded-xl py-3.5 px-5 font-bold text-slate-800 focus:border-blue-600 outline-none transition-all text-sm" value={formData.amount} onChange={e => setFormData({...formData, amount: e.target.value})} />
+              </div>
+              
+              <div className="space-y-1.5">
+                <label className="text-[9px] font-black uppercase tracking-widest text-slate-400 ml-1">Método</label>
+                <select disabled={isAccepted} className="w-full bg-slate-50 border-2 border-slate-100 rounded-xl py-3.5 px-5 font-bold text-slate-800 focus:border-blue-600 outline-none transition-all text-sm appearance-none" value={formData.method} onChange={e => setFormData({...formData, method: e.target.value})}>
+                  {['Transferencia', 'Tarjeta Crédito', 'Tarjeta Débito', 'Efectivo', 'Cheque', 'CLABE'].map(m => <option key={m} value={m}>{m}</option>)}
+                </select>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-[9px] font-black uppercase tracking-widest text-slate-400 ml-1">Estado</label>
+                <select disabled={isAccepted} className="w-full bg-slate-50 border-2 border-slate-100 rounded-xl py-3.5 px-5 font-bold text-slate-800 focus:border-blue-600 outline-none transition-all text-sm appearance-none" value={formData.status} onChange={e => setFormData({...formData, status: e.target.value})}>
+                  {['Pending', 'Paid', 'Failed', 'Unassigned'].map(s => <option key={s} value={s}>{s === 'Pending' ? 'Pendiente' : s === 'Paid' ? 'Pagado/Aceptado' : s === 'Failed' ? 'Fallido' : 'No Asignado'}</option>)}
+                </select>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-[9px] font-black uppercase tracking-widest text-slate-400 ml-1">Fecha de Pago</label>
+                <input disabled={isAccepted} type="date" className="w-full bg-slate-50 border-2 border-slate-100 rounded-xl py-3.5 px-5 font-bold text-slate-800 focus:border-blue-600 outline-none transition-all text-sm" value={formData.payment_date} onChange={e => setFormData({...formData, payment_date: e.target.value})} />
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-[9px] font-black uppercase tracking-widest text-slate-400 ml-1">ID Contrato / Upya</label>
+                <input disabled={isAccepted} type="text" className="w-full bg-slate-50 border-2 border-slate-100 rounded-xl py-3.5 px-5 font-bold text-slate-800 focus:border-blue-600 outline-none transition-all text-sm" value={formData.contract_id || ''} onChange={e => setFormData({...formData, contract_id: e.target.value})} placeholder="CTR-XXXX" />
+              </div>
+            </div>
+
+            <div className="bg-blue-50/50 p-6 rounded-[32px] border border-blue-100 space-y-4">
+              <label className="flex items-center gap-3 cursor-pointer group">
+                <div onClick={() => !isAccepted && setFormData({...formData, is_recurring: !formData.is_recurring})} className={`w-6 h-6 rounded-lg border-2 flex items-center justify-center transition-all ${formData.is_recurring ? 'bg-blue-600 border-blue-600 text-white' : 'border-slate-200 bg-white'}`}>{formData.is_recurring && <CheckSquare size={14} />}</div>
+                <span className="text-xs font-black text-slate-600 uppercase tracking-wider">Habilitar Pago Recurrente</span>
+              </label>
+
+              {formData.is_recurring && (
+                <div className="space-y-3 pt-2 animate-in fade-in slide-in-from-top-2">
+                  <label className="text-[9px] font-black uppercase tracking-widest text-blue-400 ml-1">Días de Recurrencia (Ej. 01, 15)</label>
+                  <input disabled={isAccepted} type="text" className="w-full bg-white border-2 border-blue-100 rounded-xl py-3 px-5 font-bold text-slate-800 text-sm" placeholder="Separados por coma" value={formData.recurring_dates.join(', ')} onChange={e => setFormData({...formData, recurring_dates: e.target.value.split(',').map(s => s.trim())})} />
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="space-y-6">
+            <p className="text-[10px] font-black text-emerald-600 uppercase tracking-[0.2em] mb-4">Datos de Cuenta / Tarjeta</p>
+            
+            <div className="bg-slate-50 p-8 rounded-[40px] border border-slate-100 space-y-6">
+              <div className="space-y-1.5">
+                <label className="text-[9px] font-black uppercase tracking-widest text-slate-400 ml-1">Titular de la Cuenta</label>
+                <input disabled={isAccepted} type="text" className="w-full bg-white border-2 border-slate-100 rounded-xl py-3.5 px-5 font-bold text-slate-800 focus:border-emerald-500 outline-none transition-all text-sm" value={formData.card_holder || ''} onChange={e => setFormData({...formData, card_holder: e.target.value})} placeholder="Nombre como aparece en tarjeta" />
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-[9px] font-black uppercase tracking-widest text-slate-400 ml-1">Número de Tarjeta / Cuenta / CLABE</label>
+                <div className="relative">
+                  <input disabled={isAccepted} type="text" className="w-full bg-white border-2 border-slate-100 rounded-xl py-3.5 px-5 font-bold text-slate-800 focus:border-emerald-500 outline-none transition-all text-sm pr-12" value={formData.account_number || ''} onChange={e => setFormData({...formData, account_number: e.target.value})} placeholder="**** **** **** ****" />
+                  <div className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-300"><Box size={18} /></div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <label className="text-[9px] font-black uppercase tracking-widest text-slate-400 ml-1">Vencimiento</label>
+                  <input disabled={isAccepted} type="text" className="w-full bg-white border-2 border-slate-100 rounded-xl py-3.5 px-5 font-bold text-slate-800 text-sm" placeholder="MM/YY" />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-[9px] font-black uppercase tracking-widest text-slate-400 ml-1">CVV</label>
+                  <input disabled={isAccepted} type="password" maxlength="4" className="w-full bg-white border-2 border-slate-100 rounded-xl py-3.5 px-5 font-bold text-slate-800 text-sm" placeholder="***" />
+                </div>
+              </div>
+            </div>
+
+            {isAccepted && (
+              <div className="p-5 bg-amber-50 border border-amber-200 rounded-2xl flex items-start gap-4">
+                <div className="p-2 bg-amber-100 rounded-lg text-amber-600"><ShieldCheck size={18} /></div>
+                <p className="text-[11px] font-bold text-amber-800 leading-relaxed">
+                  Este registro está <span className="font-black uppercase">Protegido</span>. 
+                  Al estar en estado aceptado o pagado, no se permiten modificaciones para asegurar la integridad financiera.
+                </p>
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="p-8 bg-slate-50 border-t border-slate-100 flex gap-4">
+          <button onClick={onClose} className="px-10 py-4 rounded-2xl font-black uppercase tracking-widest text-[10px] text-slate-400 hover:text-slate-600 transition-all">Cancelar</button>
+          <div className="flex-1" />
+          {!isAccepted && (
+            <button onClick={() => onSave(formData)} className="px-14 bg-blue-600 text-white py-4 rounded-2xl font-black uppercase tracking-widest text-[10px] shadow-xl shadow-blue-600/30 hover:scale-[1.02] active:scale-95 transition-all">
+              {payment ? 'Actualizar Pago' : 'Registrar Solicitud'}
+            </button>
+          )}
+        </div>
+      </motion.div>
+    </div>
+  );
+};
 
 const ProductsView = ({ products, onEdit, onCreate }) => {
   const [filter, setFilter] = useState('all');
@@ -979,6 +1190,20 @@ const App = () => {
     finally { setSyncing(false); }
   };
 
+  const handleSavePayment = async (paymentData) => {
+    try {
+      if (modalState.item) {
+        await axios.put(`${API}/backoffice/payments/${modalState.item.upya_id}`, paymentData);
+      } else {
+        await axios.post(`${API}/backoffice/payments`, paymentData);
+      }
+      setModalState({ type: null, open: false, item: null });
+      refreshData();
+    } catch (e) {
+      alert(e.response?.data?.error || 'Error al guardar el pago');
+    }
+  };
+
   const handleSaveProduct = async (productData) => {
     try {
       const payload = { username: session.user.username, password: session.user.password, productData };
@@ -1117,7 +1342,7 @@ const App = () => {
                 <ActionFormView actionType={actionFormState.actionType} prefillData={actionFormState.prefillData} deals={data.paymentPlans} products={data.products} onBack={() => setActionFormState({ open: false, actionType: null, prefillData: null })} />
               )}
 
-            {view === 'manage-payments' && <PaymentsView payments={data.payments} />}
+            {view === 'manage-payments' && <PaymentsView payments={data.payments} onEdit={(p) => setModalState({ type: 'payment', open: true, item: p })} onCreate={() => setModalState({ type: 'payment', open: true, item: null })} />}
             
             {/* Fallbacks */}
             {['setup-templates', 'setup-users', 'record-todos', 'record-comms'].includes(view) && (
@@ -1132,6 +1357,7 @@ const App = () => {
         <ProductModal open={modalState.open && modalState.type === 'product'} onClose={() => setModalState({ type: null, open: false, item: null })} onSave={handleSaveProduct} product={modalState.item} />
         <DataCollectionModal open={modalState.open && modalState.type === 'collection'} onClose={() => setModalState({ type: null, open: false, item: null })} onSave={handleSaveCollection} collection={modalState.item} />
         <ActionModal open={modalState.open && modalState.type === 'action'} onClose={() => setModalState({ type: null, open: false, item: null })} onSave={handleSaveAction} action={modalState.item} />
+        <PaymentModal isOpen={modalState.open && modalState.type === 'payment'} onClose={() => setModalState({ type: null, open: false, item: null })} onSave={handleSavePayment} payment={modalState.item} />
       </main>
     </div>
   );

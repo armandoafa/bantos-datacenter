@@ -400,6 +400,59 @@ app.get('/api/backoffice/payments', async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+app.post('/api/backoffice/payments', async (req, res) => {
+  try {
+    const { 
+      upya_id, transaction_id, contract_id, amount, method, status, payment_date,
+      account_number, card_holder, is_recurring, recurring_dates, client_id
+    } = req.body;
+    
+    await pool.query(
+      `INSERT INTO payments (
+        upya_id, transaction_id, contract_id, amount, method, status, payment_date,
+        account_number, card_holder, is_recurring, recurring_dates, client_id
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        upya_id || `PAY-${Date.now()}`, transaction_id || null, contract_id || null, 
+        amount || 0, method || 'Other', status || 'Pending', payment_date || new Date(),
+        account_number || null, card_holder || null, is_recurring || false, 
+        recurring_dates ? JSON.stringify(recurring_dates) : null, client_id || null
+      ]
+    );
+    res.json({ success: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.put('/api/backoffice/payments/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { 
+      transaction_id, contract_id, amount, method, status, payment_date,
+      account_number, card_holder, is_recurring, recurring_dates, client_id
+    } = req.body;
+
+    // Check if it can be edited
+    const [current] = await pool.query('SELECT status FROM payments WHERE upya_id = ?', [id]);
+    if (current.length > 0 && ['Accepted', 'Paid', 'Aceptado', 'VALIDATED'].includes(current[0].status)) {
+      return res.status(403).json({ error: 'No se puede editar un pago que ya ha sido aceptado o pagado.' });
+    }
+
+    await pool.query(
+      `UPDATE payments SET 
+        transaction_id=?, contract_id=?, amount=?, method=?, status=?, payment_date=?,
+        account_number=?, card_holder=?, is_recurring=?, recurring_dates=?, client_id=?
+      WHERE upya_id = ?`,
+      [
+        transaction_id || null, contract_id || null, amount || 0, method || 'Other', 
+        status || 'Pending', payment_date || null, account_number || null, card_holder || null, 
+        is_recurring || false, recurring_dates ? JSON.stringify(recurring_dates) : null, 
+        client_id || null, id
+      ]
+    );
+    res.json({ success: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 app.get('/api/backoffice/products', async (req, res) => {
   try {
     const [rows] = await pool.query('SELECT * FROM products ORDER BY name ASC');
