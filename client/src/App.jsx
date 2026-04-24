@@ -334,6 +334,7 @@ const PaymentModal = ({ isOpen, onClose, payment, onSave }) => {
     if (payment) {
       setFormData({
         ...payment,
+        is_recurring: !!payment.is_recurring,
         payment_date: payment.payment_date ? new Date(payment.payment_date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
         recurring_dates: payment.recurring_dates ? (typeof payment.recurring_dates === 'string' ? JSON.parse(payment.recurring_dates) : payment.recurring_dates) : []
       });
@@ -401,11 +402,11 @@ const PaymentModal = ({ isOpen, onClose, payment, onSave }) => {
 
             <div className="bg-blue-50/50 p-6 rounded-[32px] border border-blue-100 space-y-4">
               <label className="flex items-center gap-3 cursor-pointer group">
-                <div onClick={() => !isAccepted && setFormData({...formData, is_recurring: !formData.is_recurring})} className={`w-6 h-6 rounded-lg border-2 flex items-center justify-center transition-all ${formData.is_recurring ? 'bg-blue-600 border-blue-600 text-white' : 'border-slate-200 bg-white'}`}>{formData.is_recurring && <CheckSquare size={14} />}</div>
+                <div onClick={() => !isAccepted && setFormData({...formData, is_recurring: !formData.is_recurring})} className={`w-6 h-6 rounded-lg border-2 flex items-center justify-center transition-all ${formData.is_recurring ? 'bg-blue-600 border-blue-600 text-white' : 'border-slate-200 bg-white'}`}>{!!formData.is_recurring && <CheckSquare size={14} />}</div>
                 <span className="text-xs font-black text-slate-600 uppercase tracking-wider">Habilitar Pago Recurrente</span>
               </label>
 
-              {formData.is_recurring && (
+              {!!formData.is_recurring && (
                 <div className="space-y-3 pt-2 animate-in fade-in slide-in-from-top-2">
                   <label className="text-[9px] font-black uppercase tracking-widest text-blue-400 ml-1">Días de Recurrencia (Ej. 01, 15)</label>
                   <input disabled={isAccepted} type="text" className="w-full bg-white border-2 border-blue-100 rounded-xl py-3 px-5 font-bold text-slate-800 text-sm" placeholder="Separados por coma" value={formData.recurring_dates.join(', ')} onChange={e => setFormData({...formData, recurring_dates: e.target.value.split(',').map(s => s.trim())})} />
