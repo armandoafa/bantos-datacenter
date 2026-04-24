@@ -931,7 +931,26 @@ const App = () => {
         <div className="space-y-4">
           <input id="u" type="text" placeholder="Usuario" defaultValue="armando.afa" className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl py-4 px-6 font-bold text-slate-800 outline-none focus:border-blue-600 transition-all" />
           <input id="p" type="password" placeholder="Contraseña" defaultValue="123456!" className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl py-4 px-6 font-bold text-slate-800 outline-none focus:border-blue-600 transition-all" />
-          <button onClick={() => { const u = document.getElementById('u').value; const p = document.getElementById('p').value; if (u === 'armando.afa' && p === '123456!') { const s = { user: { username: u, password: p } }; localStorage.setItem('bantos_session', JSON.stringify(s)); setSession(s); } else { alert('Error'); } }} className="w-full bg-blue-600 text-white py-5 rounded-2xl font-black uppercase tracking-widest text-xs shadow-xl shadow-blue-600/30">Acceder</button>
+          <button onClick={async (e) => { 
+            e.preventDefault();
+            const u = document.getElementById('u').value; 
+            const p = document.getElementById('p').value; 
+            try {
+              const btn = e.currentTarget;
+              btn.innerText = 'Autenticando...';
+              btn.disabled = true;
+              const res = await axios.post(`${API}/backoffice/auth`, { username: u, password: p });
+              if (res.data.success) {
+                const s = { user: { username: u, password: p } }; 
+                localStorage.setItem('bantos_session', JSON.stringify(s)); 
+                setSession(s); 
+              }
+            } catch (err) {
+              alert('Credenciales incorrectas o denegadas por Upya.');
+              e.currentTarget.innerText = 'Acceder';
+              e.currentTarget.disabled = false;
+            }
+          }} className="w-full bg-blue-600 hover:bg-blue-700 text-white py-5 rounded-2xl font-black uppercase tracking-widest text-xs shadow-xl shadow-blue-600/30 transition-all">Acceder</button>
         </div>
       </div>
     </div>
