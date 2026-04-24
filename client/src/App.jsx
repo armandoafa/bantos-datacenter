@@ -510,13 +510,13 @@ const ActionsView = ({ onNavigate }) => {
   );
 };
 
-const ActionFormView = ({ actionType, prefillData, onBack, deals }) => {
+const ActionFormView = ({ actionType, prefillData, onBack, deals, products }) => {
   const [selectedDeal, setSelectedDeal] = useState(deals && deals.length > 0 ? deals[0].upya_id : '');
   const [currentStep, setCurrentStep] = useState(1);
   
   const steps = actionType === 'Detalles del plan' 
     ? ['Selección de Plan', 'Resumen Financiero'] 
-    : ['Información personal', 'Contactos', 'Documentos', 'Contrato', 'Dispositivos', 'Firma'];
+    : ['Dispositivos', 'Información personal', 'Contactos', 'Documentos', 'Contrato', 'Firma'];
 
   return (
     <div className="space-y-8 max-w-6xl mx-auto">
@@ -604,7 +604,35 @@ const ActionFormView = ({ actionType, prefillData, onBack, deals }) => {
             ) : (
               /* Flujo General: 6 Secciones */
               <div className="grid grid-cols-2 gap-8">
-                {currentStep === 1 && ( /* Información personal */
+                {currentStep === 1 && ( /* Dispositivos */
+                  <>
+                    <div className="col-span-2 md:col-span-1">
+                      <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-3">Modelo del Dispositivo / Producto</label>
+                      <select className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-blue-500/20 font-bold text-slate-800">
+                        {products && products.length > 0 ? (
+                          products.map(p => <option key={p.upya_id} value={p.name}>{p.name}</option>)
+                        ) : (
+                          <>
+                            <option>Kit Solar Básico 50W</option>
+                            <option>Kit Solar Plus 100W</option>
+                            <option>Refrigerador Solar 12V</option>
+                          </>
+                        )}
+                      </select>
+                    </div>
+                    <div className="col-span-2 md:col-span-1">
+                      <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-3">Número de Serie o Token PayG</label>
+                      <input type="text" className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-blue-500/20 font-bold text-slate-800" placeholder="Ej. A1B2C3D4E5" />
+                    </div>
+                    <div className="col-span-2">
+                      <div className="px-6 py-4 bg-blue-50 border border-blue-100 rounded-2xl flex items-center gap-4 text-blue-800">
+                        <Smartphone size={24} />
+                        <span className="font-bold text-sm">Escanea el código de barras en el empaque para autocompletar la serie.</span>
+                      </div>
+                    </div>
+                  </>
+                )}
+                {currentStep === 2 && ( /* Información personal */
                   <>
                     <div className="col-span-2 md:col-span-1">
                       <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-3">Nombre(s)</label>
@@ -626,7 +654,7 @@ const ActionFormView = ({ actionType, prefillData, onBack, deals }) => {
                     </div>
                   </>
                 )}
-                {currentStep === 2 && ( /* Contactos */
+                {currentStep === 3 && ( /* Contactos */
                   <>
                     <div className="col-span-2 md:col-span-1">
                       <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-3">Teléfono Principal (Móvil)</label>
@@ -642,7 +670,7 @@ const ActionFormView = ({ actionType, prefillData, onBack, deals }) => {
                     </div>
                   </>
                 )}
-                {currentStep === 3 && ( /* Documentos */
+                {currentStep === 4 && ( /* Documentos */
                   <>
                     <div className="col-span-2 md:col-span-1">
                       <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-3">Tipo de Identificación</label>
@@ -668,7 +696,7 @@ const ActionFormView = ({ actionType, prefillData, onBack, deals }) => {
                     </div>
                   </>
                 )}
-                {currentStep === 4 && ( /* Contrato */
+                {currentStep === 5 && ( /* Contrato */
                   <>
                     <div className="col-span-2">
                       <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-3">Términos de Pago Asociados</label>
@@ -681,28 +709,6 @@ const ActionFormView = ({ actionType, prefillData, onBack, deals }) => {
                       <div>
                         <p className="font-bold text-slate-800">Aceptación de Contrato</p>
                         <p className="text-sm text-slate-500">Confirmo que he explicado al cliente los términos de pago, penalizaciones por mora y condiciones de uso del servicio. El cliente acepta continuar.</p>
-                      </div>
-                    </div>
-                  </>
-                )}
-                {currentStep === 5 && ( /* Dispositivos */
-                  <>
-                    <div className="col-span-2 md:col-span-1">
-                      <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-3">Modelo del Dispositivo / Producto</label>
-                      <select className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-blue-500/20 font-bold text-slate-800">
-                        <option>Kit Solar Básico 50W</option>
-                        <option>Kit Solar Plus 100W</option>
-                        <option>Refrigerador Solar 12V</option>
-                      </select>
-                    </div>
-                    <div className="col-span-2 md:col-span-1">
-                      <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-3">Número de Serie o Token PayG</label>
-                      <input type="text" className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-blue-500/20 font-bold text-slate-800" placeholder="Ej. A1B2C3D4E5" />
-                    </div>
-                    <div className="col-span-2">
-                      <div className="px-6 py-4 bg-blue-50 border border-blue-100 rounded-2xl flex items-center gap-4 text-blue-800">
-                        <Smartphone size={24} />
-                        <span className="font-bold text-sm">Escanea el código de barras en el empaque para autocompletar la serie.</span>
                       </div>
                     </div>
                   </>
@@ -1022,9 +1028,9 @@ const App = () => {
             {view === 'record-actions' && !actionFormState.open && (
               <ActionsView onNavigate={(actionType, prefillData = null) => setActionFormState({ open: true, actionType, prefillData })} />
             )}
-            {view === 'record-actions' && actionFormState.open && (
-              <ActionFormView actionType={actionFormState.actionType} prefillData={actionFormState.prefillData} deals={data.paymentPlans} onBack={() => setActionFormState({ open: false, actionType: null, prefillData: null })} />
-            )}
+              {view === 'record-actions' && actionFormState.open && (
+                <ActionFormView actionType={actionFormState.actionType} prefillData={actionFormState.prefillData} deals={data.paymentPlans} products={data.products} onBack={() => setActionFormState({ open: false, actionType: null, prefillData: null })} />
+              )}
 
             {view === 'manage-payments' && <PaymentsView payments={data.payments} />}
             
