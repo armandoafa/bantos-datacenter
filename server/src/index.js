@@ -431,10 +431,11 @@ app.put('/api/backoffice/payments/:id', async (req, res) => {
       account_number, card_holder, is_recurring, recurring_dates, client_id
     } = req.body;
 
-    // Check if it can be edited
+    // Check if it can be edited (Final states: Paid or Failed/Rejected)
     const [current] = await pool.query('SELECT status FROM payments WHERE upya_id = ?', [id]);
-    if (current.length > 0 && ['Accepted', 'Paid', 'Aceptado', 'VALIDATED'].includes(current[0].status)) {
-      return res.status(403).json({ error: 'No se puede editar un pago que ya ha sido aceptado o pagado.' });
+    const finalStatuses = ['Accepted', 'Paid', 'Aceptado', 'VALIDATED', 'Failed', 'Fallado', 'REJECTED', 'CANCELED'];
+    if (current.length > 0 && finalStatuses.includes(current[0].status)) {
+      return res.status(403).json({ error: 'No se puede editar un pago que se encuentra en un estado final (Aceptado o Fallido).' });
     }
 
     await pool.query(

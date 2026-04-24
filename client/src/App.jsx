@@ -251,14 +251,20 @@ const InventoryView = ({ inventory }) => (
   </div>
 );
 
+const ACCEPTED_STATUSES = ['PAID', 'VALIDATED', 'ACCEPTED', 'ACEPTADO', 'PAGADO', 'VALIDADO'];
+const FAILED_STATUSES = ['FAILED', 'FALLADO', 'REJECTED', 'CANCELED', 'RECHAZADO', 'CANCELADO', 'REVERSED'];
+const UNASSIGNED_STATUSES = ['UNASSIGNED', 'NO ASIGNADO', 'PENDING_ASSIGNMENT', 'PENDIENTE', 'UNASSIGNED_PAYMENT'];
+const FINAL_STATUSES = [...ACCEPTED_STATUSES, ...FAILED_STATUSES];
+
 const PaymentsView = ({ payments, onEdit, onCreate }) => {
   const [filter, setFilter] = useState('all');
   
   const filtered = payments.filter(p => {
+    const s = (p.status || '').toUpperCase();
     if (filter === 'all') return true;
-    if (filter === 'accepted') return ['Paid', 'Validated', 'Accepted', 'Aceptado', 'VALIDATED'].includes(p.status);
-    if (filter === 'unassigned') return ['Unassigned', 'No asignado', 'PENDING_ASSIGNMENT'].includes(p.status);
-    if (filter === 'failed') return ['Failed', 'Fallado', 'REJECTED', 'CANCELED'].includes(p.status);
+    if (filter === 'accepted') return ACCEPTED_STATUSES.includes(s);
+    if (filter === 'unassigned') return UNASSIGNED_STATUSES.includes(s);
+    if (filter === 'failed') return FAILED_STATUSES.includes(s);
     return true;
   });
 
@@ -310,8 +316,8 @@ const PaymentsView = ({ payments, onEdit, onCreate }) => {
             <td className="px-8 py-5">
               <button 
                 onClick={() => onEdit(p)} 
-                className={`p-2 rounded-lg transition-all ${['Paid', 'Validated', 'Accepted', 'Aceptado', 'VALIDATED'].includes(p.status) ? 'text-slate-200 cursor-not-allowed' : 'hover:bg-blue-50 text-slate-300 hover:text-blue-600'}`}
-                title={['Paid', 'Validated', 'Accepted', 'Aceptado', 'VALIDATED'].includes(p.status) ? 'No se puede editar un pago aceptado' : 'Editar pago'}
+                className={`p-2 rounded-lg transition-all ${FINAL_STATUSES.includes((p.status || '').toUpperCase()) ? 'text-slate-200 cursor-not-allowed' : 'hover:bg-blue-50 text-slate-300 hover:text-blue-600'}`}
+                title={FINAL_STATUSES.includes((p.status || '').toUpperCase()) ? 'No se puede editar un pago en estado final' : 'Editar pago'}
               >
                 <Settings2 size={16} />
               </button>
@@ -349,7 +355,9 @@ const PaymentModal = ({ isOpen, onClose, payment, onSave }) => {
 
   if (!isOpen) return null;
 
-  const isAccepted = ['Paid', 'Validated', 'Accepted', 'Aceptado', 'VALIDATED'].includes(formData.status);
+  const statusUpper = (formData.status || '').toUpperCase();
+  const isReadOnly = FINAL_STATUSES.includes(statusUpper);
+  const isFailed = FAILED_STATUSES.includes(statusUpper);
 
   return (
     <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-6">
@@ -358,7 +366,7 @@ const PaymentModal = ({ isOpen, onClose, payment, onSave }) => {
           <div className="flex items-center gap-4">
             <div className="w-12 h-12 bg-blue-600 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-blue-600/20"><CreditCard size={24} /></div>
             <div>
-              <h3 className="text-xl font-black text-slate-900 tracking-tighter">{payment ? 'Editar Pago' : 'Nuevo Registro de Pago'}</h3>
+              <h3 className="text-xl font-black text-slate-900 tracking-tighter">{payment ? (isReadOnly ? 'Detalle de Pago' : 'Editar Pago') : 'Nuevo Registro de Pago'}</h3>
               <p className="text-slate-400 text-[10px] font-bold uppercase tracking-widest mt-0.5">Gestión de Cobranza & Conciliación</p>
             </div>
           </div>
@@ -372,44 +380,44 @@ const PaymentModal = ({ isOpen, onClose, payment, onSave }) => {
             <div className="grid grid-cols-2 gap-5">
               <div className="col-span-2 space-y-1.5">
                 <label className="text-[9px] font-black uppercase tracking-widest text-slate-400 ml-1">Monto ($)</label>
-                <input disabled={isAccepted} type="number" className="w-full bg-slate-50 border-2 border-slate-100 rounded-xl py-3.5 px-5 font-bold text-slate-800 focus:border-blue-600 outline-none transition-all text-sm" value={formData.amount} onChange={e => setFormData({...formData, amount: e.target.value})} />
+                <input disabled={isReadOnly} type="number" className="w-full bg-slate-50 border-2 border-slate-100 rounded-xl py-3.5 px-5 font-bold text-slate-800 focus:border-blue-600 outline-none transition-all text-sm" value={formData.amount} onChange={e => setFormData({...formData, amount: e.target.value})} />
               </div>
               
               <div className="space-y-1.5">
                 <label className="text-[9px] font-black uppercase tracking-widest text-slate-400 ml-1">Método</label>
-                <select disabled={isAccepted} className="w-full bg-slate-50 border-2 border-slate-100 rounded-xl py-3.5 px-5 font-bold text-slate-800 focus:border-blue-600 outline-none transition-all text-sm appearance-none" value={formData.method} onChange={e => setFormData({...formData, method: e.target.value})}>
+                <select disabled={isReadOnly} className="w-full bg-slate-50 border-2 border-slate-100 rounded-xl py-3.5 px-5 font-bold text-slate-800 focus:border-blue-600 outline-none transition-all text-sm appearance-none" value={formData.method} onChange={e => setFormData({...formData, method: e.target.value})}>
                   {['Transferencia', 'Tarjeta Crédito', 'Tarjeta Débito', 'Efectivo', 'Cheque', 'CLABE'].map(m => <option key={m} value={m}>{m}</option>)}
                 </select>
               </div>
-
+ 
               <div className="space-y-1.5">
                 <label className="text-[9px] font-black uppercase tracking-widest text-slate-400 ml-1">Estado</label>
-                <select disabled={isAccepted} className="w-full bg-slate-50 border-2 border-slate-100 rounded-xl py-3.5 px-5 font-bold text-slate-800 focus:border-blue-600 outline-none transition-all text-sm appearance-none" value={formData.status} onChange={e => setFormData({...formData, status: e.target.value})}>
+                <select disabled={isReadOnly} className="w-full bg-slate-50 border-2 border-slate-100 rounded-xl py-3.5 px-5 font-bold text-slate-800 focus:border-blue-600 outline-none transition-all text-sm appearance-none" value={formData.status} onChange={e => setFormData({...formData, status: e.target.value})}>
                   {['Pending', 'Paid', 'Failed', 'Unassigned'].map(s => <option key={s} value={s}>{s === 'Pending' ? 'Pendiente' : s === 'Paid' ? 'Pagado/Aceptado' : s === 'Failed' ? 'Fallido' : 'No Asignado'}</option>)}
                 </select>
               </div>
-
+ 
               <div className="space-y-1.5">
                 <label className="text-[9px] font-black uppercase tracking-widest text-slate-400 ml-1">Fecha de Pago</label>
-                <input disabled={isAccepted} type="date" className="w-full bg-slate-50 border-2 border-slate-100 rounded-xl py-3.5 px-5 font-bold text-slate-800 focus:border-blue-600 outline-none transition-all text-sm" value={formData.payment_date} onChange={e => setFormData({...formData, payment_date: e.target.value})} />
+                <input disabled={isReadOnly} type="date" className="w-full bg-slate-50 border-2 border-slate-100 rounded-xl py-3.5 px-5 font-bold text-slate-800 focus:border-blue-600 outline-none transition-all text-sm" value={formData.payment_date} onChange={e => setFormData({...formData, payment_date: e.target.value})} />
               </div>
-
+ 
               <div className="space-y-1.5">
                 <label className="text-[9px] font-black uppercase tracking-widest text-slate-400 ml-1">ID Contrato / Upya</label>
-                <input disabled={isAccepted} type="text" className="w-full bg-slate-50 border-2 border-slate-100 rounded-xl py-3.5 px-5 font-bold text-slate-800 focus:border-blue-600 outline-none transition-all text-sm" value={formData.contract_id || ''} onChange={e => setFormData({...formData, contract_id: e.target.value})} placeholder="CTR-XXXX" />
+                <input disabled={isReadOnly} type="text" className="w-full bg-slate-50 border-2 border-slate-100 rounded-xl py-3.5 px-5 font-bold text-slate-800 focus:border-blue-600 outline-none transition-all text-sm" value={formData.contract_id || ''} onChange={e => setFormData({...formData, contract_id: e.target.value})} placeholder="CTR-XXXX" />
               </div>
             </div>
-
+ 
             <div className="bg-blue-50/50 p-6 rounded-[32px] border border-blue-100 space-y-4">
               <label className="flex items-center gap-3 cursor-pointer group">
-                <div onClick={() => !isAccepted && setFormData({...formData, is_recurring: !formData.is_recurring})} className={`w-6 h-6 rounded-lg border-2 flex items-center justify-center transition-all ${formData.is_recurring ? 'bg-blue-600 border-blue-600 text-white' : 'border-slate-200 bg-white'}`}>{!!formData.is_recurring && <CheckSquare size={14} />}</div>
+                <div onClick={() => !isReadOnly && setFormData({...formData, is_recurring: !formData.is_recurring})} className={`w-6 h-6 rounded-lg border-2 flex items-center justify-center transition-all ${formData.is_recurring ? 'bg-blue-600 border-blue-600 text-white' : 'border-slate-200 bg-white'}`}>{!!formData.is_recurring && <CheckSquare size={14} />}</div>
                 <span className="text-xs font-black text-slate-600 uppercase tracking-wider">Habilitar Pago Recurrente</span>
               </label>
-
+ 
               {!!formData.is_recurring && (
                 <div className="space-y-3 pt-2 animate-in fade-in slide-in-from-top-2">
                   <label className="text-[9px] font-black uppercase tracking-widest text-blue-400 ml-1">Días de Recurrencia (Ej. 01, 15)</label>
-                  <input disabled={isAccepted} type="text" className="w-full bg-white border-2 border-blue-100 rounded-xl py-3 px-5 font-bold text-slate-800 text-sm" placeholder="Separados por coma" value={formData.recurring_dates.join(', ')} onChange={e => setFormData({...formData, recurring_dates: e.target.value.split(',').map(s => s.trim())})} />
+                  <input disabled={isReadOnly} type="text" className="w-full bg-white border-2 border-blue-100 rounded-xl py-3 px-5 font-bold text-slate-800 text-sm" placeholder="Separados por coma" value={formData.recurring_dates.join(', ')} onChange={e => setFormData({...formData, recurring_dates: e.target.value.split(',').map(s => s.trim())})} />
                 </div>
               )}
             </div>
@@ -421,13 +429,13 @@ const PaymentModal = ({ isOpen, onClose, payment, onSave }) => {
             <div className="bg-slate-50 p-8 rounded-[40px] border border-slate-100 space-y-6">
               <div className="space-y-1.5">
                 <label className="text-[9px] font-black uppercase tracking-widest text-slate-400 ml-1">Titular de la Cuenta</label>
-                <input disabled={isAccepted} type="text" className="w-full bg-white border-2 border-slate-100 rounded-xl py-3.5 px-5 font-bold text-slate-800 focus:border-emerald-500 outline-none transition-all text-sm" value={formData.card_holder || ''} onChange={e => setFormData({...formData, card_holder: e.target.value})} placeholder="Nombre como aparece en tarjeta" />
+                <input disabled={isReadOnly} type="text" className="w-full bg-white border-2 border-slate-100 rounded-xl py-3.5 px-5 font-bold text-slate-800 focus:border-emerald-500 outline-none transition-all text-sm" value={formData.card_holder || ''} onChange={e => setFormData({...formData, card_holder: e.target.value})} placeholder="Nombre como aparece en tarjeta" />
               </div>
 
               <div className="space-y-1.5">
                 <label className="text-[9px] font-black uppercase tracking-widest text-slate-400 ml-1">Número de Tarjeta / Cuenta / CLABE</label>
                 <div className="relative">
-                  <input disabled={isAccepted} type="text" className="w-full bg-white border-2 border-slate-100 rounded-xl py-3.5 px-5 font-bold text-slate-800 focus:border-emerald-500 outline-none transition-all text-sm pr-12" value={formData.account_number || ''} onChange={e => setFormData({...formData, account_number: e.target.value})} placeholder="**** **** **** ****" />
+                  <input disabled={isReadOnly} type="text" className="w-full bg-white border-2 border-slate-100 rounded-xl py-3.5 px-5 font-bold text-slate-800 focus:border-emerald-500 outline-none transition-all text-sm pr-12" value={formData.account_number || ''} onChange={e => setFormData({...formData, account_number: e.target.value})} placeholder="**** **** **** ****" />
                   <div className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-300"><Box size={18} /></div>
                 </div>
               </div>
@@ -435,21 +443,25 @@ const PaymentModal = ({ isOpen, onClose, payment, onSave }) => {
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1.5">
                   <label className="text-[9px] font-black uppercase tracking-widest text-slate-400 ml-1">Vencimiento</label>
-                  <input disabled={isAccepted} type="text" className="w-full bg-white border-2 border-slate-100 rounded-xl py-3.5 px-5 font-bold text-slate-800 text-sm" placeholder="MM/YY" />
+                  <input disabled={isReadOnly} type="text" className="w-full bg-white border-2 border-slate-100 rounded-xl py-3.5 px-5 font-bold text-slate-800 text-sm" placeholder="MM/YY" />
                 </div>
                 <div className="space-y-1.5">
                   <label className="text-[9px] font-black uppercase tracking-widest text-slate-400 ml-1">CVV</label>
-                  <input disabled={isAccepted} type="password" maxlength="4" className="w-full bg-white border-2 border-slate-100 rounded-xl py-3.5 px-5 font-bold text-slate-800 text-sm" placeholder="***" />
+                  <input disabled={isReadOnly} type="password" maxlength="4" className="w-full bg-white border-2 border-slate-100 rounded-xl py-3.5 px-5 font-bold text-slate-800 text-sm" placeholder="***" />
                 </div>
               </div>
             </div>
 
-            {isAccepted && (
-              <div className="p-5 bg-amber-50 border border-amber-200 rounded-2xl flex items-start gap-4">
-                <div className="p-2 bg-amber-100 rounded-lg text-amber-600"><ShieldCheck size={18} /></div>
-                <p className="text-[11px] font-bold text-amber-800 leading-relaxed">
-                  Este registro está <span className="font-black uppercase">Protegido</span>. 
-                  Al estar en estado aceptado o pagado, no se permiten modificaciones para asegurar la integridad financiera.
+            {isReadOnly && (
+              <div className={`p-5 rounded-2xl flex items-start gap-4 ${isFailed ? 'bg-red-50 border border-red-100' : 'bg-amber-50 border border-amber-200'}`}>
+                <div className={`p-2 rounded-lg ${isFailed ? 'bg-red-100 text-red-600' : 'bg-amber-100 text-amber-600'}`}>
+                  {isFailed ? <X size={18} /> : <ShieldCheck size={18} />}
+                </div>
+                <p className={`text-[11px] font-bold leading-relaxed ${isFailed ? 'text-red-800' : 'text-amber-800'}`}>
+                  Este registro está <span className="font-black uppercase">{isFailed ? 'Bloqueado' : 'Protegido'}</span>. 
+                  {isFailed 
+                    ? ' Al ser un pago fallido, no se permiten modificaciones. Se debe registrar una nueva solicitud.' 
+                    : ' Al estar en estado aceptado o pagado, no se permiten modificaciones para asegurar la integridad financiera.'}
                 </p>
               </div>
             )}
@@ -457,9 +469,9 @@ const PaymentModal = ({ isOpen, onClose, payment, onSave }) => {
         </div>
 
         <div className="p-8 bg-slate-50 border-t border-slate-100 flex gap-4">
-          <button onClick={onClose} className="px-10 py-4 rounded-2xl font-black uppercase tracking-widest text-[10px] text-slate-400 hover:text-slate-600 transition-all">Cancelar</button>
+          <button onClick={onClose} className="px-10 py-4 rounded-2xl font-black uppercase tracking-widest text-[10px] text-slate-400 hover:text-slate-600 transition-all">Cerrar</button>
           <div className="flex-1" />
-          {!isAccepted && (
+          {!isReadOnly && (
             <button onClick={() => onSave(formData)} className="px-14 bg-blue-600 text-white py-4 rounded-2xl font-black uppercase tracking-widest text-[10px] shadow-xl shadow-blue-600/30 hover:scale-[1.02] active:scale-95 transition-all">
               {payment ? 'Actualizar Pago' : 'Registrar Solicitud'}
             </button>
