@@ -1,0 +1,35 @@
+@import "tailwindcss";
+
+@theme {
+  --color-bantos-bg: #f8f9fc;
+  --color-bantos-card: #ffffff;
+  --color-bantos-primary: #3b5bde;
+  --color-bantos-secondary: #7fcac3;
+  --color-bantos-text-main: #1a2236;
+  --color-bantos-text-muted: #64748b;
+  --color-bantos-border: #e2e8f0;
+}
+
+@layer base {
+  body {
+    @apply bg-bantos-bg text-bantos-text-main font-sans antialiased min-h-screen m-0 p-0;
+  }
+}
+
+.glass-card {
+  @apply bg-bantos-card border border-bantos-border rounded-2xl shadow-sm transition-all duration-200;
+}
+
+.glass-card:hover {
+  @apply shadow-md border-bantos-primary/10;
+}
+
+.sidebar-item {
+  @apply flex items-center gap-3 px-4 py-3 rounded-xl text-bantos-text-muted hover:bg-bantos-primary/5 hover:text-bantos-primary transition-all font-medium;
+}
+
+.sidebar-item-active {
+  @apply bg-bantos-primary text-white shadow-lg shadow-bantos-primary/20;
+}
+
+.text-label { @apply text-[10px] font-bold uppercase tracking-widest text-bantos-text-muted opacity-60; }

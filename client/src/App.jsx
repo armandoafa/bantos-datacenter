@@ -1,0 +1,1030 @@
+import React, { useState, useEffect, useCallback } from 'react';
+import {
+  LayoutDashboard, Users, FileText, Box, Clock, CreditCard,
+  Tag, Mail, Smartphone, Settings2, ShieldCheck, Search,
+  LogOut, RefreshCw, TrendingUp, DollarSign, Plus, Package,
+  ChevronDown, ChevronRight, Database, Building2, Globe, MapPin, Store, Edit, X, Trash2,
+  BookOpen, Zap, CheckSquare, MessageSquare, ListTodo, ClipboardCheck
+} from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import axios from 'axios';
+
+const API = `http://${window.location.hostname}:4000/api`;
+
+// --- Componentes Compartidos ---
+const Badge = ({ status }) => {
+  const ok = ['Active', 'Signed', 'Paid', 'Ready', 'active', 'signed', 'ENABLED', 'VALIDATED'].includes(status);
+  return (
+    <span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest ${ok ? 'bg-emerald-100 text-emerald-700' : 'bg-blue-100 text-blue-700'}`}>
+      {status || 'Active'}
+    </span>
+  );
+};
+
+const Table = ({ cols, rows, render }) => (
+  <div className="bg-white rounded-[32px] overflow-hidden border border-slate-100 shadow-sm">
+    <table className="w-full text-left text-sm font-bold text-slate-800">
+      <thead className="bg-slate-50 border-b border-slate-100 text-[10px] font-black uppercase tracking-widest text-slate-400">
+        <tr>{cols.map(c => <th key={c} className="px-8 py-6">{c}</th>)}</tr>
+      </thead>
+      <tbody>
+        {rows.length === 0
+          ? <tr><td colSpan={cols.length} className="px-8 py-16 text-center text-slate-300 font-black uppercase tracking-widest text-[11px]">Sin datos — Ejecuta la Sincronización</td></tr>
+          : rows.map((row, i) => <tr key={i} className="border-b border-slate-50 hover:bg-slate-50 transition-all">{render(row)}</tr>)
+        }
+      </tbody>
+    </table>
+  </div>
+);
+
+const PageHeader = ({ title, subtitle, action }) => (
+  <div className="flex justify-between items-end mb-10">
+    <div>
+      <h2 className="text-4xl font-black text-slate-900 tracking-tighter">{title}</h2>
+      {subtitle && <p className="text-slate-400 font-medium mt-1">{subtitle}</p>}
+    </div>
+    {action}
+  </div>
+);
+
+// --- MODAL DE PRODUCTO ---
+const ProductModal = ({ isOpen, onClose, product, onSave, session }) => {
+  const [formData, setFormData] = useState({
+    name: '', category: '', productReference: '', lockable: false, manufacturer: '', nonSerialized: false, description: '', picture_url: '', tac: '', build: '', default_managed_by: '', base_value: 0, productType: 'Handset', vat_rate: 0, ...product
+  });
+  useEffect(() => {
+    if (product) setFormData({ ...product, nonSerialized: !product.is_serialized, productReference: product.reference || product.productReference });
+    else setFormData({ name: '', category: '', productReference: '', lockable: false, manufacturer: '', nonSerialized: false, description: '', picture_url: '', tac: '', build: '', default_managed_by: '', base_value: 0, productType: 'Handset', vat_rate: 0 });
+  }, [product]);
+  if (!isOpen) return null;
+  const Input = ({ label, value, field, type = 'text' }) => (
+    <div className="space-y-1.5">
+      <label className="text-[9px] font-black uppercase tracking-widest text-slate-400 ml-1">{label}</label>
+      <input type={type} className="w-full bg-slate-50 border-2 border-slate-100 rounded-xl py-3.5 px-5 font-bold text-slate-800 focus:border-blue-600 outline-none transition-all text-sm" value={value} onChange={e => setFormData({...formData, [field]: e.target.value})} />
+    </div>
+  );
+  return (
+    <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-6">
+      <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="bg-white w-full max-w-4xl rounded-[40px] shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+        <div className="p-8 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 bg-blue-600 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-blue-600/20"><Package size={24} /></div>
+            <div>
+              <h3 className="text-xl font-black text-slate-900 tracking-tighter">{product ? 'Editar Producto' : 'Nuevo Producto'}</h3>
+              <p className="text-slate-400 text-[10px] font-bold uppercase tracking-widest mt-0.5">Gestión de Catálogo Maestro</p>
+            </div>
+          </div>
+          <button onClick={onClose} className="p-3 hover:bg-white rounded-2xl transition-all text-slate-400"><LogOut size={20} /></button>
+        </div>
+        <div className="p-8 overflow-y-auto grid grid-cols-3 gap-8">
+          <div className="col-span-2 grid grid-cols-2 gap-5">
+            <div className="col-span-2"><p className="text-[10px] font-black text-blue-600 uppercase tracking-[0.2em] mb-2">Información Técnica</p></div>
+            <Input label="Nombre del Producto (*)" value={formData.name} field="name" />
+            <Input label="Referencia / SKU (*)" value={formData.productReference} field="productReference" />
+            <Input label="Fabricante" value={formData.manufacturer} field="manufacturer" />
+            <Input label="Categoría" value={formData.category} field="category" />
+            <div className="space-y-1.5">
+              <label className="text-[9px] font-black uppercase tracking-widest text-slate-400 ml-1">Tipo de Producto</label>
+              <select className="w-full bg-slate-50 border-2 border-slate-100 rounded-xl py-3.5 px-5 font-bold text-slate-800 focus:border-blue-600 outline-none transition-all text-sm appearance-none" value={formData.productType} onChange={e => setFormData({...formData, productType: e.target.value})}>
+                {['Handset', 'Standalone', 'Component', 'Package'].map(t => <option key={t} value={t}>{t}</option>)}
+              </select>
+            </div>
+            <Input label="TAC" value={formData.tac} field="tac" />
+            <Input label="Build" value={formData.build} field="build" />
+            <Input label="Default Managed By" value={formData.default_managed_by} field="default_managed_by" />
+          </div>
+          <div className="space-y-6">
+            <div><p className="text-[10px] font-black text-emerald-600 uppercase tracking-[0.2em] mb-4">Configuración & Comercial</p></div>
+            <div className="bg-slate-50 p-6 rounded-[32px] space-y-5 border border-slate-100">
+              <Input label="Precio Base ($)" value={formData.base_value} field="base_value" type="number" />
+              <Input label="Tasa IVA (%)" value={formData.vat_rate} field="vat_rate" type="number" />
+              <Input label="Picture URL" value={formData.picture_url} field="picture_url" />
+            </div>
+            <div className="space-y-4 px-2">
+              <label className="flex items-center gap-3 cursor-pointer group">
+                <div onClick={() => setFormData({...formData, nonSerialized: !formData.nonSerialized})} className={`w-5 h-5 rounded-lg border-2 flex items-center justify-center transition-all ${formData.nonSerialized ? 'bg-blue-600 border-blue-600 text-white' : 'border-slate-200'}`}>{formData.nonSerialized && <CheckSquare size={12} />}</div>
+                <span className="text-xs font-black text-slate-600 uppercase tracking-wider">No Serializado</span>
+              </label>
+              <label className="flex items-center gap-3 cursor-pointer group">
+                <div onClick={() => setFormData({...formData, lockable: !formData.lockable})} className={`w-5 h-5 rounded-lg border-2 flex items-center justify-center transition-all ${formData.lockable ? 'bg-emerald-500 border-emerald-500 text-white' : 'border-slate-200'}`}>{formData.lockable && <Zap size={12} />}</div>
+                <span className="text-xs font-black text-slate-600 uppercase tracking-wider">Lockable</span>
+              </label>
+            </div>
+          </div>
+          <div className="col-span-3 space-y-1.5">
+            <label className="text-[9px] font-black uppercase tracking-widest text-slate-400 ml-1">Descripción Detallada</label>
+            <textarea rows={3} className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl py-4 px-6 font-bold text-slate-800 focus:border-blue-600 outline-none transition-all resize-none text-sm" value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} />
+          </div>
+        </div>
+        <div className="p-8 bg-slate-50 border-t border-slate-100 flex gap-4">
+          <button onClick={onClose} className="px-10 py-4 rounded-2xl font-black uppercase tracking-widest text-[10px] text-slate-400 hover:text-slate-600 transition-all">Cancelar</button>
+          <div className="flex-1" /><button onClick={() => onSave(formData)} className="px-14 bg-blue-600 text-white py-4 rounded-2xl font-black uppercase tracking-widest text-[10px] shadow-xl shadow-blue-600/30 hover:scale-[1.02] active:scale-95 transition-all">{product ? 'Guardar Cambios' : 'Crear Producto Maestro'}</button>
+        </div>
+      </motion.div>
+    </div>
+  );
+};
+
+// --- MODAL DE COLECCIÓN DE DATOS ---
+const DataCollectionModal = ({ isOpen, onClose, collection, onSave }) => {
+  const [formData, setFormData] = useState({
+    name: '', category: 'onboarding', questions: [], ...collection
+  });
+  useEffect(() => {
+    if (collection) setFormData({ ...collection, questions: collection.questions_json || [] });
+    else setFormData({ name: '', category: 'onboarding', questions: [] });
+  }, [collection]);
+  if (!isOpen) return null;
+
+  const addQuestion = () => setFormData({...formData, questions: [...formData.questions, { id: `q${Date.now()}`, text: '', type: 'text', required: false }]});
+  const updateQuestion = (idx, q) => {
+    const next = [...formData.questions];
+    next[idx] = q;
+    setFormData({...formData, questions: next});
+  };
+
+  return (
+    <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-6">
+      <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="bg-white w-full max-w-4xl rounded-[40px] shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+        <div className="p-8 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 bg-emerald-600 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-emerald-600/20"><ClipboardCheck size={24} /></div>
+            <div>
+              <h3 className="text-xl font-black text-slate-900 tracking-tighter">{collection ? 'Editar Flujo' : 'Nuevo Flujo de Datos'}</h3>
+              <p className="text-slate-400 text-[10px] font-bold uppercase tracking-widest mt-0.5">Configuración de Captura Dinámica</p>
+            </div>
+          </div>
+          <button onClick={onClose} className="p-3 hover:bg-white rounded-2xl transition-all text-slate-400"><LogOut size={20} /></button>
+        </div>
+        
+        <div className="p-8 overflow-y-auto space-y-8">
+          <div className="grid grid-cols-2 gap-6">
+            <div className="space-y-1.5">
+              <label className="text-[9px] font-black uppercase tracking-widest text-slate-400 ml-1">Nombre del Formulario</label>
+              <input className="w-full bg-slate-50 border-2 border-slate-100 rounded-xl py-3.5 px-5 font-bold text-slate-800 focus:border-blue-600 outline-none transition-all text-sm" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-[9px] font-black uppercase tracking-widest text-slate-400 ml-1">Categoría / Tipo</label>
+              <select className="w-full bg-slate-50 border-2 border-slate-100 rounded-xl py-3.5 px-5 font-bold text-slate-800 focus:border-blue-600 outline-none transition-all text-sm appearance-none" value={formData.category} onChange={e => setFormData({...formData, category: e.target.value})}>
+                <option value="onboarding">Onboarding</option>
+                <option value="standalone">Standalone</option>
+                <option value="client-linked">Client-linked</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="space-y-4">
+            <div className="flex justify-between items-center">
+              <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Estructura de Preguntas ({formData.questions.length})</p>
+              <button onClick={addQuestion} className="flex items-center gap-2 text-blue-600 text-[10px] font-black uppercase tracking-widest hover:bg-blue-50 px-3 py-2 rounded-lg transition-all"><Plus size={14} /> Añadir Campo</button>
+            </div>
+            
+            <div className="space-y-3">
+              {formData.questions.map((q, i) => (
+                <div key={q.id} className="p-5 bg-slate-50 rounded-2xl border border-slate-100 flex gap-4 items-center">
+                  <div className="flex-1 space-y-1">
+                    <input placeholder="Texto de la pregunta" className="w-full bg-transparent font-bold text-slate-800 outline-none text-sm" value={q.text} onChange={e => updateQuestion(i, {...q, text: e.target.value})} />
+                  </div>
+                  <select className="bg-white border border-slate-200 rounded-lg px-3 py-1.5 text-xs font-bold text-slate-600 outline-none" value={q.type} onChange={e => updateQuestion(i, {...q, type: e.target.value})}>
+                    <option value="text">Texto</option>
+                    <option value="number">Número</option>
+                    <option value="date">Fecha</option>
+                    <option value="select">Selección</option>
+                  </select>
+                  <button onClick={() => setFormData({...formData, questions: formData.questions.filter((_, idx) => idx !== i)})} className="p-2 text-slate-300 hover:text-red-500 transition-all"><LogOut size={16} /></button>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <div className="p-8 bg-slate-50 border-t border-slate-100 flex gap-4">
+          <button onClick={onClose} className="px-10 py-4 rounded-2xl font-black uppercase tracking-widest text-[10px] text-slate-400 hover:text-slate-600 transition-all">Cancelar</button>
+          <div className="flex-1" /><button onClick={() => onSave(formData)} className="px-14 bg-emerald-600 text-white py-4 rounded-2xl font-black uppercase tracking-widest text-[10px] shadow-xl shadow-emerald-600/30 hover:scale-[1.02] active:scale-95 transition-all">{collection ? 'Guardar Cambios' : 'Crear Flujo de Datos'}</button>
+        </div>
+      </motion.div>
+    </div>
+  );
+};
+
+// --- VISTAS ---
+const DashboardView = ({ summary }) => (
+  <div className="space-y-10">
+    <PageHeader title="Dashboard" subtitle="Inteligencia operativa en tiempo real" />
+    <div className="grid grid-cols-4 gap-6">
+      {[
+        { label: 'Recaudación Total', value: `$${Number(summary.totalPaid || 0).toLocaleString()}`, icon: DollarSign, bg: 'from-blue-600 to-indigo-800', white: true },
+        { label: 'Clientes Activos', value: summary.totalClients || 0, icon: Users, bg: 'bg-white' },
+        { label: 'Contratos', value: summary.totalContracts || 0, icon: FileText, bg: 'bg-white' },
+        { label: 'Productos', value: summary.totalProducts || 0, icon: Tag, bg: 'bg-white' },
+      ].map(({ label, value, icon: Icon, bg, white }) => (
+        <div key={label} className={`p-8 rounded-[32px] shadow-sm border border-slate-100/50 flex flex-col gap-8 ${white ? `bg-gradient-to-br ${bg} text-white border-0 shadow-xl shadow-blue-600/20` : bg}`}>
+          <Icon size={28} className={white ? 'text-white opacity-60' : 'text-blue-600 opacity-50'} />
+          <div>
+            <p className={`text-[10px] font-black uppercase tracking-widest mb-1 ${white ? 'text-white opacity-70' : 'text-slate-400'}`}>{label}</p>
+            <p className={`text-3xl font-black tracking-tighter ${white ? 'text-white' : 'text-slate-800'}`}>{value}</p>
+          </div>
+        </div>
+      ))}
+    </div>
+  </div>
+);
+
+const ClientsView = ({ clients }) => (
+  <div className="space-y-8">
+    <PageHeader title="Clientes" subtitle={`${clients.length} identidades certificadas`} />
+    <Table cols={['Nombre Completo', 'ID Upya', 'Email', 'Estado']} rows={clients} render={c => (<><td className="px-8 py-5">{c.name}</td><td className="px-8 py-5 font-mono text-blue-600 text-xs">{c.upya_id}</td><td className="px-8 py-5 text-slate-400">{c.email || '—'}</td><td className="px-8 py-5"><Badge status={c.status} /></td></>)} />
+  </div>
+);
+
+const ContractsView = ({ contracts }) => (
+  <div className="space-y-8">
+    <PageHeader title="Contratos" subtitle={`${contracts.length} deals activos`} />
+    <Table cols={['Referencia', 'Cliente', 'Estado']} rows={contracts} render={c => (<><td className="px-8 py-5 font-mono text-blue-600 text-xs">{c.upya_id}</td><td className="px-8 py-5">{c.client_name || '—'}</td><td className="px-8 py-5"><Badge status={c.status} /></td></>)} />
+  </div>
+);
+
+const InventoryView = ({ inventory }) => (
+  <div className="space-y-8">
+    <PageHeader title="Inventario" subtitle={`${inventory.length} activos técnicos`} />
+    <Table cols={['Serial Number', 'Modelo', 'Estado']} rows={inventory} render={a => (<><td className="px-8 py-5 font-mono text-xs">{a.serial_number}</td><td className="px-8 py-5 text-slate-500">{a.model}</td><td className="px-8 py-5"><Badge status={a.status} /></td></>)} />
+  </div>
+);
+
+const PaymentsView = ({ payments }) => (
+  <div className="space-y-8">
+    <PageHeader title="Pagos" subtitle="Conciliación financiera" />
+    <Table cols={['Fecha', 'Monto', 'Método', 'Estado']} rows={payments} render={p => (<><td className="px-8 py-5 text-slate-400">{p.payment_date ? new Date(p.payment_date).toLocaleDateString() : '—'}</td><td className="px-8 py-5 font-black">${Number(p.amount || 0).toLocaleString()}</td><td className="px-8 py-5 text-slate-500">{p.method || '—'}</td><td className="px-8 py-5"><Badge status={p.status} /></td></>)} />
+  </div>
+);
+
+const ProductsView = ({ products, onEdit, onCreate }) => {
+  const [filter, setFilter] = useState('all');
+  const filtered = products.filter(p => filter === 'all' || (filter === 'serialized' ? p.is_serialized : !p.is_serialized));
+  return (
+    <div className="space-y-8">
+      <div className="flex justify-between items-end">
+        <PageHeader title="Productos" subtitle={`${filtered.length} modelos en catálogo`} />
+        <div className="flex gap-2 bg-slate-100 p-1.5 rounded-2xl mb-10">{['all', 'serialized', 'non-serialized'].map(f => (<button key={f} onClick={() => setFilter(f)} className={`px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${filter === f ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}>{f === 'all' ? 'Todos' : f === 'serialized' ? 'Serializados' : 'No Ser.'}</button>))}</div>
+      </div>
+      <div className="flex justify-end mb-4"><button onClick={onCreate} className="flex items-center gap-2 bg-blue-600 text-white px-8 py-4 rounded-2xl font-black uppercase tracking-widest text-[10px] shadow-lg shadow-blue-600/20 hover:scale-105 transition-all"><Plus size={16} /> Nuevo Producto</button></div>
+      <Table cols={['Nombre', 'Referencia', 'Categoría', 'Tipo', 'Acciones']} rows={filtered} render={p => (<><td className="px-8 py-5"><p className="font-bold text-slate-800">{p.name}</p><p className="text-[10px] text-slate-400 font-medium">{p.manufacturer}</p></td><td className="px-8 py-5 font-mono text-blue-600 text-xs">{p.reference || p.productReference}</td><td className="px-8 py-5 text-slate-500">{p.category}</td><td className="px-8 py-5"><span className={`px-2 py-1 rounded-md text-[9px] font-black uppercase tracking-wider ${p.is_serialized ? 'bg-blue-50 text-blue-600' : 'bg-slate-100 text-slate-500'}`}>{p.is_serialized ? 'Serializado' : 'No Ser.'}</span></td><td className="px-8 py-5"><button onClick={() => onEdit(p)} className="p-2 hover:bg-blue-50 text-slate-300 hover:text-blue-600 rounded-lg transition-all"><Settings2 size={16} /></button></td></>)} />
+    </div>
+  );
+};
+
+const DataCollectionView = ({ collections, onEdit, onCreate }) => {
+  const [filter, setFilter] = useState('onboarding');
+  const filtered = collections.filter(c => c.category === filter);
+  return (
+    <div className="space-y-8">
+      <div className="flex justify-between items-end">
+        <PageHeader title="Colección de Datos" subtitle={`${filtered.length} flujos configurados`} />
+        <div className="flex gap-2 bg-slate-100 p-1.5 rounded-2xl mb-10">
+          {['onboarding', 'standalone', 'client-linked'].map(f => (
+            <button key={f} onClick={() => setFilter(f)} className={`px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${filter === f ? 'bg-white text-emerald-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}>{f.charAt(0).toUpperCase() + f.slice(1)}</button>
+          ))}
+        </div>
+      </div>
+      <div className="flex justify-end mb-4"><button onClick={onCreate} className="flex items-center gap-2 bg-emerald-600 text-white px-8 py-4 rounded-2xl font-black uppercase tracking-widest text-[10px] shadow-lg shadow-emerald-600/20 hover:scale-105 transition-all"><Plus size={16} /> Nuevo Formulario</button></div>
+      <Table cols={['Nombre del Flujo', 'Campos', 'Estado', 'Acciones']} rows={filtered} render={c => (<><td className="px-8 py-5 font-bold text-slate-800">{c.name}</td><td className="px-8 py-5 text-slate-400">{(c.questions_json || []).length} campos</td><td className="px-8 py-5"><Badge status={c.status} /></td><td className="px-8 py-5"><button onClick={() => onEdit(c)} className="p-2 hover:bg-emerald-50 text-slate-300 hover:text-emerald-600 rounded-lg transition-all"><Settings2 size={16} /></button></td></>)} />
+    </div>
+  );
+};
+
+const SyncView = ({ onSync, loading }) => (
+  <div className="space-y-8">
+    <PageHeader title="Sincronización" subtitle="Puente de Datos Upya ↔ Bantos" />
+    <div className="bg-white p-16 rounded-[40px] border border-slate-100 shadow-sm text-center">
+      <div className="w-20 h-20 bg-blue-50 rounded-[28px] flex items-center justify-center mx-auto mb-8"><RefreshCw size={40} className={`text-blue-600 ${loading ? 'animate-spin' : ''}`} /></div>
+      <h3 className="text-2xl font-black text-slate-900 tracking-tighter mb-3">Sincronización Maestra</h3>
+      <p className="text-slate-400 font-medium mb-10 max-w-md mx-auto">Descarga en cascada de Clientes, Contratos, Inventario y Formularios desde el entorno de producción Upya.</p>
+      <button onClick={onSync} disabled={loading} className="bg-blue-600 text-white px-14 py-5 rounded-2xl font-black uppercase tracking-widest text-[11px] shadow-xl shadow-blue-600/30 hover:scale-105 active:scale-95 transition-all disabled:opacity-50">{loading ? 'Descargando datos...' : 'Iniciar Sincronización'}</button>
+    </div>
+  </div>
+);
+
+const AuditView = ({ audit }) => (
+  <div className="space-y-8">
+    <PageHeader title="Auditoría" subtitle={`${audit.length} registros de trazabilidad operativa`} />
+    <Table cols={['Fecha', 'Usuario', 'Tipo', 'ID Recurso', 'Estado']} rows={audit} render={r => (<><td className="px-8 py-5 text-slate-400 text-xs">{r.fecha_registro ? new Date(r.fecha_registro).toLocaleString('es-MX') : '—'}</td><td className="px-8 py-5 font-bold">{r.cliente || 'Sistema'}</td><td className="px-8 py-5 font-black text-[10px] uppercase tracking-wider text-blue-600">{r.tipo || 'SYNC'}</td><td className="px-8 py-5 font-mono text-slate-400 text-xs">{r.ref_contrato}</td><td className="px-8 py-5"><Badge status={r.estado} /></td></>)} />
+  </div>
+);
+
+const TermsView = ({ deals }) => (
+  <div className="space-y-8">
+    <PageHeader 
+      title="Términos & Condiciones (Deals)" 
+      subtitle="Gobernanza de planes financieros y términos de venta de Upya" 
+    />
+    
+    <div className="grid grid-cols-3 gap-6 mb-8">
+      <div className="bg-white p-8 rounded-[32px] border border-slate-100 shadow-sm flex items-center gap-6">
+        <div className="w-14 h-14 bg-blue-50 rounded-2xl flex items-center justify-center text-blue-600"><ShieldCheck size={28} /></div>
+        <div>
+          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Planes PAYG</p>
+          <p className="text-2xl font-black text-slate-800">{deals.filter(d => d.type === 'PAYG').length}</p>
+        </div>
+      </div>
+      <div className="bg-white p-8 rounded-[32px] border border-slate-100 shadow-sm flex items-center gap-6">
+        <div className="w-14 h-14 bg-emerald-50 rounded-2xl flex items-center justify-center text-emerald-600"><CreditCard size={28} /></div>
+        <div>
+          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Instalments</p>
+          <p className="text-2xl font-black text-slate-800">{deals.filter(d => d.type === 'INSTALMENTS').length}</p>
+        </div>
+      </div>
+      <div className="bg-white p-8 rounded-[32px] border border-slate-100 shadow-sm flex items-center gap-6">
+        <div className="w-14 h-14 bg-slate-50 rounded-2xl flex items-center justify-center text-slate-600"><Tag size={28} /></div>
+        <div>
+          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Total Planes</p>
+          <p className="text-2xl font-black text-slate-800">{deals.length}</p>
+        </div>
+      </div>
+    </div>
+
+    <div className="bg-white rounded-[40px] border border-slate-100 shadow-sm overflow-hidden">
+      <div className="p-8 border-b border-slate-50 bg-slate-50/30 flex justify-between items-center">
+        <p className="text-[11px] font-black text-slate-500 uppercase tracking-widest">Listado de Términos (Homologado con Upya)</p>
+      </div>
+      <Table 
+        cols={['Tipo', 'Nombre del Plan', 'Producto Asociado', 'Costo Total', 'Estado']} 
+        rows={deals} 
+        render={d => (
+          <>
+            <td className="px-8 py-5">
+              <span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-wider ${d.type === 'PAYG' ? 'bg-blue-50 text-blue-600' : 'bg-emerald-50 text-emerald-600'}`}>{d.type}</span>
+            </td>
+            <td className="px-8 py-5 font-bold text-slate-800">{d.name}</td>
+            <td className="px-8 py-5 text-slate-500 text-sm">{d.product_name || 'N/A'}</td>
+            <td className="px-8 py-5 font-mono text-xs text-blue-600">{d.total_cost || 'Open'}</td>
+            <td className="px-8 py-5">
+              <div className="flex items-center gap-2 font-black text-[10px] uppercase tracking-wider text-emerald-600">
+                <div className="w-2 h-2 rounded-full bg-emerald-500" />
+                {d.status || 'Active'}
+              </div>
+            </td>
+          </>
+        )} 
+      />
+    </div>
+  </div>
+);
+
+const OrganizationView = ({ structure }) => {
+  const [expanded, setExpanded] = useState([]);
+  const toggle = (id) => setExpanded(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+
+  const renderLevel = (parentId = null, level = 0) => {
+    const items = structure.filter(i => i.parent_id === parentId);
+    if (items.length === 0) return null;
+
+    return (
+      <div className={`${level > 0 ? 'ml-12 border-l-2 border-slate-100 pl-8 mt-4' : 'space-y-6'}`}>
+        {items.map(item => {
+          const hasChildren = structure.some(i => i.parent_id === item.upya_id);
+          const isExpanded = expanded.includes(item.upya_id);
+          
+          const icons = {
+            Country: Globe,
+            Organisation: Building2,
+            Branch: MapPin,
+            Shop: Store
+          };
+          const Icon = icons[item.type] || Building2;
+
+          return (
+            <div key={item.upya_id} className="group">
+              <div 
+                onClick={() => hasChildren && toggle(item.upya_id)}
+                className={`flex items-center gap-4 p-5 rounded-[24px] transition-all cursor-pointer ${
+                  level === 0 ? 'bg-white shadow-sm border border-slate-100' : 'hover:bg-white hover:shadow-md'
+                }`}
+              >
+                <div className={`w-12 h-12 rounded-xl flex items-center justify-center transition-all ${
+                  item.type === 'Country' ? 'bg-blue-600 text-white' :
+                  item.type === 'Organisation' ? 'bg-emerald-500 text-white' :
+                  item.type === 'Branch' ? 'bg-amber-500 text-white' : 'bg-slate-200 text-slate-500'
+                }`}>
+                  <Icon size={24} />
+                </div>
+                <div className="flex-1">
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">{item.type}</p>
+                  <p className="text-base font-black text-slate-900 tracking-tight">{item.name}</p>
+                </div>
+                {hasChildren && (
+                  <div className={`p-2 rounded-lg transition-all ${isExpanded ? 'bg-slate-100 text-slate-900 rotate-180' : 'text-slate-300'}`}>
+                    <ChevronDown size={18} />
+                  </div>
+                )}
+              </div>
+              {isExpanded && renderLevel(item.upya_id, level + 1)}
+            </div>
+          );
+        })}
+      </div>
+    );
+  };
+
+  return (
+    <div className="space-y-10">
+      <PageHeader title="Estructura Organizacional" subtitle="Jerarquía de operaciones y puntos de venta" />
+      <div className="max-w-4xl mx-auto">
+        {renderLevel(null)}
+      </div>
+    </div>
+  );
+};
+
+const ActionsView = ({ onNavigate }) => {
+  // Replicando los datos de la imagen
+  const incompleteActions = [
+    { id: '1776283487910', date: 'Apr 15, 2026, 02:04 PM', action: 'Nuevo Cliente', clientName: 'Juan lora', reportNumber: '1776283487910' },
+    { id: '1774625055001', date: 'Mar 27, 2026, 09:24 AM', action: 'Nuevo Cliente', clientName: 'Adriano Melo', reportNumber: '1774625055001' },
+    { id: '1774624488645', date: 'Mar 27, 2026, 09:14 AM', action: 'Nuevo Cliente', clientName: 'Adriano Melo', reportNumber: '1774624488645' },
+    { id: '1774548847669', date: 'Mar 26, 2026, 12:14 PM', action: 'Nuevo Cliente', clientName: 'ecec edcec', reportNumber: '1774548847669' }
+  ];
+
+  return (
+    <div className="space-y-10 max-w-6xl mx-auto">
+      {/* New action Section */}
+      <div>
+        <div className="flex items-center gap-3 mb-6">
+          <h2 className="text-2xl font-black text-slate-800 tracking-tight">Nueva acción</h2>
+          <button className="p-2 border border-slate-200 rounded-xl hover:bg-slate-50 hover:border-slate-300 text-slate-400 transition-colors bg-white shadow-sm">
+            <RefreshCw size={16} />
+          </button>
+        </div>
+        <div className="grid grid-cols-2 gap-6 max-w-2xl">
+          <button onClick={() => onNavigate('Nuevo Cliente')} className="bg-white hover:bg-slate-50 hover:border-blue-200 hover:shadow-md transition-all p-6 rounded-[24px] flex items-center gap-5 text-slate-800 text-left border border-slate-100 shadow-sm group">
+            <div className="w-14 h-14 rounded-xl bg-blue-50 flex items-center justify-center text-blue-600 group-hover:bg-blue-600 group-hover:text-white transition-colors">
+              <Users size={24} />
+            </div>
+            <span className="font-bold text-lg">Nuevo Cliente</span>
+          </button>
+          <button onClick={() => onNavigate('Detalles del plan')} className="bg-white hover:bg-slate-50 hover:border-blue-200 hover:shadow-md transition-all p-6 rounded-[24px] flex items-center gap-5 text-slate-800 text-left border border-slate-100 shadow-sm group">
+            <div className="w-14 h-14 rounded-xl bg-indigo-50 flex items-center justify-center text-indigo-600 group-hover:bg-indigo-600 group-hover:text-white transition-colors">
+              <FileText size={24} />
+            </div>
+            <span className="font-bold text-lg">Detalles del plan</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Incomplete actions Section */}
+      <div>
+        <h2 className="text-2xl font-black text-slate-800 tracking-tight mb-6 pb-4 border-b border-slate-100">Acciones incompletas</h2>
+        
+        <div className="bg-white rounded-[32px] border border-slate-100 shadow-sm overflow-hidden">
+          <table className="w-full text-left border-collapse">
+            <thead className="bg-slate-50/50">
+              <tr>
+                <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Date</th>
+                <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Action</th>
+                <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Client name</th>
+                <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Report number</th>
+                <th className="px-8 py-5 text-right"></th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {incompleteActions.map((item, i) => (
+                <tr key={item.id} className="hover:bg-slate-50/50 transition-colors group">
+                  <td className="px-8 py-5 text-sm font-medium text-slate-500">{item.date}</td>
+                  <td className="px-8 py-5 text-sm font-bold text-slate-800">{item.action}</td>
+                  <td className="px-8 py-5 text-sm font-medium text-slate-600">{item.clientName}</td>
+                  <td className="px-8 py-5 text-sm font-mono text-slate-400">{item.reportNumber}</td>
+                  <td className="px-8 py-5 flex items-center justify-end gap-3">
+                    <button onClick={() => onNavigate(item.action, item)} className="flex items-center gap-2 bg-slate-100 hover:bg-blue-600 hover:text-white hover:shadow-md text-blue-600 font-bold px-5 py-2.5 rounded-xl transition-all text-xs">
+                      <ClipboardCheck size={16} /> Completar ahora
+                    </button>
+                    <button className="p-2.5 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-xl transition-colors">
+                      <Trash2 size={18} />
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const ActionFormView = ({ actionType, prefillData, onBack, deals }) => {
+  const [selectedDeal, setSelectedDeal] = useState(deals && deals.length > 0 ? deals[0].upya_id : '');
+  const [currentStep, setCurrentStep] = useState(1);
+  
+  const steps = actionType === 'Detalles del plan' 
+    ? ['Selección de Plan', 'Resumen Financiero'] 
+    : ['Información personal', 'Contactos', 'Documentos', 'Contrato', 'Dispositivos', 'Firma'];
+
+  return (
+    <div className="space-y-8 max-w-6xl mx-auto">
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-4">
+          <button onClick={onBack} className="p-3 bg-white border border-slate-200 rounded-2xl hover:bg-slate-50 hover:shadow-md transition-all text-slate-500">
+            <ChevronDown size={20} className="rotate-90" />
+          </button>
+          <div>
+            <h2 className="text-3xl font-black text-slate-800 tracking-tight">Completar: {actionType}</h2>
+            <p className="text-sm font-medium text-slate-500 mt-1">
+              {prefillData ? `Reporte #${prefillData.reportNumber} - Cliente: ${prefillData.clientName}` : 'Iniciando nueva recolección'}
+            </p>
+          </div>
+        </div>
+        {prefillData && (
+          <div className="px-4 py-2 bg-amber-50 border border-amber-200 text-amber-700 rounded-xl font-bold text-sm flex items-center gap-2">
+            <Clock size={16} /> En progreso (Borrador)
+          </div>
+        )}
+      </div>
+
+      <div className="flex gap-8">
+        {/* Sidebar: Progress Stepper */}
+        <div className="w-1/4 bg-white rounded-[32px] border border-slate-100 shadow-sm p-6 self-start sticky top-8">
+          <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-6">Progreso del Formulario</h3>
+          <div className="space-y-6">
+            {steps.map((step, idx) => (
+              <div key={step} className="flex gap-4 cursor-pointer" onClick={() => setCurrentStep(idx + 1)}>
+                <div className="relative flex flex-col items-center">
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm transition-colors ${currentStep > idx + 1 ? 'bg-emerald-500 text-white' : currentStep === idx + 1 ? 'bg-blue-600 text-white shadow-md' : 'bg-slate-100 text-slate-400'}`}>
+                    {currentStep > idx + 1 ? <CheckSquare size={14} /> : idx + 1}
+                  </div>
+                  {idx < steps.length - 1 && <div className={`w-0.5 h-10 mt-2 ${currentStep > idx + 1 ? 'bg-emerald-500' : 'bg-slate-100'}`}></div>}
+                </div>
+                <div className="mt-1">
+                  <p className={`text-sm font-bold ${currentStep === idx + 1 ? 'text-blue-600' : currentStep > idx + 1 ? 'text-slate-800' : 'text-slate-400'}`}>{step}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Main Content: Form Inputs */}
+        <div className="w-3/4 bg-white rounded-[40px] border border-slate-100 shadow-sm p-10 flex flex-col min-h-[600px]">
+          <div className="flex-1 space-y-8">
+            <h3 className="text-xl font-black text-slate-800 border-b border-slate-100 pb-4">{steps[currentStep - 1]}</h3>
+            
+            {actionType === 'Detalles del plan' ? (
+              <div className="grid grid-cols-2 gap-8">
+                {currentStep === 1 && (
+                  <div className="col-span-2">
+                    <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-3">Términos y Condiciones (Deal)</label>
+                    <select className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all font-bold text-slate-800" value={selectedDeal} onChange={(e) => setSelectedDeal(e.target.value)}>
+                      {deals && deals.length > 0 ? deals.map(d => <option key={d.upya_id} value={d.upya_id}>{d.name} ({d.type})</option>) : <option>Sin planes disponibles</option>}
+                    </select>
+                  </div>
+                )}
+                
+                {currentStep === 2 && deals && selectedDeal && (
+                  <div className="col-span-2 bg-indigo-50/50 p-6 rounded-3xl border border-indigo-100 grid grid-cols-3 gap-6">
+                    {(() => {
+                      const deal = deals.find(d => d.upya_id === selectedDeal);
+                      if (!deal) return null;
+                      return (
+                        <>
+                          <div>
+                            <p className="text-[10px] font-black text-indigo-400 uppercase tracking-widest mb-1">Costo Total</p>
+                            <p className="text-2xl font-black text-indigo-900">${deal.total_cost || '0'}</p>
+                          </div>
+                          <div>
+                            <p className="text-[10px] font-black text-indigo-400 uppercase tracking-widest mb-1">Duración (Meses)</p>
+                            <p className="text-2xl font-black text-indigo-900">{deal.duration_months || 'N/A'}</p>
+                          </div>
+                          <div>
+                            <p className="text-[10px] font-black text-indigo-400 uppercase tracking-widest mb-1">Requiere Depósito</p>
+                            <p className="text-2xl font-black text-indigo-900">{deal.deposit_required ? 'Sí' : 'No'}</p>
+                          </div>
+                        </>
+                      );
+                    })()}
+                  </div>
+                )}
+              </div>
+            ) : (
+              /* Flujo General: 6 Secciones */
+              <div className="grid grid-cols-2 gap-8">
+                {currentStep === 1 && ( /* Información personal */
+                  <>
+                    <div className="col-span-2 md:col-span-1">
+                      <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-3">Nombre(s)</label>
+                      <input type="text" className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-blue-500/20 font-bold text-slate-800" defaultValue={prefillData?.clientName?.split(' ')[0] || ''} placeholder="Ej. Juan" />
+                    </div>
+                    <div className="col-span-2 md:col-span-1">
+                      <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-3">Apellidos</label>
+                      <input type="text" className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-blue-500/20 font-bold text-slate-800" defaultValue={prefillData?.clientName?.split(' ').slice(1).join(' ') || ''} placeholder="Ej. Lora" />
+                    </div>
+                    <div className="col-span-2 md:col-span-1">
+                      <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-3">Fecha de Nacimiento</label>
+                      <input type="date" className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-blue-500/20 font-bold text-slate-800" />
+                    </div>
+                    <div className="col-span-2 md:col-span-1">
+                      <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-3">Género</label>
+                      <select className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-blue-500/20 font-bold text-slate-800">
+                        <option>Femenino</option><option>Masculino</option><option>Otro</option>
+                      </select>
+                    </div>
+                  </>
+                )}
+                {currentStep === 2 && ( /* Contactos */
+                  <>
+                    <div className="col-span-2 md:col-span-1">
+                      <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-3">Teléfono Principal (Móvil)</label>
+                      <input type="tel" className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-blue-500/20 font-bold text-slate-800" placeholder="+52 ..." />
+                    </div>
+                    <div className="col-span-2 md:col-span-1">
+                      <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-3">Teléfono de Emergencia/Referencia</label>
+                      <input type="tel" className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-blue-500/20 font-bold text-slate-800" placeholder="+52 ..." />
+                    </div>
+                    <div className="col-span-2">
+                      <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-3">Dirección de Residencia</label>
+                      <textarea className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-blue-500/20 font-bold text-slate-800 min-h-[100px]" placeholder="Calle, Número, Colonia, Ciudad, Estado, C.P."></textarea>
+                    </div>
+                  </>
+                )}
+                {currentStep === 3 && ( /* Documentos */
+                  <>
+                    <div className="col-span-2 md:col-span-1">
+                      <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-3">Tipo de Identificación</label>
+                      <select className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-blue-500/20 font-bold text-slate-800">
+                        <option>INE / IFE</option><option>Pasaporte</option><option>Cédula Profesional</option>
+                      </select>
+                    </div>
+                    <div className="col-span-2 md:col-span-1">
+                      <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-3">Número de Documento</label>
+                      <input type="text" className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-blue-500/20 font-bold text-slate-800" placeholder="Ej. 0000111122223" />
+                    </div>
+                    <div className="col-span-2 md:col-span-1">
+                      <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-3">Captura Identificación (Frente)</label>
+                      <div className="w-full h-32 border-2 border-dashed border-slate-300 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-500 hover:bg-blue-50 hover:border-blue-300 hover:text-blue-600 transition-colors cursor-pointer">
+                        <div className="text-center"><Box size={24} className="mx-auto mb-2" /><span className="text-sm font-bold">Tomar Foto</span></div>
+                      </div>
+                    </div>
+                    <div className="col-span-2 md:col-span-1">
+                      <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-3">Captura Comprobante Domicilio</label>
+                      <div className="w-full h-32 border-2 border-dashed border-slate-300 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-500 hover:bg-blue-50 hover:border-blue-300 hover:text-blue-600 transition-colors cursor-pointer">
+                        <div className="text-center"><FileText size={24} className="mx-auto mb-2" /><span className="text-sm font-bold">Tomar Foto</span></div>
+                      </div>
+                    </div>
+                  </>
+                )}
+                {currentStep === 4 && ( /* Contrato */
+                  <>
+                    <div className="col-span-2">
+                      <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-3">Términos de Pago Asociados</label>
+                      <select className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-blue-500/20 font-bold text-slate-800">
+                        {deals && deals.length > 0 ? deals.map(d => <option key={d.upya_id} value={d.upya_id}>{d.name}</option>) : <option>Sin planes</option>}
+                      </select>
+                    </div>
+                    <div className="col-span-2 p-6 bg-slate-50 border border-slate-200 rounded-2xl flex items-start gap-4">
+                      <input type="checkbox" className="mt-1 w-5 h-5 rounded text-blue-600 focus:ring-blue-500 border-slate-300" defaultChecked />
+                      <div>
+                        <p className="font-bold text-slate-800">Aceptación de Contrato</p>
+                        <p className="text-sm text-slate-500">Confirmo que he explicado al cliente los términos de pago, penalizaciones por mora y condiciones de uso del servicio. El cliente acepta continuar.</p>
+                      </div>
+                    </div>
+                  </>
+                )}
+                {currentStep === 5 && ( /* Dispositivos */
+                  <>
+                    <div className="col-span-2 md:col-span-1">
+                      <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-3">Modelo del Dispositivo / Producto</label>
+                      <select className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-blue-500/20 font-bold text-slate-800">
+                        <option>Kit Solar Básico 50W</option>
+                        <option>Kit Solar Plus 100W</option>
+                        <option>Refrigerador Solar 12V</option>
+                      </select>
+                    </div>
+                    <div className="col-span-2 md:col-span-1">
+                      <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-3">Número de Serie o Token PayG</label>
+                      <input type="text" className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-blue-500/20 font-bold text-slate-800" placeholder="Ej. A1B2C3D4E5" />
+                    </div>
+                    <div className="col-span-2">
+                      <div className="px-6 py-4 bg-blue-50 border border-blue-100 rounded-2xl flex items-center gap-4 text-blue-800">
+                        <Smartphone size={24} />
+                        <span className="font-bold text-sm">Escanea el código de barras en el empaque para autocompletar la serie.</span>
+                      </div>
+                    </div>
+                  </>
+                )}
+                {currentStep === 6 && ( /* Firma */
+                  <div className="col-span-2 space-y-6 text-center">
+                    <p className="text-sm font-bold text-slate-600 uppercase tracking-widest">Firma Digital del Cliente</p>
+                    <div className="w-full h-48 bg-slate-50 border-2 border-dashed border-slate-300 rounded-3xl relative flex flex-col items-center justify-center text-slate-400">
+                      <Edit size={32} className="mb-2 opacity-50" />
+                      <span>El cliente debe firmar aquí</span>
+                      <button className="absolute bottom-4 right-4 text-xs font-bold text-slate-500 hover:text-slate-800">Limpiar Firma</button>
+                    </div>
+                    <div>
+                      <input type="text" className="w-64 mx-auto px-5 py-4 bg-white border border-slate-200 rounded-2xl focus:ring-4 focus:ring-blue-500/20 font-bold text-slate-800 text-center" placeholder="Aclaración de firma" defaultValue={prefillData?.clientName || ''} />
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          <div className="pt-8 mt-8 border-t border-slate-100 flex justify-between items-center">
+            <button onClick={onBack} className="px-6 py-3 text-slate-400 hover:text-slate-600 font-bold transition-colors">Guardar Borrador y Salir</button>
+            <div className="flex gap-4">
+              {currentStep > 1 && (
+                <button onClick={() => setCurrentStep(currentStep - 1)} className="px-8 py-4 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold rounded-2xl transition-colors">Atrás</button>
+              )}
+              {currentStep < steps.length ? (
+                <button onClick={() => setCurrentStep(currentStep + 1)} className="px-8 py-4 bg-blue-600 hover:bg-blue-700 shadow-lg shadow-blue-600/30 text-white font-bold rounded-2xl transition-all">Siguiente</button>
+              ) : (
+                <button onClick={onBack} className="px-8 py-4 bg-emerald-500 hover:bg-emerald-600 shadow-lg shadow-emerald-500/30 text-white font-bold rounded-2xl transition-all flex items-center gap-2">
+                  <CheckSquare size={20} /> Finalizar y Enviar
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const ActionModal = ({ open, onClose, onSave, action = null }) => {
+  const [formData, setFormData] = useState({
+    description: '',
+    type: 'Soporte',
+    status: 'Pendiente',
+    assigned_to: 'Armando Afa',
+    due_date: '',
+    client_id: '',
+    contract_id: ''
+  });
+
+  useEffect(() => {
+    if (action) {
+      setFormData({
+        description: action.description || '',
+        type: action.type || 'Soporte',
+        status: action.status || 'Pendiente',
+        assigned_to: action.assigned_to || '',
+        due_date: action.due_date ? new Date(action.due_date).toISOString().split('T')[0] : '',
+        client_id: action.client_id || '',
+        contract_id: action.contract_id || ''
+      });
+    } else {
+      setFormData({ description: '', type: 'Soporte', status: 'Pendiente', assigned_to: '', due_date: '', client_id: '', contract_id: '' });
+    }
+  }, [action]);
+
+  if (!open) return null;
+
+  return (
+    <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+      <div className="bg-white rounded-[32px] shadow-2xl w-full max-w-2xl overflow-hidden border border-slate-100 flex flex-col max-h-[90vh]">
+        <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center text-blue-600"><Zap size={20} /></div>
+            <h2 className="text-xl font-black text-slate-800 tracking-tight">{action ? 'Editar Acción' : 'Nueva Acción'}</h2>
+          </div>
+          <button onClick={onClose} className="p-2 text-slate-400 hover:bg-slate-100 rounded-full transition-colors"><X size={20} /></button>
+        </div>
+        <div className="p-8 overflow-y-auto flex-1 space-y-6">
+          <div>
+            <label className="block text-xs font-black text-slate-500 uppercase tracking-widest mb-2">Descripción / Asunto</label>
+            <input type="text" className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all font-medium text-slate-800" value={formData.description} onChange={(e) => setFormData({...formData, description: e.target.value})} placeholder="Ej. Revisar instalación..." />
+          </div>
+          <div className="grid grid-cols-2 gap-6">
+            <div>
+              <label className="block text-xs font-black text-slate-500 uppercase tracking-widest mb-2">Tipo</label>
+              <select className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 font-medium text-slate-800" value={formData.type} onChange={(e) => setFormData({...formData, type: e.target.value})}>
+                <option>Soporte</option><option>Mantenimiento</option><option>Cobranza</option><option>Instalación</option><option>Otro</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-black text-slate-500 uppercase tracking-widest mb-2">Estado</label>
+              <select className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 font-medium text-slate-800" value={formData.status} onChange={(e) => setFormData({...formData, status: e.target.value})}>
+                <option>Pendiente</option><option>En Proceso</option><option>Completado</option>
+              </select>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-6">
+            <div>
+              <label className="block text-xs font-black text-slate-500 uppercase tracking-widest mb-2">Asignado a</label>
+              <input type="text" className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 font-medium text-slate-800" value={formData.assigned_to} onChange={(e) => setFormData({...formData, assigned_to: e.target.value})} placeholder="Nombre del agente" />
+            </div>
+            <div>
+              <label className="block text-xs font-black text-slate-500 uppercase tracking-widest mb-2">Fecha Límite</label>
+              <input type="date" className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 font-medium text-slate-800" value={formData.due_date} onChange={(e) => setFormData({...formData, due_date: e.target.value})} />
+            </div>
+          </div>
+        </div>
+        <div className="p-6 border-t border-slate-100 bg-slate-50/50 flex justify-end gap-3">
+          <button onClick={onClose} className="px-6 py-2.5 text-slate-500 hover:bg-slate-200 font-bold rounded-xl transition-colors">Cancelar</button>
+          <button onClick={() => { onSave(formData); onClose(); }} className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl transition-colors shadow-md">Guardar Acción</button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const PlaceholderView = ({ title, subtitle }) => (
+  <div className="space-y-8">
+    <PageHeader title={title} subtitle={subtitle} />
+    <div className="bg-white p-20 rounded-[40px] border border-slate-100 shadow-sm text-center">
+      <div className="w-16 h-16 bg-slate-50 rounded-2xl flex items-center justify-center mx-auto mb-6"><Zap size={32} className="text-slate-200" /></div>
+      <p className="text-slate-300 font-black uppercase tracking-widest text-sm">Módulo en preparación</p>
+    </div>
+  </div>
+);
+
+// --- APP PRINCIPAL ---
+const App = () => {
+  const [session, setSession] = useState(() => { try { return JSON.parse(localStorage.getItem('bantos_session')); } catch { return null; } });
+  const [view, setView] = useState('manage-dashboard');
+  const [expandedMenus, setExpandedMenus] = useState(['setup', 'records']);
+  const [summary, setSummary] = useState({ totalClients: 0, totalContracts: 0, totalInventory: 0, totalProducts: 0, totalDataCollections: 0, totalPaid: 0 });
+  const [data, setData] = useState({ clients: [], contracts: [], inventory: [], payments: [], products: [], paymentPlans: [], orgStructure: [], actions: [], audit: [], dataCollections: [] });
+  const [syncing, setSyncing] = useState(false);
+  const [modalState, setModalState] = useState({ type: null, open: false, item: null });
+  const [actionFormState, setActionFormState] = useState({ open: false, actionType: null, prefillData: null });
+
+  const refreshData = useCallback(async () => {
+    if (!session) return;
+    try {
+      const [sumRes, cliRes, conRes, invRes, payRes, proRes, ppRes, orgRes, actRes, dcRes, audRes] = await Promise.allSettled([
+        axios.get(`${API}/backoffice/summary`),
+        axios.get(`${API}/backoffice/clients`),
+        axios.get(`${API}/backoffice/contracts`),
+        axios.get(`${API}/backoffice/inventory`),
+        axios.get(`${API}/backoffice/payments`),
+        axios.get(`${API}/backoffice/products`),
+        axios.get(`${API}/backoffice/payment-plans`),
+        axios.get(`${API}/backoffice/org-structure`),
+        axios.get(`${API}/backoffice/actions`),
+        axios.get(`${API}/backoffice/data-collections`),
+        axios.get(`${API}/backoffice/audit`),
+      ]);
+      if (sumRes.status === 'fulfilled') setSummary(sumRes.value.data);
+      setData({
+        clients: cliRes.status === 'fulfilled' ? cliRes.value.data : [],
+        contracts: conRes.status === 'fulfilled' ? conRes.value.data : [],
+        inventory: invRes.status === 'fulfilled' ? invRes.value.data : [],
+        payments: payRes.status === 'fulfilled' ? payRes.value.data : [],
+        products: proRes.status === 'fulfilled' ? proRes.value.data : [],
+        paymentPlans: ppRes.status === 'fulfilled' ? ppRes.value.data : [],
+        orgStructure: orgRes.status === 'fulfilled' ? orgRes.value.data : [],
+        actions: actRes.status === 'fulfilled' ? actRes.value.data : [],
+        dataCollections: dcRes.status === 'fulfilled' ? dcRes.value.data : [],
+        audit: audRes.status === 'fulfilled' ? audRes.value.data : [],
+      });
+    } catch (e) { console.error(e); }
+  }, [session]);
+
+  useEffect(() => { refreshData(); }, [view, refreshData]);
+
+  const handleSync = async () => {
+    setSyncing(true);
+    try {
+      const res = await axios.post(`${API}/sync/bootstrap`, { username: session.user.username, password: session.user.password });
+      await refreshData();
+      alert(`✅ Sincronización exitosa\n• Clientes: ${res.data.clients}\n• Contratos: ${res.data.contracts}\n• Productos: ${res.data.products}\n• Colecciones: ${res.data.dataCollections}\n• Pagos: ${res.data.payments}`);
+    } catch { alert('Error de conexión'); }
+    finally { setSyncing(false); }
+  };
+
+  const handleSaveProduct = async (productData) => {
+    try {
+      const payload = { username: session.user.username, password: session.user.password, productData };
+      if (modalState.item) await axios.put(`${API}/backoffice/products/${modalState.item.upya_id}`, payload);
+      else await axios.post(`${API}/backoffice/products`, payload);
+      setModalState({ type: null, open: false, item: null });
+      refreshData();
+    } catch (e) { alert(e.message); }
+  };
+
+  const handleSaveCollection = async (collectionData) => {
+    try {
+      const payload = { username: session.user.username, password: session.user.password, collectionData };
+      if (modalState.item) await axios.put(`${API}/backoffice/data-collections/${modalState.item.upya_id}`, payload);
+      else await axios.post(`${API}/backoffice/data-collections`, payload);
+      setModalState({ type: null, open: false, item: null });
+      refreshData();
+    } catch (e) { alert(e.message); }
+  };
+
+  const handleSaveAction = async (formData) => {
+    try {
+      if (modalState.item) {
+        await axios.put(`${API}/backoffice/actions/${modalState.item.upya_id}`, formData);
+      } else {
+        await axios.post(`${API}/backoffice/actions`, formData);
+      }
+      refreshData();
+    } catch (e) {
+      console.error('Error saving action:', e);
+      alert('Error al guardar la acción');
+    }
+  };
+
+  if (!session) return (
+    <div className="min-h-screen bg-slate-950 flex items-center justify-center p-8">
+      <div className="w-full max-w-[440px] bg-white rounded-[48px] p-14 shadow-2xl text-center">
+        <div className="w-16 h-16 bg-blue-600 rounded-[22px] flex items-center justify-center text-white mx-auto mb-8 shadow-xl shadow-blue-600/40"><ShieldCheck size={32} /></div>
+        <h1 className="text-3xl font-black text-slate-900 tracking-tighter mb-2">Bantos</h1>
+        <p className="text-blue-600 font-black text-[11px] uppercase tracking-widest mb-10">Data Center</p>
+        <div className="space-y-4">
+          <input id="u" type="text" placeholder="Usuario" defaultValue="armando.afa" className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl py-4 px-6 font-bold text-slate-800 outline-none focus:border-blue-600 transition-all" />
+          <input id="p" type="password" placeholder="Contraseña" defaultValue="123456!" className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl py-4 px-6 font-bold text-slate-800 outline-none focus:border-blue-600 transition-all" />
+          <button onClick={() => { const u = document.getElementById('u').value; const p = document.getElementById('p').value; if (u === 'armando.afa' && p === '123456!') { const s = { user: { username: u, password: p } }; localStorage.setItem('bantos_session', JSON.stringify(s)); setSession(s); } else { alert('Error'); } }} className="w-full bg-blue-600 text-white py-5 rounded-2xl font-black uppercase tracking-widest text-xs shadow-xl shadow-blue-600/30">Acceder</button>
+        </div>
+      </div>
+    </div>
+  );
+
+  const navItems = [
+    { section: 'Operación', items: [
+      { id: 'manage-dashboard', label: 'Dashboard', icon: LayoutDashboard },
+      { id: 'setup', label: 'Setup', icon: Settings2, children: [
+        { id: 'setup-products', label: 'Productos', icon: Tag },
+        { id: 'setup-data-collection', label: 'Colección de datos', icon: Database },
+        { id: 'setup-terms', label: 'Términos & Condiciones', icon: ShieldCheck },
+        { id: 'setup-templates', label: 'Plantillas', icon: FileText },
+        { id: 'setup-org', label: 'Organización', icon: Building2 },
+        { id: 'setup-users', label: 'Usuarios', icon: Users },
+      ]},
+      { id: 'records', label: 'Registro', icon: BookOpen, children: [
+        { id: 'record-actions', label: 'Acciones', icon: Zap },
+        { id: 'record-todos', label: 'To-Dos', icon: CheckSquare },
+        { id: 'manage-clients', label: 'Clientes', icon: Users },
+        { id: 'manage-contracts', label: 'Contratos', icon: FileText },
+        { id: 'manage-inventory', label: 'Inventario', icon: Box },
+        { id: 'record-comms', label: 'Comunicaciones', icon: MessageSquare },
+        { id: 'manage-payments', label: 'Pagos', icon: CreditCard },
+      ]},
+      { id: 'manage-audit', label: 'Auditoría', icon: Clock },
+    ]},
+    { section: 'Estructura', items: [ { id: 'setup-system', label: 'Sincronización', icon: RefreshCw }, { id: 'setup-messaging', label: 'Mensajería', icon: Mail }, { id: 'setup-config', label: 'Sistema', icon: Settings2 } ]},
+  ];
+
+  return (
+    <div className="flex min-h-screen bg-slate-50 font-sans text-slate-800">
+      <aside className="w-72 bg-white border-r border-slate-100 flex flex-col p-8 shrink-0">
+        <div className="flex items-center gap-3 mb-10"><div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center text-white shadow-lg shadow-blue-600/30"><ShieldCheck size={22} /></div><div className="leading-none"><p className="font-black text-slate-900 text-base tracking-tight">Bantos</p><p className="text-blue-600 font-black text-[10px] uppercase tracking-widest">Data Center</p></div></div>
+        <nav className="flex-1 space-y-6 overflow-y-auto">
+          {navItems.map(({ section, items }) => (
+            <div key={section}>
+              <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-300 px-4 mb-3">{section}</p>
+              <div className="space-y-0.5">{items.map(({ id, label, icon: Icon, children }) => (
+                <div key={id} className="space-y-1">
+                  <button onClick={() => { if (children) { setExpandedMenus(prev => prev.includes(id) ? prev.filter(m => m !== id) : [...prev, id]); } else { setView(id); } }} className={`w-full flex items-center justify-between gap-3 px-4 py-3 rounded-xl font-bold text-sm transition-all ${view === id || (children && children.some(c => c.id === view)) ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/25' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-800'}`}>
+                    <div className="flex items-center gap-3"><Icon size={18} /> {label}</div>
+                    {children && (expandedMenus.includes(id) ? <ChevronDown size={14} className="opacity-50" /> : <ChevronRight size={14} className="opacity-50" />)}
+                  </button>
+                  {children && expandedMenus.includes(id) && (<div className="ml-4 pl-4 border-l border-slate-100 space-y-1 mt-1">{children.map(child => (<button key={child.id} onClick={() => setView(child.id)} className={`w-full flex items-center gap-3 px-4 py-2 rounded-lg font-bold text-[12px] transition-all ${view === child.id ? 'text-blue-600 bg-blue-50' : 'text-slate-400 hover:text-slate-700 hover:bg-slate-50'}`}><child.icon size={14} /> {child.label}</button>))}</div>)}
+                </div>
+              ))}</div>
+            </div>
+          ))}
+        </nav>
+        <button onClick={() => { localStorage.removeItem('bantos_session'); window.location.reload(); }} className="mt-8 flex items-center gap-3 px-4 py-3 text-slate-400 font-bold text-sm hover:text-red-500 hover:bg-red-50 rounded-xl transition-all"><LogOut size={18} /> Salir</button>
+      </aside>
+
+      <main className="flex-1 overflow-y-auto p-12">
+        <AnimatePresence mode="wait">
+          <motion.div key={view} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -12 }} transition={{ duration: 0.18 }}>
+            {view === 'manage-dashboard' && <DashboardView summary={summary} />}
+            {view === 'manage-clients' && <ClientsView clients={data.clients} />}
+            {view === 'manage-contracts' && <ContractsView contracts={data.contracts} />}
+            {view === 'manage-inventory' && <InventoryView inventory={data.inventory} />}
+            {view === 'manage-audit' && <AuditView audit={data.audit} />}
+            {view === 'setup-system' && <SyncView onSync={handleSync} loading={syncing} />}
+            {view === 'setup-products' && <ProductsView products={data.products} onEdit={(p) => setModalState({ type: 'product', open: true, item: p })} onCreate={() => setModalState({ type: 'product', open: true, item: null })} />}
+            {view === 'setup-data-collection' && <DataCollectionView collections={data.dataCollections} onEdit={(c) => setModalState({ type: 'collection', open: true, item: c })} onCreate={() => setModalState({ type: 'collection', open: true, item: null })} />}
+            {view === 'setup-terms' && <TermsView deals={data.paymentPlans} />}
+            {view === 'setup-org' && <OrganizationView structure={data.orgStructure} />}
+            
+            {/* Navigational state for Actions Form vs List */}
+            {view === 'record-actions' && !actionFormState.open && (
+              <ActionsView onNavigate={(actionType, prefillData = null) => setActionFormState({ open: true, actionType, prefillData })} />
+            )}
+            {view === 'record-actions' && actionFormState.open && (
+              <ActionFormView actionType={actionFormState.actionType} prefillData={actionFormState.prefillData} deals={data.paymentPlans} onBack={() => setActionFormState({ open: false, actionType: null, prefillData: null })} />
+            )}
+
+            {view === 'manage-payments' && <PaymentsView payments={data.payments} />}
+            
+            {/* Fallbacks */}
+            {['setup-templates', 'setup-users', 'record-todos', 'record-comms'].includes(view) && (
+              <PlaceholderView 
+                title={navItems.flatMap(n => n.items).flatMap(i => [i, ...(i.children || [])]).find(x => x.id === view)?.label || 'Módulo'} 
+                subtitle="Funcionalidad programada para la siguiente fase" 
+              />
+            )}
+          </motion.div>
+        </AnimatePresence>
+
+        <ProductModal open={modalState.open && modalState.type === 'product'} onClose={() => setModalState({ type: null, open: false, item: null })} onSave={handleSaveProduct} product={modalState.item} />
+        <DataCollectionModal open={modalState.open && modalState.type === 'collection'} onClose={() => setModalState({ type: null, open: false, item: null })} onSave={handleSaveCollection} collection={modalState.item} />
+        <ActionModal open={modalState.open && modalState.type === 'action'} onClose={() => setModalState({ type: null, open: false, item: null })} onSave={handleSaveAction} action={modalState.item} />
+      </main>
+    </div>
+  );
+};
+
+export default App;
