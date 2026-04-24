@@ -1,6 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
+import axios from 'axios';
 import UpyaManageClient from '../modules/upya-api-client/src/index.js';
 import pool from './config/db.js';
 
@@ -197,8 +198,23 @@ app.post('/api/sync/bootstrap', async (req, res) => {
           const id = item.id || item._id;
           if (id) {
             await pool.query(
-              'INSERT INTO org_structure (upya_id, name, type, parent_id) VALUES (?, ?, ?, ?) ON DUPLICATE KEY UPDATE name=VALUES(name), type=VALUES(type), parent_id=VALUES(parent_id)',
-              [id, item.name || 'Sin nombre', coll.type, item.parent || null]
+              `INSERT INTO org_structure (
+                upya_id, name, type, parent_id, 
+                entity_number, external_id, administrator, email, mobile, address
+              ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) 
+              ON DUPLICATE KEY UPDATE 
+                name=VALUES(name), type=VALUES(type), parent_id=VALUES(parent_id),
+                entity_number=VALUES(entity_number), external_id=VALUES(external_id),
+                administrator=VALUES(administrator), email=VALUES(email),
+                mobile=VALUES(mobile), address=VALUES(address)`,
+              [
+                id, item.name || 'Sin nombre', coll.type, item.parent || null,
+                item.entityNumber || null, item.externalId || null,
+                item.legal?.administrator || null,
+                item.legal?.contact?.email || null,
+                item.legal?.contact?.mobile || null,
+                item.legal?.address?.fullAddress || null
+              ]
             );
             stats.orgEntities = (stats.orgEntities || 0) + 1;
           }
@@ -298,6 +314,27 @@ app.get('/api/backoffice/actions', async (req, res) => {
     const [rows] = await pool.query('SELECT * FROM operation_actions ORDER BY due_date ASC, status DESC');
     res.json(rows);
   } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.post('/api/backoffice/auth', async (req, res) => {
+  const { username, password } = req.body;
+  try {
+    const baseUrl = process.env.UPYA_BASE_URL || 'https://api.upya.io';
+    // We use /data/count/clients as a reliable way to check if credentials are valid
+    const upyaRes = await axios.post(`${baseUrl}/data/count/clients`, { query: {} }, {
+      auth: { username, password },
+      headers: { 'Content-Type': 'application/json' }
+    });
+    
+    if (upyaRes.status === 200) {
+      return res.json({ success: true, message: 'Autenticado' });
+    } else {
+      return res.status(401).json({ success: false, message: 'Acceso denegado' });
+    }
+  } catch (err) {
+    console.error('Auth error:', err.response?.data || err.message);
+    return res.status(401).json({ success: false, message: 'Credenciales inválidas' });
+  }
 });
 
 app.post('/api/backoffice/actions', async (req, res) => {

@@ -372,6 +372,8 @@ const TermsView = ({ deals }) => (
 
 const OrganizationView = ({ structure }) => {
   const [expanded, setExpanded] = useState([]);
+  const [selected, setSelected] = useState(null);
+  
   const toggle = (id) => setExpanded(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
 
   const renderLevel = (parentId = null, level = 0) => {
@@ -379,10 +381,11 @@ const OrganizationView = ({ structure }) => {
     if (items.length === 0) return null;
 
     return (
-      <div className={`${level > 0 ? 'ml-12 border-l-2 border-slate-100 pl-8 mt-4' : 'space-y-6'}`}>
+      <div className={`${level > 0 ? 'ml-10 border-l-2 border-slate-100 pl-6 mt-3' : 'space-y-4'}`}>
         {items.map(item => {
           const hasChildren = structure.some(i => i.parent_id === item.upya_id);
           const isExpanded = expanded.includes(item.upya_id);
+          const isSelected = selected?.upya_id === item.upya_id;
           
           const icons = {
             Country: Globe,
@@ -395,25 +398,29 @@ const OrganizationView = ({ structure }) => {
           return (
             <div key={item.upya_id} className="group">
               <div 
-                onClick={() => hasChildren && toggle(item.upya_id)}
-                className={`flex items-center gap-4 p-5 rounded-[24px] transition-all cursor-pointer ${
-                  level === 0 ? 'bg-white shadow-sm border border-slate-100' : 'hover:bg-white hover:shadow-md'
+                onClick={() => {
+                  if (hasChildren) toggle(item.upya_id);
+                  setSelected(item);
+                }}
+                className={`flex items-center gap-4 p-4 rounded-[20px] transition-all cursor-pointer ${
+                  isSelected ? 'bg-blue-50 border-blue-200 border shadow-sm' : 
+                  level === 0 ? 'bg-white shadow-sm border border-slate-100' : 'hover:bg-slate-50'
                 }`}
               >
-                <div className={`w-12 h-12 rounded-xl flex items-center justify-center transition-all ${
+                <div className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all ${
                   item.type === 'Country' ? 'bg-blue-600 text-white' :
                   item.type === 'Organisation' ? 'bg-emerald-500 text-white' :
                   item.type === 'Branch' ? 'bg-amber-500 text-white' : 'bg-slate-200 text-slate-500'
                 }`}>
-                  <Icon size={24} />
+                  <Icon size={20} />
                 </div>
                 <div className="flex-1">
-                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">{item.type}</p>
-                  <p className="text-base font-black text-slate-900 tracking-tight">{item.name}</p>
+                  <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">{item.type}</p>
+                  <p className="text-sm font-black text-slate-900 tracking-tight">{item.name}</p>
                 </div>
                 {hasChildren && (
-                  <div className={`p-2 rounded-lg transition-all ${isExpanded ? 'bg-slate-100 text-slate-900 rotate-180' : 'text-slate-300'}`}>
-                    <ChevronDown size={18} />
+                  <div className={`p-1.5 rounded-lg transition-all ${isExpanded ? 'text-slate-900 rotate-180' : 'text-slate-300'}`}>
+                    <ChevronDown size={16} />
                   </div>
                 )}
               </div>
@@ -427,9 +434,87 @@ const OrganizationView = ({ structure }) => {
 
   return (
     <div className="space-y-10">
-      <PageHeader title="Estructura Organizacional" subtitle="Jerarquía de operaciones y puntos de venta" />
-      <div className="max-w-4xl mx-auto">
-        {renderLevel(null)}
+      <PageHeader title="Estructura Organizacional" subtitle="Jerarquía de operaciones y puntos de venta sincronizada con Upya" />
+      
+      <div className="flex gap-10 items-start">
+        {/* Tree Sidebar */}
+        <div className="flex-1 max-w-2xl">
+          <div className="bg-slate-100/50 p-6 rounded-[32px] border border-slate-200/50">
+            {renderLevel(null)}
+          </div>
+        </div>
+
+        {/* Info Panel */}
+        <div className="w-96 sticky top-8">
+          <AnimatePresence mode="wait">
+            {selected ? (
+              <motion.div 
+                key={selected.upya_id}
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                className="bg-white rounded-[32px] border border-slate-100 shadow-xl overflow-hidden"
+              >
+                <div className={`p-8 ${
+                  selected.type === 'Country' ? 'bg-blue-600' :
+                  selected.type === 'Organisation' ? 'bg-emerald-600' :
+                  selected.type === 'Branch' ? 'bg-amber-600' : 'bg-slate-700'
+                } text-white`}>
+                  <p className="text-[10px] font-black uppercase tracking-[0.2em] opacity-60 mb-2">{selected.type}</p>
+                  <h4 className="text-2xl font-black tracking-tighter leading-tight">{selected.name}</h4>
+                </div>
+                
+                <div className="p-8 space-y-6">
+                  <div className="space-y-4">
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-50 pb-2">Identificación</p>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">System ID</p>
+                        <p className="text-xs font-mono font-bold text-slate-800">{selected.entity_number || 'N/A'}</p>
+                      </div>
+                      <div>
+                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">External ID</p>
+                        <p className="text-xs font-mono font-bold text-slate-800">{selected.external_id || 'N/A'}</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="space-y-4">
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-50 pb-2">Información Legal</p>
+                    <div className="space-y-3">
+                      <div>
+                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Administrador</p>
+                        <p className="text-xs font-bold text-slate-800">{selected.administrator || 'No asignado'}</p>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <div className="p-2 bg-slate-50 rounded-lg text-slate-400"><Mail size={14} /></div>
+                        <p className="text-xs font-bold text-slate-600">{selected.email || 'Sin correo'}</p>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <div className="p-2 bg-slate-50 rounded-lg text-slate-400"><Smartphone size={14} /></div>
+                        <p className="text-xs font-bold text-slate-600">{selected.mobile || 'Sin teléfono'}</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="space-y-4">
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-50 pb-2">Ubicación</p>
+                    <div className="flex gap-3">
+                      <div className="p-2 bg-slate-50 rounded-lg text-slate-400 shrink-0"><MapPin size={14} /></div>
+                      <p className="text-xs font-bold text-slate-600 leading-relaxed">{selected.address || 'Sin dirección registrada'}</p>
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
+            ) : (
+              <div className="bg-slate-50 rounded-[32px] border-2 border-dashed border-slate-200 p-12 text-center">
+                <div className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center text-slate-200 mx-auto mb-4 border border-slate-100">
+                  <Database size={24} />
+                </div>
+                <p className="text-xs font-black text-slate-400 uppercase tracking-widest">Selecciona una entidad para ver detalles</p>
+              </div>
+            )}
+          </AnimatePresence>
+        </div>
       </div>
     </div>
   );
