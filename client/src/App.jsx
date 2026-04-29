@@ -563,6 +563,14 @@ const ContractModal = ({ isOpen, onClose, contract, onSave, clients, products })
 
                 <div className="space-y-6">
                   <h3 className="text-[10px] font-black text-blue-600 uppercase tracking-[0.2em] flex items-center gap-2"><PenTool size={14} /> Firma & Generación (Opcional)</h3>
+                  
+                  {contract && contract.signature_image && (
+                    <div className="bg-emerald-50/50 border-2 border-emerald-100 rounded-[32px] p-6 flex flex-col items-center gap-3">
+                      <p className="text-[9px] font-black text-emerald-600 uppercase tracking-widest">Firma Actual Guardada</p>
+                      <img src={contract.signature_image} alt="Firma guardada" className="max-h-24 opacity-80 mix-blend-multiply" />
+                    </div>
+                  )}
+
                   <div className="bg-slate-50 border-2 border-slate-100 rounded-[32px] p-2 relative group overflow-hidden">
                     <canvas 
                       ref={canvasManualRef} 
@@ -626,6 +634,14 @@ const ContractModal = ({ isOpen, onClose, contract, onSave, clients, products })
 
                   <div className="space-y-6">
                     <h3 className="text-[10px] font-black text-blue-600 uppercase tracking-[0.2em] flex items-center gap-2"><PenTool size={14} /> Firma del Cliente</h3>
+                    
+                    {contract && contract.signature_image && (
+                      <div className="bg-emerald-50/50 border-2 border-emerald-100 rounded-[32px] p-4 flex flex-col items-center gap-2 mb-4">
+                        <p className="text-[8px] font-black text-emerald-600 uppercase tracking-widest">Vista previa de firma actual</p>
+                        <img src={contract.signature_image} alt="Firma actual" className="max-h-20 mix-blend-multiply opacity-70" />
+                      </div>
+                    )}
+
                     <div className="bg-slate-50 border-2 border-slate-100 rounded-[32px] p-2 relative group overflow-hidden">
                       {contract && contract.contract_number && (
                         <div className="absolute inset-0 z-[120] bg-emerald-50/90 backdrop-blur-sm flex flex-col items-center justify-center gap-4">
