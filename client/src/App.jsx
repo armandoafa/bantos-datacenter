@@ -562,31 +562,41 @@ const ContractModal = ({ isOpen, onClose, contract, onSave, clients, products })
                 </div>
 
                 <div className="space-y-6">
-                  <h3 className="text-[10px] font-black text-blue-600 uppercase tracking-[0.2em] flex items-center gap-2"><PenTool size={14} /> Firma & Generación (Opcional)</h3>
+                  <h3 className="text-[10px] font-black text-blue-600 uppercase tracking-[0.2em] flex items-center gap-2"><PenTool size={14} /> Firma Digital del Contrato</h3>
                   
-                  {contract && contract.signature_image && (
-                    <div className="bg-emerald-50/50 border-2 border-emerald-100 rounded-[32px] p-6 flex flex-col items-center gap-3">
-                      <p className="text-[9px] font-black text-emerald-600 uppercase tracking-widest">Firma Actual Guardada</p>
-                      <img src={contract.signature_image} alt="Firma guardada" className="max-h-24 opacity-80 mix-blend-multiply" />
+                  {contract && contract.signature_image ? (
+                    <div className="bg-emerald-50 border-2 border-emerald-100 rounded-[32px] p-10 flex flex-col items-center gap-6 relative overflow-hidden">
+                      <div className="absolute top-4 right-4 bg-emerald-500 text-white px-3 py-1 rounded-full text-[8px] font-black uppercase tracking-widest shadow-lg shadow-emerald-500/20">Verificada</div>
+                      <div className="w-20 h-20 bg-white rounded-full flex items-center justify-center shadow-sm border border-emerald-100">
+                        <ShieldCheck size={40} className="text-emerald-500" />
+                      </div>
+                      <div className="text-center space-y-2">
+                        <p className="text-xs font-black text-emerald-900 uppercase tracking-tight">Firma Protegida e Inmutable</p>
+                        <p className="text-[10px] font-bold text-emerald-600/60 uppercase tracking-widest">Registrada digitalmente el {new Date(contract.created_at || Date.now()).toLocaleDateString()}</p>
+                      </div>
+                      <img src={contract.signature_image} alt="Firma guardada" className="max-h-32 opacity-90 mix-blend-multiply transition-all hover:scale-105" />
+                      <div className="pt-4 border-t border-emerald-100 w-full text-center">
+                        <p className="text-[9px] text-emerald-700/50 font-bold uppercase tracking-widest italic">Esta firma es parte integral del documento y no puede ser modificada</p>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="bg-slate-50 border-2 border-slate-100 rounded-[32px] p-2 relative group overflow-hidden">
+                      <canvas 
+                        ref={canvasManualRef} 
+                        className="w-full h-48 cursor-crosshair bg-white rounded-[24px] relative z-[100] border border-blue-200" 
+                        style={{ touchAction: 'none', pointerEvents: 'auto' }}
+                      />
+                      <div className="absolute bottom-6 right-6 flex gap-2 z-[110]">
+                        <button 
+                          onClick={handleClearSignature}
+                          className="p-3 bg-slate-900 text-white rounded-2xl hover:bg-black transition-all shadow-lg active:scale-95"
+                          title="Limpiar firma"
+                        >
+                          <RefreshCw size={16} />
+                        </button>
+                      </div>
                     </div>
                   )}
-
-                  <div className="bg-slate-50 border-2 border-slate-100 rounded-[32px] p-2 relative group overflow-hidden">
-                    <canvas 
-                      ref={canvasManualRef} 
-                      className="w-full h-48 cursor-crosshair bg-white rounded-[24px] relative z-[100] border border-blue-200" 
-                      style={{ touchAction: 'none', pointerEvents: 'auto' }}
-                    />
-                    <div className="absolute bottom-6 right-6 flex gap-2 z-[110]">
-                      <button 
-                        onClick={handleClearSignature}
-                        className="p-3 bg-slate-900 text-white rounded-2xl hover:bg-black transition-all shadow-lg active:scale-95"
-                        title="Limpiar firma"
-                      >
-                        <RefreshCw size={16} />
-                      </button>
-                    </div>
-                  </div>
                   <p className="text-[10px] font-bold text-slate-400 text-center uppercase tracking-widest">Al firmar aquí, se generará automáticamente un documento .docx basado en el formulario</p>
                 </div>
               </motion.div>
@@ -632,47 +642,43 @@ const ContractModal = ({ isOpen, onClose, contract, onSave, clients, products })
                     </div>
                   </div>
 
-                  <div className="space-y-6">
-                    <h3 className="text-[10px] font-black text-blue-600 uppercase tracking-[0.2em] flex items-center gap-2"><PenTool size={14} /> Firma del Cliente</h3>
-                    
-                    {contract && contract.signature_image && (
-                      <div className="bg-emerald-50/50 border-2 border-emerald-100 rounded-[32px] p-4 flex flex-col items-center gap-2 mb-4">
-                        <p className="text-[8px] font-black text-emerald-600 uppercase tracking-widest">Vista previa de firma actual</p>
-                        <img src={contract.signature_image} alt="Firma actual" className="max-h-20 mix-blend-multiply opacity-70" />
-                      </div>
-                    )}
-
-                    <div className="bg-slate-50 border-2 border-slate-100 rounded-[32px] p-2 relative group overflow-hidden">
-                      {contract && contract.contract_number && (
-                        <div className="absolute inset-0 z-[120] bg-emerald-50/90 backdrop-blur-sm flex flex-col items-center justify-center gap-4">
-                          <div className="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center shadow-inner">
-                            <ShieldCheck size={32} />
+                  <div className="space-y-10">
+                    <div className="space-y-6">
+                      <h3 className="text-[10px] font-black text-blue-600 uppercase tracking-[0.2em] flex items-center gap-2"><PenTool size={14} /> Firma del Cliente</h3>
+                      
+                      {contract && contract.signature_image ? (
+                        <div className="bg-emerald-50 border-2 border-emerald-100 rounded-[32px] p-10 flex flex-col items-center gap-6 relative overflow-hidden">
+                          <div className="absolute top-4 right-4 bg-emerald-500 text-white px-3 py-1 rounded-full text-[8px] font-black uppercase tracking-widest shadow-lg shadow-emerald-500/20">Verificada</div>
+                          <div className="w-20 h-20 bg-white rounded-full flex items-center justify-center shadow-sm border border-emerald-100">
+                            <ShieldCheck size={40} className="text-emerald-500" />
                           </div>
-                          <div className="text-center">
-                            <p className="text-sm font-black text-emerald-900 uppercase tracking-tight">Documento ya firmado</p>
-                            <p className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest mt-1">Sello digital verificado</p>
+                          <div className="text-center space-y-2">
+                            <p className="text-xs font-black text-emerald-900 uppercase tracking-tight">Firma Protegida e Inmutable</p>
+                            <p className="text-[10px] font-bold text-emerald-600/60 uppercase tracking-widest">Vinculada al documento importado</p>
                           </div>
-                          <p className="text-[9px] text-slate-400 font-bold max-w-[200px] text-center">Para cambiar la firma, es necesario subir un nuevo documento.</p>
+                          <img src={contract.signature_image} alt="Firma actual" className="max-h-32 mix-blend-multiply opacity-90 transition-all hover:scale-105" />
+                        </div>
+                      ) : (
+                        <div className="bg-slate-50 border-2 border-slate-100 rounded-[32px] p-2 relative group overflow-hidden">
+                          <canvas 
+                            ref={canvasImportRef} 
+                            className="w-full h-64 cursor-crosshair bg-white rounded-[24px] relative z-[100] border border-blue-200" 
+                            style={{ touchAction: 'none', pointerEvents: 'auto' }}
+                          />
+                          <div className="absolute bottom-6 right-6 flex gap-2 z-[110]">
+                            <button 
+                              onClick={handleClearSignature}
+                              className="p-3 bg-slate-900 text-white rounded-2xl hover:bg-black transition-all shadow-lg active:scale-95"
+                              title="Limpiar firma"
+                            >
+                              <RefreshCw size={16} />
+                            </button>
+                          </div>
+                          <div className="absolute top-6 left-6 pointer-events-none">
+                            <p className="text-[9px] font-black text-slate-300 uppercase tracking-widest">Área de firma digital</p>
+                          </div>
                         </div>
                       )}
-                      <canvas 
-                        ref={canvasImportRef} 
-                        className="w-full h-64 cursor-crosshair bg-white rounded-[24px] relative z-[100] border border-blue-200" 
-                        style={{ touchAction: 'none', pointerEvents: 'auto' }}
-                      />
-                      <div className="absolute bottom-6 right-6 flex gap-2 z-[110]">
-                        <button 
-                          onClick={handleClearSignature}
-                          className="p-3 bg-slate-900 text-white rounded-2xl hover:bg-black transition-all shadow-lg active:scale-95"
-                          title="Limpiar firma"
-                        >
-                          <RefreshCw size={16} />
-                        </button>
-                      </div>
-                      <div className="absolute top-6 left-6 pointer-events-none">
-                        <p className="text-[9px] font-black text-slate-300 uppercase tracking-widest">Área de firma digital</p>
-                      </div>
-                    </div>
                     <div className="flex items-center gap-3 justify-center text-[10px] font-black text-slate-400 uppercase tracking-widest bg-slate-50 py-3 rounded-2xl border border-slate-100">
                       <ShieldCheck size={14} className="text-emerald-500" />
                       <span>Sello digital seguro Bantos Sign</span>
