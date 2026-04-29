@@ -368,8 +368,10 @@ const ContractModal = ({ isOpen, onClose, contract, onSave, clients, products })
   });
   const [selectedFile, setSelectedFile] = useState(null);
   const [signature, setSignature] = useState(null);
-  const canvasRef = useRef(null);
-  const signaturePadRef = useRef(null);
+  const canvasManualRef = useRef(null);
+  const canvasImportRef = useRef(null);
+  const signaturePadManualRef = useRef(null);
+  const signaturePadImportRef = useRef(null);
   const fileInputRef = useRef(null);
 
   useEffect(() => {
@@ -390,28 +392,23 @@ const ContractModal = ({ isOpen, onClose, contract, onSave, clients, products })
   }, [contract, isOpen, clients]);
 
   useEffect(() => {
-    if (isOpen && canvasRef.current) {
-      if (signaturePadRef.current) {
-        signaturePadRef.current.off();
+    if (isOpen) {
+      if (activeMode === 'form' && canvasManualRef.current) {
+        signaturePadManualRef.current = new SignaturePad(canvasManualRef.current, {
+          backgroundColor: 'rgba(255, 255, 255, 0)',
+          penColor: 'rgb(15, 23, 42)'
+        });
+      } else if (activeMode === 'import' && canvasImportRef.current) {
+        signaturePadImportRef.current = new SignaturePad(canvasImportRef.current, {
+          backgroundColor: 'rgba(255, 255, 255, 0)',
+          penColor: 'rgb(15, 23, 42)'
+        });
       }
-      
-      signaturePadRef.current = new SignaturePad(canvasRef.current, {
-        backgroundColor: 'rgba(255, 255, 255, 0)',
-        penColor: 'rgb(15, 23, 42)'
-      });
-
-      const resizeCanvas = () => {
-        const ratio = Math.max(window.devicePixelRatio || 1, 1);
-        canvasRef.current.width = canvasRef.current.offsetWidth * ratio;
-        canvasRef.current.height = canvasRef.current.offsetHeight * ratio;
-        canvasRef.current.getContext("2d").scale(ratio, ratio);
-        signaturePadRef.current.clear();
-      };
-
-      window.addEventListener("resize", resizeCanvas);
-      resizeCanvas();
-      return () => window.removeEventListener("resize", resizeCanvas);
     }
+    return () => {
+      signaturePadManualRef.current?.off();
+      signaturePadImportRef.current?.off();
+    };
   }, [isOpen, activeMode]);
 
   if (!isOpen) return null;
@@ -421,7 +418,10 @@ const ContractModal = ({ isOpen, onClose, contract, onSave, clients, products })
     if (file) setSelectedFile(file);
   };
 
-  const handleClearSignature = () => signaturePadRef.current?.clear();
+  const handleClearSignature = () => {
+    if (activeMode === 'form') signaturePadManualRef.current?.clear();
+    else signaturePadImportRef.current?.clear();
+  };
 
   const handleLocalSave = async () => {
     if (activeMode === 'import') {
@@ -429,21 +429,12 @@ const ContractModal = ({ isOpen, onClose, contract, onSave, clients, products })
         alert('Por favor, selecciona un archivo (.docx o .pdf)');
         return;
       }
-      if (signaturePadRef.current?.isEmpty()) {
-        alert('Por favor, dibuja tu firma');
-        return;
-      }
-      if (!formData.client_id) {
-        alert('Por favor, selecciona un cliente');
-        return;
-      }
-
-      const signatureData = signaturePadRef.current.toDataURL('image/png');
+      const signatureData = signaturePadImportRef.current?.toDataURL('image/png');
       const client = clients.find(c => c.upya_id === formData.client_id);
       
       const uploadData = new FormData();
       uploadData.append('file', selectedFile);
-      uploadData.append('signatureData', signatureData);
+      uploadData.append('signatureData', signatureData || '');
       uploadData.append('client_id', formData.client_id);
       uploadData.append('client_name', client?.name || '');
       uploadData.append('email', client?.email || '');
@@ -451,8 +442,8 @@ const ContractModal = ({ isOpen, onClose, contract, onSave, clients, products })
       onSave(uploadData, true); // true indicates it's a multipart import
     } else {
       // Si hay firma en el canvas manual, guardamos como generación
-      if (signaturePadRef.current && !signaturePadRef.current.isEmpty()) {
-        const signatureData = signaturePadRef.current.toDataURL('image/png');
+      if (signaturePadManualRef.current && !signaturePadManualRef.current.isEmpty()) {
+        const signatureData = signaturePadManualRef.current.toDataURL('image/png');
         const client = clients.find(c => c.upya_id === formData.client_id);
         const dataToSave = {
           contractData: { ...formData, client_name: client?.name || '' },
@@ -547,7 +538,7 @@ const ContractModal = ({ isOpen, onClose, contract, onSave, clients, products })
                 <div className="space-y-6">
                   <h3 className="text-[10px] font-black text-blue-600 uppercase tracking-[0.2em] flex items-center gap-2"><PenTool size={14} /> Firma & Generación (Opcional)</h3>
                   <div className="bg-slate-50 border-2 border-slate-100 rounded-[32px] p-2 relative group overflow-hidden">
-                    <canvas ref={canvasRef} className="w-full h-48 cursor-crosshair touch-none bg-white rounded-[24px]" />
+                    <canvas ref={canvasManualRef} className="w-full h-48 cursor-crosshair touch-none bg-white rounded-[24px]" />
                     <div className="absolute bottom-6 right-6 flex gap-2">
                       <button 
                         onClick={handleClearSignature}
@@ -606,7 +597,7 @@ const ContractModal = ({ isOpen, onClose, contract, onSave, clients, products })
                   <div className="space-y-6">
                     <h3 className="text-[10px] font-black text-blue-600 uppercase tracking-[0.2em] flex items-center gap-2"><PenTool size={14} /> Firma del Cliente</h3>
                     <div className="bg-slate-50 border-2 border-slate-100 rounded-[32px] p-2 relative group overflow-hidden">
-                      <canvas ref={canvasRef} className="w-full h-64 cursor-crosshair touch-none bg-white rounded-[24px]" />
+                      <canvas ref={canvasImportRef} className="w-full h-64 cursor-crosshair touch-none bg-white rounded-[24px]" />
                       <div className="absolute bottom-6 right-6 flex gap-2">
                         <button 
                           onClick={handleClearSignature}
