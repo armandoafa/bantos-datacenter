@@ -418,11 +418,11 @@ app.get('/api/backoffice/contracts', async (req, res) => {
 
 app.post('/api/backoffice/contracts', async (req, res) => {
   try {
-    const { upya_id, contract_number, client_id, product_name, deal_name, total_value, paid_value, status } = req.body;
+    const { upya_id, contract_number, client_id, product_name, deal_name, total_value, paid_value, status, signature_image } = req.body;
     const id = upya_id || `CTR-${Date.now()}`;
     await pool.query(
-      'INSERT INTO contract_history (upya_id, contract_number, client_id, product_name, deal_name, total_value, paid_value, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-      [id, contract_number || null, client_id || null, product_name || null, deal_name || null, total_value || 0, paid_value || 0, status || 'Signed']
+      'INSERT INTO contract_history (upya_id, contract_number, client_id, product_name, deal_name, total_value, paid_value, status, signature_image) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      [id, contract_number || null, client_id || null, product_name || null, deal_name || null, total_value || 0, paid_value || 0, status || 'Signed', signature_image || null]
     );
     res.json({ success: true, id });
   } catch (e) { res.status(500).json({ error: e.message }); }
@@ -431,10 +431,10 @@ app.post('/api/backoffice/contracts', async (req, res) => {
 app.put('/api/backoffice/contracts/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const { contract_number, client_id, product_name, deal_name, total_value, paid_value, status } = req.body;
+    const { contract_number, client_id, product_name, deal_name, total_value, paid_value, status, signature_image } = req.body;
     await pool.query(
-      'UPDATE contract_history SET contract_number=?, client_id=?, product_name=?, deal_name=?, total_value=?, paid_value=?, status=? WHERE upya_id = ?',
-      [contract_number || null, client_id || null, product_name || null, deal_name || null, total_value || 0, paid_value || 0, status || 'Signed', id]
+      'UPDATE contract_history SET contract_number=?, client_id=?, product_name=?, deal_name=?, total_value=?, paid_value=?, status=?, signature_image=? WHERE upya_id = ?',
+      [contract_number || null, client_id || null, product_name || null, deal_name || null, total_value || 0, paid_value || 0, status || 'Signed', signature_image || null, id]
     );
     res.json({ success: true });
   } catch (e) { 
@@ -448,7 +448,7 @@ app.post('/api/backoffice/contracts/:id/sign', async (req, res) => {
     const { signatureData } = req.body;
     console.log(`>>> [SIGN] Signing contract: ${id} (${signatureData ? signatureData.length : 0} bytes)`);
     await pool.query(
-      'UPDATE contract_history SET status="FIRMADO", signature_data=? WHERE upya_id = ?',
+      'UPDATE contract_history SET status="FIRMADO", signature_image=? WHERE upya_id = ?',
       [signatureData, id]
     );
     console.log('<<< [SIGN] Contract signed successfully');
@@ -514,7 +514,7 @@ app.post('/api/backoffice/contracts/import-and-sign', upload.single('file'), asy
 
     // Guardar en DB
     await pool.query(
-      'INSERT INTO contract_history (upya_id, contract_number, client_id, product_name, deal_name, total_value, paid_value, status, signature_data) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      'INSERT INTO contract_history (upya_id, contract_number, client_id, product_name, deal_name, total_value, paid_value, status, signature_image) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
       [id, outputFilename, client_id || null, 'Documento Importado', 'Importación Directa', 0, 0, 'FIRMADO', signatureData]
     );
 
@@ -677,7 +677,7 @@ app.post('/api/backoffice/contracts/generate-and-sign', async (req, res) => {
     // 4. Update/Save in DB
     const upya_id = contractData.upya_id || `CTR-GEN-${Date.now()}`;
     await pool.query(
-      'INSERT INTO contract_history (upya_id, contract_number, client_id, product_name, deal_name, total_value, paid_value, status, signature_data) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE contract_number=VALUES(contract_number), status=VALUES(status), signature_data=VALUES(signature_data)',
+      'INSERT INTO contract_history (upya_id, contract_number, client_id, product_name, deal_name, total_value, paid_value, status, signature_image) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE contract_number=VALUES(contract_number), status=VALUES(status), signature_image=VALUES(signature_image)',
       [upya_id, outputFilename, contractData.client_id || null, contractData.product_name || null, contractData.deal_name || null, contractData.total_value || 0, contractData.paid_value || 0, 'FIRMADO', signatureData]
     );
 

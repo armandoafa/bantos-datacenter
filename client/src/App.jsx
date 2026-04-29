@@ -580,24 +580,29 @@ const ContractModal = ({ isOpen, onClose, contract, onSave, clients, products })
                       </div>
                     </div>
                   ) : (
-                    <div className="bg-slate-50 border-2 border-slate-100 rounded-[32px] p-2 relative group overflow-hidden">
-                      <canvas 
-                        ref={canvasManualRef} 
-                        className="w-full h-48 cursor-crosshair bg-white rounded-[24px] relative z-[100] border border-blue-200" 
-                        style={{ touchAction: 'none', pointerEvents: 'auto' }}
-                      />
-                      <div className="absolute bottom-6 right-6 flex gap-2 z-[110]">
-                        <button 
-                          onClick={handleClearSignature}
-                          className="p-3 bg-slate-900 text-white rounded-2xl hover:bg-black transition-all shadow-lg active:scale-95"
-                          title="Limpiar firma"
-                        >
-                          <RefreshCw size={16} />
-                        </button>
+                    <div className="space-y-4">
+                      <div className="bg-slate-50 border-2 border-slate-100 rounded-[32px] p-2 relative group overflow-hidden">
+                        <canvas 
+                          ref={canvasManualRef} 
+                          className="w-full h-48 cursor-crosshair bg-white rounded-[24px] relative z-[100] border border-blue-200" 
+                          style={{ touchAction: 'none', pointerEvents: 'auto' }}
+                        />
+                        <div className="absolute bottom-6 right-6 flex gap-2 z-[110]">
+                          <button 
+                            type="button"
+                            onClick={handleClearSignature}
+                            className="p-3 bg-slate-900 text-white rounded-2xl hover:bg-black transition-all shadow-lg active:scale-95"
+                            title="Limpiar firma"
+                          >
+                            <RefreshCw size={16} />
+                          </button>
+                        </div>
                       </div>
+                      <p className="text-[10px] font-bold text-slate-400 text-center uppercase tracking-widest">
+                        {contract ? 'Añade la firma para actualizar el contrato firmado' : 'Al firmar aquí, se generará un documento .docx basado en el formulario'}
+                      </p>
                     </div>
                   )}
-                  <p className="text-[10px] font-bold text-slate-400 text-center uppercase tracking-widest">Al firmar aquí, se generará automáticamente un documento .docx basado en el formulario</p>
                 </div>
               </motion.div>
             ) : (
