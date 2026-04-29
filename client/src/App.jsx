@@ -396,26 +396,36 @@ const ContractModal = ({ isOpen, onClose, contract, onSave, clients, products })
     if (isOpen) {
       // Retrasamos un poco la inicialización para asegurar que el DOM sea estable
       timer = setTimeout(() => {
-        const initPad = (canvas, ref) => {
-          if (!canvas) return;
-          const pad = new SignaturePad(canvas, {
-            backgroundColor: 'rgba(255, 255, 255, 0)',
-            penColor: 'rgb(15, 23, 42)'
-          });
-          
-          // Ajuste de resolución para que la firma se vea nítida y capture trazos
-          const ratio = Math.max(window.devicePixelRatio || 1, 1);
-          canvas.width = canvas.offsetWidth * ratio;
-          canvas.height = canvas.offsetHeight * ratio;
-          canvas.getContext("2d").scale(ratio, ratio);
-          pad.clear();
-          
-          ref.current = pad;
+        const initPad = (canvas, refName) => {
+          try {
+            if (!canvas) return;
+            console.log(`Initializing ${refName}...`);
+            
+            // Forzamos el tamaño antes de crear el objeto
+            const ratio = Math.max(window.devicePixelRatio || 1, 1);
+            canvas.width = canvas.offsetWidth * ratio;
+            canvas.height = canvas.offsetHeight * ratio;
+            canvas.getContext("2d").scale(ratio, ratio);
+
+            const pad = new SignaturePad(canvas, {
+              backgroundColor: 'rgba(255, 255, 255, 0)',
+              penColor: 'rgb(15, 23, 42)',
+              velocityFilterWeight: 0.7
+            });
+            
+            if (refName === 'manual') signaturePadManualRef.current = pad;
+            else signaturePadImportRef.current = pad;
+            
+            console.log(`${refName} initialized successfully`);
+          } catch (err) {
+            console.error(`Error initializing ${refName}:`, err);
+            alert(`Error en firma (${refName}): ` + err.message);
+          }
         };
 
-        if (activeMode === 'form') initPad(canvasManualRef.current, signaturePadManualRef);
-        else if (activeMode === 'import') initPad(canvasImportRef.current, signaturePadImportRef);
-      }, 200);
+        if (activeMode === 'form') initPad(canvasManualRef.current, 'manual');
+        else if (activeMode === 'import') initPad(canvasImportRef.current, 'import');
+      }, 300);
     }
     return () => {
       clearTimeout(timer);
