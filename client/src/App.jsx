@@ -679,9 +679,10 @@ const ContractModal = ({ isOpen, onClose, contract, onSave, clients, products })
                           </div>
                         </div>
                       )}
-                    <div className="flex items-center gap-3 justify-center text-[10px] font-black text-slate-400 uppercase tracking-widest bg-slate-50 py-3 rounded-2xl border border-slate-100">
-                      <ShieldCheck size={14} className="text-emerald-500" />
-                      <span>Sello digital seguro Bantos Sign</span>
+                      <div className="flex items-center gap-3 justify-center text-[10px] font-black text-slate-400 uppercase tracking-widest bg-slate-50 py-3 rounded-2xl border border-slate-100">
+                        <ShieldCheck size={14} className="text-emerald-500" />
+                        <span>Sello digital seguro Bantos Sign</span>
+                      </div>
                     </div>
                   </div>
                 </div>
