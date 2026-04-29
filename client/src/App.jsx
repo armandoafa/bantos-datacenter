@@ -396,18 +396,26 @@ const ContractModal = ({ isOpen, onClose, contract, onSave, clients, products })
     if (isOpen) {
       // Retrasamos un poco la inicialización para asegurar que el DOM sea estable
       timer = setTimeout(() => {
-        if (activeMode === 'form' && canvasManualRef.current) {
-          signaturePadManualRef.current = new SignaturePad(canvasManualRef.current, {
+        const initPad = (canvas, ref) => {
+          if (!canvas) return;
+          const pad = new SignaturePad(canvas, {
             backgroundColor: 'rgba(255, 255, 255, 0)',
             penColor: 'rgb(15, 23, 42)'
           });
-        } else if (activeMode === 'import' && canvasImportRef.current) {
-          signaturePadImportRef.current = new SignaturePad(canvasImportRef.current, {
-            backgroundColor: 'rgba(255, 255, 255, 0)',
-            penColor: 'rgb(15, 23, 42)'
-          });
-        }
-      }, 100);
+          
+          // Ajuste de resolución para que la firma se vea nítida y capture trazos
+          const ratio = Math.max(window.devicePixelRatio || 1, 1);
+          canvas.width = canvas.offsetWidth * ratio;
+          canvas.height = canvas.offsetHeight * ratio;
+          canvas.getContext("2d").scale(ratio, ratio);
+          pad.clear();
+          
+          ref.current = pad;
+        };
+
+        if (activeMode === 'form') initPad(canvasManualRef.current, signaturePadManualRef);
+        else if (activeMode === 'import') initPad(canvasImportRef.current, signaturePadImportRef);
+      }, 200);
     }
     return () => {
       clearTimeout(timer);
