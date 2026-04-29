@@ -1,10 +1,12 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import SignaturePad from 'signature_pad';
 import {
   LayoutDashboard, Users, FileText, Box, Clock, CreditCard,
   Tag, Mail, Smartphone, Settings2, ShieldCheck, Search,
   LogOut, RefreshCw, TrendingUp, DollarSign, Plus, Package,
   ChevronDown, ChevronRight, Database, Building2, Globe, MapPin, Store, Edit, X, Trash2,
-  BookOpen, Zap, CheckSquare, MessageSquare, ListTodo, ClipboardCheck
+  BookOpen, Zap, CheckSquare, MessageSquare, ListTodo, ClipboardCheck,
+  Upload, PenTool, Send, AlertCircle
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import axios from 'axios';
@@ -13,7 +15,7 @@ const API = import.meta.env.VITE_API_URL || (window.location.hostname === 'local
 
 // --- Componentes Compartidos ---
 const Badge = ({ status }) => {
-  const ok = ['Active', 'Signed', 'Paid', 'Ready', 'active', 'signed', 'ENABLED', 'VALIDATED'].includes(status);
+  const ok = ['Active', 'Signed', 'Paid', 'Ready', 'active', 'signed', 'ENABLED', 'VALIDATED', 'FIRMADO', 'SIGNED'].includes(status);
   return (
     <span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest ${ok ? 'bg-emerald-100 text-emerald-700' : 'bg-blue-100 text-blue-700'}`}>
       {status || 'Active'}
@@ -237,12 +239,491 @@ const ClientsView = ({ clients }) => (
   </div>
 );
 
-const ContractsView = ({ contracts }) => (
-  <div className="space-y-8">
-    <PageHeader title="Contratos" subtitle={`${contracts.length} deals activos`} />
-    <Table cols={['Referencia', 'Cliente', 'Estado']} rows={contracts} render={c => (<><td className="px-8 py-5 font-mono text-blue-600 text-xs">{c.upya_id}</td><td className="px-8 py-5">{c.client_name || '—'}</td><td className="px-8 py-5"><Badge status={c.status} /></td></>)} />
-  </div>
-);
+const CONTRACT_STATUSES = {
+  SIGNED: ['SIGNED', 'FIRMADO'],
+  APPROVED: ['APPROVED', 'APROBADO', 'LOCKED', 'ENABLED'],
+  PENDING: ['PENDING', 'PENDIENTE'],
+  REJECTED: ['REJECTED', 'NO APROBADO', 'CANCELLED']
+};
+
+const ContractsView = ({ contracts, onCreate, onEdit, onSign }) => {
+  const [filter, setFilter] = useState('all');
+
+  const filtered = contracts.filter(c => {
+    const s = (c.status || '').toUpperCase();
+    if (filter === 'all') return true;
+    if (filter === 'signed') return CONTRACT_STATUSES.SIGNED.includes(s);
+    if (filter === 'approved') return CONTRACT_STATUSES.APPROVED.includes(s);
+    if (filter === 'pending') return CONTRACT_STATUSES.PENDING.includes(s);
+    if (filter === 'rejected') return CONTRACT_STATUSES.REJECTED.includes(s);
+    return true;
+  });
+
+  return (
+    <div className="space-y-8">
+      <div className="flex items-center justify-between">
+        <div>
+          <PageHeader title="Contratos" subtitle={`${contracts.length} deals registrados`} />
+        </div>
+        <div className="flex items-center gap-4">
+          <div className="flex bg-white p-1.5 rounded-2xl border border-slate-100 shadow-sm gap-1">
+            {[
+              { id: 'all', label: 'Todos' },
+              { id: 'signed', label: 'Firmados' },
+              { id: 'approved', label: 'Aprobados' },
+              { id: 'pending', label: 'Pendientes' },
+              { id: 'rejected', label: 'No Aprobados' }
+            ].map(f => (
+              <button 
+                key={f.id} 
+                onClick={() => setFilter(f.id)}
+                className={`px-6 py-2.5 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all ${filter === f.id ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/30' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-50'}`}
+              >
+                {f.label}
+              </button>
+            ))}
+          </div>
+          <button 
+            onClick={onCreate}
+            className="flex items-center gap-3 bg-blue-600 hover:bg-blue-700 text-white px-8 py-4 rounded-[20px] font-black text-xs uppercase tracking-widest shadow-xl shadow-blue-600/20 transition-all active:scale-95"
+          >
+            <Plus size={18} />
+            Nuevo Contrato
+          </button>
+        </div>
+      </div>
+
+      <Table 
+        cols={['Contrato', 'Cliente', 'Producto', 'Plan', 'Progreso', 'Estado', 'Acciones']} 
+        rows={filtered} 
+        render={c => (
+          <>
+            <td className="px-8 py-5">
+              <p className="font-black text-slate-900 tracking-tight">{c.contract_number || c.upya_id}</p>
+              <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-0.5">Reference ID</p>
+            </td>
+            <td className="px-8 py-5">
+              <p className="font-bold text-slate-800">{c.client_name || '—'}</p>
+              <p className="text-[10px] text-blue-600 font-black uppercase tracking-widest mt-0.5">{c.client_number || 'S/N'}</p>
+            </td>
+            <td className="px-8 py-5">
+              <p className="font-black text-slate-900 text-xs">{c.product_name || 'N/A'}</p>
+            </td>
+            <td className="px-8 py-5">
+              <p className="text-[11px] text-slate-500 font-bold">{c.deal_name || 'Plan Estándar'}</p>
+            </td>
+            <td className="px-8 py-5 w-48">
+              <div className="space-y-2">
+                <div className="flex items-center justify-between text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                  <span>Pago: ${Number(c.paid_value || 0).toLocaleString()}</span>
+                  <span>{Math.round((Number(c.paid_value || 0) / Number(c.total_value || 1)) * 100)}%</span>
+                </div>
+                <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
+                  <div className="h-full bg-blue-600 rounded-full transition-all duration-700" style={{ width: `${(Number(c.paid_value || 0) / Number(c.total_value || 1)) * 100}%` }} />
+                </div>
+              </div>
+            </td>
+            <td className="px-8 py-5">
+              <Badge status={c.status} />
+            </td>
+            <td className="px-8 py-5 flex items-center gap-2">
+              <button 
+                onClick={() => onEdit(c)} 
+                className="p-2 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-all"
+                title="Editar contrato"
+              >
+                <Settings2 size={16} />
+              </button>
+              {(c.contract_number && (c.contract_number.endsWith('.docx') || c.contract_number.endsWith('.pdf'))) && (
+                <a 
+                  href={`${API.replace('/api', '')}/signed-contracts/${c.contract_number}`} 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="p-2 rounded-lg hover:bg-emerald-50 text-emerald-500 hover:text-emerald-700 transition-all"
+                  title="Ver documento firmado"
+                >
+                  <FileText size={16} />
+                </a>
+              )}
+              {!CONTRACT_STATUSES.SIGNED.includes((c.status || '').toUpperCase()) && (
+                <button 
+                  onClick={() => onSign(c)}
+                  className="px-3 py-1.5 bg-blue-50 text-blue-600 rounded-lg font-black text-[9px] uppercase tracking-widest hover:bg-blue-600 hover:text-white transition-all border border-blue-100"
+                >
+                  Firmar
+                </button>
+              )}
+            </td>
+          </>
+        )} 
+      />
+    </div>
+  );
+};
+
+const ContractModal = ({ isOpen, onClose, contract, onSave, clients, products }) => {
+  const [activeMode, setActiveMode] = useState('form'); // 'form' or 'import'
+  const [formData, setFormData] = useState({
+    status: '', product_name: '', total_value: 0, paid_value: 0, client_id: '', deal_name: ''
+  });
+  const [selectedFile, setSelectedFile] = useState(null);
+  const [signature, setSignature] = useState(null);
+  const canvasRef = useRef(null);
+  const signaturePadRef = useRef(null);
+  const fileInputRef = useRef(null);
+
+  useEffect(() => {
+    if (contract) {
+      let client_id = contract.client_id;
+      if (!client_id && contract.client_number && clients) {
+        const found = clients.find(c => c.client_number === contract.client_number);
+        if (found) client_id = found.upya_id;
+      }
+      setFormData({ ...contract, client_id: client_id || '' });
+    }
+    else {
+      setFormData({ status: 'Signed', product_name: '', total_value: 0, paid_value: 0, client_id: '', deal_name: '' });
+      setSelectedFile(null);
+      setSignature(null);
+      setActiveMode('form');
+    }
+  }, [contract, isOpen, clients]);
+
+  useEffect(() => {
+    if (isOpen && activeMode === 'import' && canvasRef.current) {
+      signaturePadRef.current = new SignaturePad(canvasRef.current, {
+        backgroundColor: 'rgba(255, 255, 255, 0)',
+        penColor: 'rgb(15, 23, 42)'
+      });
+
+      const resizeCanvas = () => {
+        const ratio = Math.max(window.devicePixelRatio || 1, 1);
+        canvasRef.current.width = canvasRef.current.offsetWidth * ratio;
+        canvasRef.current.height = canvasRef.current.offsetHeight * ratio;
+        canvasRef.current.getContext("2d").scale(ratio, ratio);
+        signaturePadRef.current.clear();
+      };
+
+      window.addEventListener("resize", resizeCanvas);
+      resizeCanvas();
+      return () => window.removeEventListener("resize", resizeCanvas);
+    }
+  }, [isOpen, activeMode]);
+
+  if (!isOpen) return null;
+
+  const handleFileChange = (e) => {
+    const file = e.target.files[0];
+    if (file) setSelectedFile(file);
+  };
+
+  const handleClearSignature = () => signaturePadRef.current?.clear();
+
+  const handleLocalSave = async () => {
+    if (activeMode === 'import') {
+      if (!selectedFile) {
+        alert('Por favor, selecciona un archivo (.docx o .pdf)');
+        return;
+      }
+      if (signaturePadRef.current?.isEmpty()) {
+        alert('Por favor, dibuja tu firma');
+        return;
+      }
+      if (!formData.client_id) {
+        alert('Por favor, selecciona un cliente');
+        return;
+      }
+
+      const signatureData = signaturePadRef.current.toDataURL('image/png');
+      const client = clients.find(c => c.upya_id === formData.client_id);
+      
+      const uploadData = new FormData();
+      uploadData.append('file', selectedFile);
+      uploadData.append('signatureData', signatureData);
+      uploadData.append('client_id', formData.client_id);
+      uploadData.append('client_name', client?.name || '');
+      uploadData.append('email', client?.email || '');
+
+      onSave(uploadData, true); // true indicates it's a multipart import
+    } else {
+      // Si hay firma en el canvas manual, guardamos como generación
+      if (signaturePadRef.current && !signaturePadRef.current.isEmpty()) {
+        const signatureData = signaturePadRef.current.toDataURL('image/png');
+        const client = clients.find(c => c.upya_id === formData.client_id);
+        const dataToSave = {
+          contractData: { ...formData, client_name: client?.name || '' },
+          signatureData
+        };
+        onSave(dataToSave, 'generate');
+      } else {
+        onSave(formData, false);
+      }
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-6">
+      <motion.div initial={{ opacity: 0, scale: 0.9, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} className="bg-white rounded-[40px] shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col border border-slate-100">
+        <div className="p-8 border-b border-slate-50 flex items-center justify-between bg-slate-50/50">
+          <div className="flex items-center gap-6">
+            <div>
+              <h2 className="text-2xl font-black text-slate-800 tracking-tight">{contract ? `Editar Contrato` : 'Nuevo Contrato'}</h2>
+              <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">Gestión de Deal / Suscripción</p>
+            </div>
+            
+            {!contract && (
+              <div className="flex bg-white p-1 rounded-2xl border border-slate-100 ml-4 shadow-sm">
+                <button 
+                  onClick={() => setActiveMode('form')}
+                  className={`px-4 py-2 rounded-xl font-black text-[9px] uppercase tracking-widest transition-all ${activeMode === 'form' ? 'bg-slate-900 text-white' : 'text-slate-400 hover:text-slate-600'}`}
+                >
+                  Formulario
+                </button>
+                <button 
+                  onClick={() => setActiveMode('import')}
+                  className={`px-4 py-2 rounded-xl font-black text-[9px] uppercase tracking-widest transition-all ${activeMode === 'import' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-slate-600'}`}
+                >
+                  Importar & Firmar
+                </button>
+              </div>
+            )}
+          </div>
+          <button onClick={onClose} className="p-3 bg-white rounded-2xl text-slate-400 hover:text-slate-600 hover:shadow-md transition-all border border-slate-100"><X size={20} /></button>
+        </div>
+
+        <div className="flex-1 overflow-y-auto p-10">
+          <AnimatePresence mode="wait">
+            {activeMode === 'form' ? (
+              <motion.div key="form" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} className="space-y-10">
+                <div className="grid grid-cols-2 gap-10">
+                  <div className="space-y-6">
+                    <h3 className="text-[10px] font-black text-blue-600 uppercase tracking-[0.2em] flex items-center gap-2"><Users size={14} /> Información del Cliente</h3>
+                    <div className="space-y-1.5">
+                      <label className="text-[9px] font-black uppercase tracking-widest text-slate-400 ml-1">Cliente Asociado</label>
+                      <select className="w-full bg-slate-50 border-2 border-slate-100 rounded-xl py-3.5 px-5 font-bold text-slate-800 focus:border-blue-600 outline-none transition-all text-sm appearance-none" value={formData.client_id || ''} onChange={e => setFormData({...formData, client_id: e.target.value})}>
+                        <option value="">Seleccionar cliente...</option>
+                        {(clients || []).map(c => <option key={c.upya_id} value={c.upya_id}>{c.name} ({c.client_number})</option>)}
+                      </select>
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="text-[9px] font-black uppercase tracking-widest text-slate-400 ml-1">Estado del Contrato</label>
+                      <select className="w-full bg-slate-50 border-2 border-slate-100 rounded-xl py-3.5 px-5 font-bold text-slate-800 focus:border-blue-600 outline-none transition-all text-sm appearance-none" value={formData.status || ''} onChange={e => setFormData({...formData, status: e.target.value})}>
+                        {['Signed', 'Approved', 'Pending', 'Rejected', 'Locked', 'Enabled', 'Paidoff'].map(s => <option key={s} value={s}>{s}</option>)}
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="space-y-6">
+                    <h3 className="text-[10px] font-black text-emerald-600 uppercase tracking-[0.2em] flex items-center gap-2"><CreditCard size={14} /> Detalles del Plan</h3>
+                    <div className="space-y-1.5">
+                      <label className="text-[9px] font-black uppercase tracking-widest text-slate-400 ml-1">Producto / Dispositivo</label>
+                      <select className="w-full bg-slate-50 border-2 border-slate-100 rounded-xl py-3.5 px-5 font-bold text-slate-800 focus:border-emerald-500 outline-none transition-all text-sm appearance-none" value={formData.product_name || ''} onChange={e => setFormData({...formData, product_name: e.target.value})}>
+                        <option value="">Seleccionar producto...</option>
+                        {(products || []).map(p => <option key={p.upya_id} value={p.name}>{p.name}</option>)}
+                      </select>
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="text-[9px] font-black uppercase tracking-widest text-slate-400 ml-1">Nombre del Plan (Deal)</label>
+                      <input type="text" className="w-full bg-slate-50 border-2 border-slate-100 rounded-xl py-3.5 px-5 font-bold text-slate-800 focus:border-emerald-500 outline-none transition-all text-sm" value={formData.deal_name || ''} onChange={e => setFormData({...formData, deal_name: e.target.value})} placeholder="Ej. 12 Meses PAYG" />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-slate-50 p-8 rounded-[40px] border border-slate-100 grid grid-cols-2 gap-8">
+                  <div className="space-y-1.5">
+                    <label className="text-[9px] font-black uppercase tracking-widest text-slate-400 ml-1">Valor Total del Contrato</label>
+                    <input type="number" className="w-full bg-white border-2 border-slate-100 rounded-xl py-3.5 px-5 font-bold text-slate-800 focus:border-blue-600 outline-none transition-all text-sm" value={formData.total_value || 0} onChange={e => setFormData({...formData, total_value: e.target.value})} />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-[9px] font-black uppercase tracking-widest text-slate-400 ml-1">Monto Pagado a la Fecha</label>
+                    <input type="number" className="w-full bg-white border-2 border-slate-100 rounded-xl py-3.5 px-5 font-bold text-slate-800 focus:border-blue-600 outline-none transition-all text-sm" value={formData.paid_value || 0} onChange={e => setFormData({...formData, paid_value: e.target.value})} />
+                  </div>
+                </div>
+
+                <div className="space-y-6">
+                  <h3 className="text-[10px] font-black text-blue-600 uppercase tracking-[0.2em] flex items-center gap-2"><PenTool size={14} /> Firma & Generación (Opcional)</h3>
+                  <div className="bg-slate-50 border-2 border-slate-100 rounded-[32px] p-2 relative group overflow-hidden">
+                    <canvas ref={canvasRef} className="w-full h-48 cursor-crosshair touch-none bg-white rounded-[24px]" />
+                    <div className="absolute bottom-6 right-6 flex gap-2">
+                      <button 
+                        onClick={handleClearSignature}
+                        className="p-3 bg-slate-900 text-white rounded-2xl hover:bg-black transition-all shadow-lg active:scale-95"
+                        title="Limpiar firma"
+                      >
+                        <RefreshCw size={16} />
+                      </button>
+                    </div>
+                  </div>
+                  <p className="text-[10px] font-bold text-slate-400 text-center uppercase tracking-widest">Al firmar aquí, se generará automáticamente un documento .docx basado en el formulario</p>
+                </div>
+              </motion.div>
+            ) : (
+              <motion.div key="import" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-8">
+                <div className="grid grid-cols-2 gap-10">
+                  <div className="space-y-6">
+                    <h3 className="text-[10px] font-black text-blue-600 uppercase tracking-[0.2em] flex items-center gap-2"><Upload size={14} /> Importación de Documento</h3>
+                    
+                    <div className="space-y-1.5">
+                      <label className="text-[9px] font-black uppercase tracking-widest text-slate-400 ml-1">Cliente Asociado</label>
+                      <select className="w-full bg-slate-50 border-2 border-slate-100 rounded-xl py-3.5 px-5 font-bold text-slate-800 focus:border-blue-600 outline-none transition-all text-sm appearance-none" value={formData.client_id || ''} onChange={e => setFormData({...formData, client_id: e.target.value})}>
+                        <option value="">Seleccionar cliente...</option>
+                        {(clients || []).map(c => <option key={c.upya_id} value={c.upya_id}>{c.name} ({c.client_number})</option>)}
+                      </select>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <label className="text-[9px] font-black uppercase tracking-widest text-slate-400 ml-1">Documento (.docx o .pdf)</label>
+                      <div 
+                        onClick={() => fileInputRef.current?.click()}
+                        className={`w-full aspect-video border-2 border-dashed rounded-[32px] flex flex-col items-center justify-center gap-4 transition-all cursor-pointer ${selectedFile ? 'border-emerald-200 bg-emerald-50/30' : 'border-slate-200 bg-slate-50/50 hover:bg-slate-50 hover:border-blue-300'}`}
+                      >
+                        <input type="file" ref={fileInputRef} className="hidden" accept=".docx,.pdf" onChange={handleFileChange} />
+                        {selectedFile ? (
+                          <>
+                            <div className="p-4 bg-emerald-100 text-emerald-600 rounded-2xl shadow-sm"><FileText size={32} /></div>
+                            <div className="text-center px-6">
+                              <p className="text-sm font-black text-slate-800 line-clamp-1">{selectedFile.name}</p>
+                              <p className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest mt-1">Archivo Listo</p>
+                            </div>
+                          </>
+                        ) : (
+                          <>
+                            <div className="p-4 bg-white text-slate-300 rounded-2xl shadow-sm border border-slate-100"><Upload size={32} /></div>
+                            <div className="text-center">
+                              <p className="text-sm font-black text-slate-800">Seleccionar Documento</p>
+                              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">O arrastra el archivo aquí</p>
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="space-y-6">
+                    <h3 className="text-[10px] font-black text-blue-600 uppercase tracking-[0.2em] flex items-center gap-2"><PenTool size={14} /> Firma del Cliente</h3>
+                    <div className="bg-slate-50 border-2 border-slate-100 rounded-[32px] p-2 relative group overflow-hidden">
+                      <canvas ref={canvasRef} className="w-full h-64 cursor-crosshair touch-none bg-white rounded-[24px]" />
+                      <div className="absolute bottom-6 right-6 flex gap-2">
+                        <button 
+                          onClick={handleClearSignature}
+                          className="p-3 bg-slate-900 text-white rounded-2xl hover:bg-black transition-all shadow-lg active:scale-95"
+                          title="Limpiar firma"
+                        >
+                          <RefreshCw size={16} />
+                        </button>
+                      </div>
+                      <div className="absolute top-6 left-6 pointer-events-none">
+                        <p className="text-[9px] font-black text-slate-300 uppercase tracking-widest">Área de firma digital</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3 justify-center text-[10px] font-black text-slate-400 uppercase tracking-widest bg-slate-50 py-3 rounded-2xl border border-slate-100">
+                      <ShieldCheck size={14} className="text-emerald-500" />
+                      <span>Sello digital seguro Bantos Sign</span>
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+
+        <div className="p-8 border-t border-slate-50 bg-slate-50/50 flex justify-end gap-4">
+          <button onClick={onClose} className="px-8 py-4 rounded-2xl font-black text-xs uppercase tracking-widest text-slate-400 hover:text-slate-600 transition-all">Cancelar</button>
+          <button 
+            onClick={handleLocalSave} 
+            className={`px-10 py-4 rounded-2xl font-black text-xs uppercase tracking-widest transition-all active:scale-95 shadow-lg ${activeMode === 'import' ? 'bg-blue-600 text-white hover:bg-blue-700 shadow-blue-600/20' : 'bg-slate-900 text-white hover:bg-black shadow-slate-900/20'}`}
+          >
+            {activeMode === 'import' ? 'Firmar & Importar' : (contract ? 'Guardar Cambios' : 'Crear Contrato')}
+          </button>
+        </div>
+      </motion.div>
+    </div>
+  );
+};
+
+const SignatureModal = ({ isOpen, onClose, contract, onSave }) => {
+  const canvasRef = useRef(null);
+  const signaturePadRef = useRef(null);
+
+  useEffect(() => {
+    if (isOpen && canvasRef.current) {
+      signaturePadRef.current = new SignaturePad(canvasRef.current, {
+        backgroundColor: 'rgba(255, 255, 255, 0)',
+        penColor: 'rgb(15, 23, 42)'
+      });
+
+      const resizeCanvas = () => {
+        const ratio = Math.max(window.devicePixelRatio || 1, 1);
+        canvasRef.current.width = canvasRef.current.offsetWidth * ratio;
+        canvasRef.current.height = canvasRef.current.offsetHeight * ratio;
+        canvasRef.current.getContext("2d").scale(ratio, ratio);
+        signaturePadRef.current.clear();
+      };
+
+      window.addEventListener("resize", resizeCanvas);
+      resizeCanvas();
+      return () => window.removeEventListener("resize", resizeCanvas);
+    }
+  }, [isOpen]);
+
+  if (!isOpen) return null;
+
+  const handleClear = () => signaturePadRef.current?.clear();
+  
+  const handleSign = () => {
+    if (signaturePadRef.current?.isEmpty()) {
+      alert('Por favor, dibuja tu firma antes de continuar.');
+      return;
+    }
+    const signatureData = signaturePadRef.current.toDataURL('image/png');
+    onSave(signatureData);
+  };
+
+  return (
+    <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-6">
+      <motion.div initial={{ opacity: 0, scale: 0.9, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} className="bg-white rounded-[40px] shadow-2xl w-full max-w-2xl border border-slate-100 overflow-hidden">
+        <div className="p-8 border-b border-slate-50 flex items-center justify-between">
+          <div>
+            <h2 className="text-2xl font-black text-slate-800 tracking-tight">Firmar Contrato</h2>
+            <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">Ref: {contract?.contract_number || contract?.upya_id}</p>
+          </div>
+          <button onClick={onClose} className="p-3 bg-slate-50 rounded-2xl text-slate-400 hover:text-slate-600 transition-all"><X size={20} /></button>
+        </div>
+
+        <div className="p-10 space-y-8 text-center">
+          <div className="space-y-3">
+            <h3 className="text-sm font-black text-slate-800 uppercase tracking-widest">Dibuja tu firma en el recuadro</h3>
+            <p className="text-xs text-slate-400 font-bold max-w-sm mx-auto">Al firmar este documento, aceptas los términos y condiciones del contrato de crédito de Bantos.</p>
+          </div>
+
+          <div className="relative group">
+            <div className="absolute inset-0 bg-blue-600/5 rounded-3xl blur-xl group-hover:bg-blue-600/10 transition-all" />
+            <div className="relative bg-white border-2 border-slate-100 rounded-[32px] p-2 shadow-inner">
+              <canvas ref={canvasRef} className="w-full h-64 cursor-crosshair touch-none" />
+              <button 
+                onClick={handleClear}
+                className="absolute bottom-6 right-6 p-3 bg-slate-900 text-white rounded-2xl hover:bg-black transition-all shadow-lg active:scale-95"
+                title="Limpiar firma"
+              >
+                <RefreshCw size={16} />
+              </button>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3 justify-center text-[10px] font-black text-slate-400 uppercase tracking-widest">
+            <ShieldCheck size={14} className="text-emerald-500" />
+            <span>Firma digital segura y encriptada</span>
+          </div>
+        </div>
+
+        <div className="p-8 border-t border-slate-50 bg-slate-50/50 flex justify-end gap-4">
+          <button onClick={onClose} className="px-8 py-4 rounded-2xl font-black text-xs uppercase tracking-widest text-slate-400 hover:text-slate-600 transition-all">Cancelar</button>
+          <button onClick={handleSign} className="px-10 py-4 bg-blue-600 text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-blue-700 hover:shadow-xl transition-all active:scale-95 shadow-lg shadow-blue-600/20">Confirmar Firma</button>
+        </div>
+      </motion.div>
+    </div>
+  );
+};
 
 const InventoryView = ({ inventory }) => (
   <div className="space-y-8">
@@ -254,7 +735,7 @@ const InventoryView = ({ inventory }) => (
 const ACCEPTED_STATUSES = ['PAID', 'VALIDATED', 'ACCEPTED', 'ACEPTADO', 'PAGADO', 'VALIDADO'];
 const FAILED_STATUSES = ['FAILED', 'FALLADO', 'REJECTED', 'CANCELED', 'RECHAZADO', 'CANCELADO', 'REVERSED'];
 const UNASSIGNED_STATUSES = ['UNASSIGNED', 'NO ASIGNADO', 'PENDING_ASSIGNMENT', 'PENDIENTE', 'UNASSIGNED_PAYMENT'];
-const FINAL_STATUSES = [...ACCEPTED_STATUSES, ...FAILED_STATUSES];
+const FINAL_STATUSES = [...ACCEPTED_STATUSES]; // Solo los aceptados son finales/bloqueados ahora
 
 const PaymentsView = ({ payments, onEdit, onCreate }) => {
   const [filter, setFilter] = useState('all');
@@ -297,13 +778,23 @@ const PaymentsView = ({ payments, onEdit, onCreate }) => {
       </div>
 
       <Table 
-        cols={['Fecha', 'Monto', 'Método', 'Estado', 'Acciones']} 
+        cols={['Fecha', 'Contrato', 'Cliente', 'Monto', 'Método', 'Estado', 'Acciones']} 
         rows={filtered} 
         render={p => (
           <>
             <td className="px-8 py-5">
               <p className="font-bold text-slate-800">{p.payment_date ? new Date(p.payment_date).toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'}</p>
               <p className="text-[10px] text-slate-400 font-medium">{p.payment_date ? new Date(p.payment_date).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' }) : ''}</p>
+            </td>
+            <td className="px-8 py-5">
+              <span className="text-[11px] bg-slate-100 text-slate-600 px-2 py-1 rounded-lg font-black tracking-wider uppercase border border-slate-200">{p.contract_id || '—'}</span>
+            </td>
+            <td className="px-8 py-5">
+              <p className="font-black text-slate-900 leading-tight">{p.client_name || '—'}</p>
+              <div className="flex items-center gap-1.5 mt-0.5">
+                <span className="text-[9px] bg-blue-50 text-blue-600 px-1.5 py-0.5 rounded font-black tracking-widest uppercase">{p.client_number || 'S/N'}</span>
+                {p.product_name && <span className="text-[10px] text-slate-400 font-bold">{p.product_name}</span>}
+              </div>
             </td>
             <td className="px-8 py-5 font-black text-slate-900">${Number(p.amount || 0).toLocaleString()}</td>
             <td className="px-8 py-5">
@@ -317,7 +808,7 @@ const PaymentsView = ({ payments, onEdit, onCreate }) => {
               <button 
                 onClick={() => onEdit(p)} 
                 className={`p-2 rounded-lg transition-all ${FINAL_STATUSES.includes((p.status || '').toUpperCase()) ? 'text-slate-200 cursor-not-allowed' : 'hover:bg-blue-50 text-slate-300 hover:text-blue-600'}`}
-                title={FINAL_STATUSES.includes((p.status || '').toUpperCase()) ? 'No se puede editar un pago en estado final' : 'Editar pago'}
+                title={FINAL_STATUSES.includes((p.status || '').toUpperCase()) ? 'No se puede editar un pago ya aceptado' : 'Editar pago'}
               >
                 <Settings2 size={16} />
               </button>
@@ -329,7 +820,7 @@ const PaymentsView = ({ payments, onEdit, onCreate }) => {
   );
 };
 
-const PaymentModal = ({ isOpen, onClose, payment, onSave }) => {
+const PaymentModal = ({ isOpen, onClose, payment, onSave, clients }) => {
   const [formData, setFormData] = useState({
     amount: 0, method: 'Transferencia', status: 'Pending', contract_id: '', client_id: '',
     payment_date: new Date().toISOString().split('T')[0],
@@ -357,7 +848,7 @@ const PaymentModal = ({ isOpen, onClose, payment, onSave }) => {
 
   const statusUpper = (formData.status || '').toUpperCase();
   const isReadOnly = FINAL_STATUSES.includes(statusUpper);
-  const isFailed = FAILED_STATUSES.includes(statusUpper);
+  const isAccepted = ACCEPTED_STATUSES.includes(statusUpper);
 
   return (
     <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-6">
@@ -402,6 +893,21 @@ const PaymentModal = ({ isOpen, onClose, payment, onSave }) => {
                 <input disabled={isReadOnly} type="date" className="w-full bg-slate-50 border-2 border-slate-100 rounded-xl py-3.5 px-5 font-bold text-slate-800 focus:border-blue-600 outline-none transition-all text-sm" value={formData.payment_date} onChange={e => setFormData({...formData, payment_date: e.target.value})} />
               </div>
  
+              <div className="space-y-1.5">
+                <label className="text-[9px] font-black uppercase tracking-widest text-slate-400 ml-1">Vincular Cliente</label>
+                <select 
+                  disabled={isReadOnly} 
+                  className="w-full bg-slate-50 border-2 border-slate-100 rounded-xl py-3.5 px-5 font-bold text-slate-800 focus:border-blue-600 outline-none transition-all text-sm appearance-none" 
+                  value={formData.client_id || ''} 
+                  onChange={e => setFormData({...formData, client_id: e.target.value})}
+                >
+                  <option value="">Seleccionar cliente...</option>
+                  {(clients || []).map(c => (
+                    <option key={c.upya_id} value={c.upya_id}>{c.name} ({c.client_number})</option>
+                  ))}
+                </select>
+              </div>
+
               <div className="space-y-1.5">
                 <label className="text-[9px] font-black uppercase tracking-widest text-slate-400 ml-1">ID Contrato / Upya</label>
                 <input disabled={isReadOnly} type="text" className="w-full bg-slate-50 border-2 border-slate-100 rounded-xl py-3.5 px-5 font-bold text-slate-800 focus:border-blue-600 outline-none transition-all text-sm" value={formData.contract_id || ''} onChange={e => setFormData({...formData, contract_id: e.target.value})} placeholder="CTR-XXXX" />
@@ -453,15 +959,11 @@ const PaymentModal = ({ isOpen, onClose, payment, onSave }) => {
             </div>
 
             {isReadOnly && (
-              <div className={`p-5 rounded-2xl flex items-start gap-4 ${isFailed ? 'bg-red-50 border border-red-100' : 'bg-amber-50 border border-amber-200'}`}>
-                <div className={`p-2 rounded-lg ${isFailed ? 'bg-red-100 text-red-600' : 'bg-amber-100 text-amber-600'}`}>
-                  {isFailed ? <X size={18} /> : <ShieldCheck size={18} />}
-                </div>
-                <p className={`text-[11px] font-bold leading-relaxed ${isFailed ? 'text-red-800' : 'text-amber-800'}`}>
-                  Este registro está <span className="font-black uppercase">{isFailed ? 'Bloqueado' : 'Protegido'}</span>. 
-                  {isFailed 
-                    ? ' Al ser un pago fallido, no se permiten modificaciones. Se debe registrar una nueva solicitud.' 
-                    : ' Al estar en estado aceptado o pagado, no se permiten modificaciones para asegurar la integridad financiera.'}
+              <div className="p-5 bg-amber-50 border border-amber-200 rounded-2xl flex items-start gap-4">
+                <div className="p-2 bg-amber-100 rounded-lg text-amber-600"><ShieldCheck size={18} /></div>
+                <p className="text-[11px] font-bold text-amber-800 leading-relaxed">
+                  Este registro está <span className="font-black uppercase">Protegido</span>. 
+                  Al estar en estado aceptado o pagado, no se permiten modificaciones para asegurar la integridad financiera.
                 </p>
               </div>
             )}
@@ -1217,6 +1719,41 @@ const App = () => {
     }
   };
 
+  const handleSaveContract = async (contractData, mode = false) => {
+    try {
+      const id = modalState.item?.upya_id;
+      if (mode === true) { // Import
+        await axios.post(`${API}/backoffice/contracts/import-and-sign`, contractData, {
+          headers: { 'Content-Type': 'multipart/form-data' }
+        });
+      } else if (mode === 'generate') { // Generate from form
+        await axios.post(`${API}/backoffice/contracts/generate-and-sign`, contractData);
+      } else {
+        if (id) {
+          await axios.put(`${API}/backoffice/contracts/${id}`, contractData);
+        } else {
+          await axios.post(`${API}/backoffice/contracts`, contractData);
+        }
+      }
+      setModalState({ type: null, open: false, item: null });
+      await refreshData();
+    } catch (e) {
+      alert(e.response?.data?.error || e.message || 'Error al guardar el contrato');
+    }
+  };
+
+  const handleSaveSignature = async (signatureData) => {
+    try {
+      const id = modalState.item?.upya_id;
+      await axios.post(`${API}/backoffice/contracts/${id}/sign`, { signatureData });
+      setModalState({ type: null, open: false, item: null });
+      await refreshData();
+      alert('✅ Contrato firmado exitosamente');
+    } catch (e) {
+      alert(e.response?.data?.error || 'Error al firmar el contrato');
+    }
+  };
+
   const handleSaveProduct = async (productData) => {
     try {
       const payload = { username: session.user.username, password: session.user.password, productData };
@@ -1338,7 +1875,14 @@ const App = () => {
           <motion.div key={view} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -12 }} transition={{ duration: 0.18 }}>
             {view === 'manage-dashboard' && <DashboardView summary={summary} />}
             {view === 'manage-clients' && <ClientsView clients={data.clients} />}
-            {view === 'manage-contracts' && <ContractsView contracts={data.contracts} />}
+            {view === 'manage-contracts' && (
+              <ContractsView 
+                contracts={data.contracts} 
+                onCreate={() => setActionFormState({ open: true, actionType: 'Nuevo Cliente', prefillData: null })} 
+                onEdit={(c) => setModalState({ type: 'contract', open: true, item: c })} 
+                onSign={(c) => setModalState({ type: 'signature', open: true, item: c })}
+              />
+            )}
             {view === 'manage-inventory' && <InventoryView inventory={data.inventory} />}
             {view === 'manage-audit' && <AuditView audit={data.audit} />}
             {view === 'setup-system' && <SyncView onSync={handleSync} loading={syncing} />}
@@ -1370,7 +1914,9 @@ const App = () => {
         <ProductModal open={modalState.open && modalState.type === 'product'} onClose={() => setModalState({ type: null, open: false, item: null })} onSave={handleSaveProduct} product={modalState.item} />
         <DataCollectionModal open={modalState.open && modalState.type === 'collection'} onClose={() => setModalState({ type: null, open: false, item: null })} onSave={handleSaveCollection} collection={modalState.item} />
         <ActionModal open={modalState.open && modalState.type === 'action'} onClose={() => setModalState({ type: null, open: false, item: null })} onSave={handleSaveAction} action={modalState.item} />
-        <PaymentModal isOpen={modalState.open && modalState.type === 'payment'} onClose={() => setModalState({ type: null, open: false, item: null })} onSave={handleSavePayment} payment={modalState.item} />
+        <PaymentModal isOpen={modalState.open && modalState.type === 'payment'} onClose={() => setModalState({ type: null, open: false, item: null })} onSave={handleSavePayment} payment={modalState.item} clients={data.clients} />
+        <ContractModal isOpen={modalState.open && modalState.type === 'contract'} onClose={() => setModalState({ type: null, open: false, item: null })} onSave={handleSaveContract} contract={modalState.item} clients={data.clients} products={data.products} />
+        <SignatureModal isOpen={modalState.open && modalState.type === 'signature'} onClose={() => setModalState({ type: null, open: false, item: null })} onSave={handleSaveSignature} contract={modalState.item} />
       </main>
     </div>
   );

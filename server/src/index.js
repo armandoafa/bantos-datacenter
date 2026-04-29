@@ -4,13 +4,42 @@ import dotenv from 'dotenv';
 import axios from 'axios';
 import UpyaManageClient from '../modules/upya-api-client/src/index.js';
 import pool from './config/db.js';
+import { createRequire } from 'module';
+import path from 'path';
+import fs from 'fs';
+
+const require = createRequire(import.meta.url);
+const PizZip = require('pizzip');
+const Docxtemplater = require('docxtemplater');
+const ImageModule = require('docxtemplater-image-module-free');
+const sizeOf = require('image-size');
+const nodemailer = require('nodemailer');
+const multer = require('multer');
 
 dotenv.config();
 
 const app = express();
 const PORT = 4000;
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ limit: '50mb', extended: true }));
+
+// Servir archivos firmados estáticamente
+const SIGNED_DIR = path.join(process.cwd(), 'signed');
+const UPLOADS_DIR = path.join(process.cwd(), 'uploads');
+app.use('/signed-contracts', express.static(SIGNED_DIR));
+
+// Configuración de directorios y Multer
+const UPLOADS_DIR = path.join(process.cwd(), 'uploads');
+const SIGNED_DIR = path.join(process.cwd(), 'signed');
+if (!fs.existsSync(UPLOADS_DIR)) fs.mkdirSync(UPLOADS_DIR);
+if (!fs.existsSync(SIGNED_DIR)) fs.mkdirSync(SIGNED_DIR);
+
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => cb(null, UPLOADS_DIR),
+  filename: (req, file, cb) => cb(null, `${Date.now()}-${file.originalname}`)
+});
+const upload = multer({ storage });
 
 // Utilidad: descargar todas las páginas de una colección
 async function fetchAll(upya, collection, pageSize = 100) {
@@ -90,9 +119,14 @@ app.post('/api/sync/bootstrap', async (req, res) => {
         const clientNumber = con.clientNumber || con.client?.clientNumber;
 
         if (id) {
+          const productName = con.product?.name || con.productName || 'N/A';
+          const dealName = con.dealName || con.deal?.name || 'Standard';
+          const totalValue = con.totalCost || con.totalValue || 0;
+          const paidValue = con.totalPaid || con.paidValue || 0;
+
           await pool.query(
-            'INSERT INTO contract_history (upya_id, contract_number, client_id, client_number, status, created_at_upya) VALUES (?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE status=VALUES(status), created_at_upya=VALUES(created_at_upya), client_id=VALUES(client_id), client_number=VALUES(client_number)',
-            [id, con.contractNumber || null, upyaClientId || null, clientNumber || null, con.status || con.onboardingStatus || 'Active', createdAt]
+            'INSERT INTO contract_history (upya_id, contract_number, client_id, client_number, product_name, deal_name, total_value, paid_value, status, created_at_upya) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE status=VALUES(status), created_at_upya=VALUES(created_at_upya), client_id=VALUES(client_id), client_number=VALUES(client_number), product_name=VALUES(product_name), deal_name=VALUES(deal_name), total_value=VALUES(total_value), paid_value=VALUES(paid_value)',
+            [id, con.contractNumber || null, upyaClientId || null, clientNumber || null, productName, dealName, totalValue, paidValue, con.status || con.onboardingStatus || 'Active', createdAt]
           );
           stats.contracts++;
         }
@@ -386,6 +420,133 @@ app.get('/api/backoffice/contracts', async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+app.post('/api/backoffice/contracts', async (req, res) => {
+  try {
+    const { upya_id, contract_number, client_id, product_name, deal_name, total_value, paid_value, status } = req.body;
+    const id = upya_id || `CTR-${Date.now()}`;
+    await pool.query(
+      'INSERT INTO contract_history (upya_id, contract_number, client_id, product_name, deal_name, total_value, paid_value, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+      [id, contract_number || null, client_id || null, product_name || null, deal_name || null, total_value || 0, paid_value || 0, status || 'Signed']
+    );
+    res.json({ success: true, id });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.put('/api/backoffice/contracts/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { contract_number, client_id, product_name, deal_name, total_value, paid_value, status } = req.body;
+    await pool.query(
+      'UPDATE contract_history SET contract_number=?, client_id=?, product_name=?, deal_name=?, total_value=?, paid_value=?, status=? WHERE upya_id = ?',
+      [contract_number || null, client_id || null, product_name || null, deal_name || null, total_value || 0, paid_value || 0, status || 'Signed', id]
+    );
+    res.json({ success: true });
+  } catch (e) { 
+    res.status(500).json({ error: e.message }); 
+  }
+});
+
+app.post('/api/backoffice/contracts/:id/sign', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { signatureData } = req.body;
+    console.log(`>>> [SIGN] Signing contract: ${id} (${signatureData ? signatureData.length : 0} bytes)`);
+    await pool.query(
+      'UPDATE contract_history SET status="FIRMADO", signature_data=? WHERE upya_id = ?',
+      [signatureData, id]
+    );
+    console.log('<<< [SIGN] Contract signed successfully');
+    res.json({ success: true });
+  } catch (e) { 
+    console.error('!!! [SIGN] Error signing contract:', e.message);
+    res.status(500).json({ error: e.message }); 
+  }
+});
+
+app.post('/api/backoffice/contracts/import-and-sign', upload.single('file'), async (req, res) => {
+  try {
+    const { client_id, signatureData, client_name, email } = req.body;
+    const file = req.file;
+
+    if (!file || !signatureData) {
+      return res.status(400).json({ error: 'Archivo y firma son requeridos.' });
+    }
+
+    const id = `CTR-IMP-${Date.now()}`;
+    const signatureBase64 = signatureData.replace(/^data:image\/\w+;base64,/, "");
+    const signatureBuffer = Buffer.from(signatureBase64, 'base64');
+    const signaturePath = path.join(SIGNED_DIR, `sig-${Date.now()}.png`);
+    fs.writeFileSync(signaturePath, signatureBuffer);
+
+    let outputPath = '';
+    let outputFilename = '';
+
+    if (file.mimetype === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
+      // Proceso para DOCX usando docxtemplater
+      const content = fs.readFileSync(file.path, 'binary');
+      const zip = new PizZip(content);
+
+      const opts = {
+        centered: false,
+        getImage: (tagValue) => fs.readFileSync(tagValue),
+        getSize: () => [200, 100]
+      };
+
+      const doc = new Docxtemplater(zip, {
+        modules: [new ImageModule(opts)]
+      });
+
+      doc.setData({
+        signature: signaturePath,
+        clientName: client_name || 'Cliente',
+        date: new Date().toLocaleDateString()
+      });
+
+      doc.render();
+
+      const buf = doc.getZip().generate({ type: 'nodebuffer' });
+      outputFilename = `CONTRATO_FIRMADO_${Date.now()}.docx`;
+      outputPath = path.join(SIGNED_DIR, outputFilename);
+      fs.writeFileSync(outputPath, buf);
+    } else {
+      // Para PDF o otros, simplemente guardamos el original y la firma aparte por ahora
+      // Opcionalmente se podría implementar unión de PDF
+      outputFilename = `CONTRATO_IMPORTADO_${Date.now()}_${file.originalname}`;
+      outputPath = path.join(SIGNED_DIR, outputFilename);
+      fs.copyFileSync(file.path, outputPath);
+    }
+
+    // Guardar en DB
+    await pool.query(
+      'INSERT INTO contract_history (upya_id, contract_number, client_id, product_name, deal_name, total_value, paid_value, status, signature_data) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      [id, outputFilename, client_id || null, 'Documento Importado', 'Importación Directa', 0, 0, 'FIRMADO', signatureData]
+    );
+
+    // Enviar Email si hay correo
+    if (email && process.env.EMAIL_USER && process.env.EMAIL_PASS) {
+      const transporter = nodemailer.createTransport({
+        service: 'gmail',
+        auth: { user: process.env.EMAIL_USER, pass: process.env.EMAIL_PASS }
+      });
+
+      const mailOptions = {
+        from: process.env.EMAIL_USER,
+        to: email,
+        subject: 'Tu Contrato Firmado de Bantos',
+        text: `Hola ${client_name || 'Cliente'},\n\nAdjunto encontrarás tu contrato firmado.\n\nSaludos,\nEquipo Bantos.`,
+        attachments: [{ filename: outputFilename, path: outputPath }]
+      };
+
+      await transporter.sendMail(mailOptions);
+    }
+
+    res.json({ success: true, id, filename: outputFilename });
+  } catch (error) {
+    console.error('Error en importación y firma:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 app.get('/api/backoffice/inventory', async (req, res) => {
   try {
     const [rows] = await pool.query('SELECT * FROM inventory ORDER BY synced_at DESC');
@@ -395,13 +556,23 @@ app.get('/api/backoffice/inventory', async (req, res) => {
 
 app.get('/api/backoffice/payments', async (req, res) => {
   try {
-    const [rows] = await pool.query('SELECT * FROM payments ORDER BY payment_date DESC');
+    console.log('>>> [GET] Fetching payments...');
+    const query = `
+      SELECT p.*, c.name as client_name, h.product_name, c.client_number
+      FROM payments p
+      LEFT JOIN contract_history h ON p.contract_id = h.contract_number
+      LEFT JOIN client_history c ON c.upya_id = COALESCE(p.client_id, h.client_id)
+      ORDER BY p.payment_date DESC
+    `;
+    const [rows] = await pool.query(query);
+    console.log(`<<< [GET] Returned ${rows.length} payments`);
     res.json(rows);
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 app.post('/api/backoffice/payments', async (req, res) => {
   try {
+    console.log('>>> [POST] Creating payment:', req.body.upya_id || 'manual');
     const { 
       upya_id, transaction_id, contract_id, amount, method, status, payment_date,
       account_number, card_holder, is_recurring, recurring_dates, client_id
@@ -426,16 +597,18 @@ app.post('/api/backoffice/payments', async (req, res) => {
 app.put('/api/backoffice/payments/:id', async (req, res) => {
   try {
     const { id } = req.params;
+    console.log('>>> [PUT] Updating payment:', id, 'Payload:', req.body);
     const { 
       transaction_id, contract_id, amount, method, status, payment_date,
       account_number, card_holder, is_recurring, recurring_dates, client_id
     } = req.body;
 
-    // Check if it can be edited (Final states: Paid or Failed/Rejected)
+    // Check if it can be edited (Only Accepted/Paid are locked)
     const [current] = await pool.query('SELECT status FROM payments WHERE upya_id = ?', [id]);
-    const finalStatuses = ['Accepted', 'Paid', 'Aceptado', 'VALIDATED', 'Failed', 'Fallado', 'REJECTED', 'CANCELED'];
-    if (current.length > 0 && finalStatuses.includes(current[0].status)) {
-      return res.status(403).json({ error: 'No se puede editar un pago que se encuentra en un estado final (Aceptado o Fallido).' });
+    const lockedStatuses = ['ACCEPTED', 'PAID', 'VALIDATED', 'ACEPTADO', 'PAGADO', 'VALIDADO'];
+    if (current.length > 0 && lockedStatuses.includes((current[0].status || '').toUpperCase())) {
+      console.warn('!!! [PUT] Attempt to edit locked payment:', id);
+      return res.status(403).json({ error: 'No se puede editar un pago que ya ha sido aceptado o pagado.' });
     }
 
     await pool.query(
@@ -450,8 +623,73 @@ app.put('/api/backoffice/payments/:id', async (req, res) => {
         client_id || null, id
       ]
     );
+    console.log('<<< [PUT] Update successful:', id);
     res.json({ success: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { 
+    console.error('!!! [PUT] Error updating payment:', e.message);
+    res.status(500).json({ error: e.message }); 
+  }
+});
+
+app.post('/api/backoffice/contracts/generate-and-sign', async (req, res) => {
+  try {
+    const { contractData, signatureData } = req.body;
+    
+    // 1. Save signature
+    const signatureBase64 = signatureData.replace(/^data:image\/\w+;base64,/, "");
+    const signatureBuffer = Buffer.from(signatureBase64, 'base64');
+    const signaturePath = path.join(SIGNED_DIR, `sig-${Date.now()}.png`);
+    fs.writeFileSync(signaturePath, signatureBuffer);
+
+    // 2. Load default template
+    // Buscamos un template base en el sistema
+    const templatePath = path.join(process.cwd(), 'contracts', 'template.docx');
+    if (!fs.existsSync(templatePath)) {
+      return res.status(404).json({ error: 'Plantilla base no encontrada en /contracts/template.docx' });
+    }
+
+    const content = fs.readFileSync(templatePath, 'binary');
+    const zip = new PizZip(content);
+    const opts = {
+      centered: false,
+      getImage: (tagValue) => fs.readFileSync(tagValue),
+      getSize: () => [200, 100]
+    };
+
+    const doc = new Docxtemplater(zip, {
+      modules: [new ImageModule(opts)]
+    });
+
+    // 3. Set data from manual form
+    doc.setData({
+      signature: signaturePath,
+      clientName: contractData.client_name || 'Cliente',
+      productName: contractData.product_name || 'N/A',
+      dealName: contractData.deal_name || 'N/A',
+      totalValue: contractData.total_value || 0,
+      date: new Date().toLocaleDateString(),
+      contractId: contractData.upya_id || 'N/A'
+    });
+
+    doc.render();
+
+    const buf = doc.getZip().generate({ type: 'nodebuffer' });
+    const outputFilename = `CONTRATO_GENERADO_${Date.now()}.docx`;
+    const outputPath = path.join(SIGNED_DIR, outputFilename);
+    fs.writeFileSync(outputPath, buf);
+
+    // 4. Update/Save in DB
+    const upya_id = contractData.upya_id || `CTR-GEN-${Date.now()}`;
+    await pool.query(
+      'INSERT INTO contract_history (upya_id, contract_number, client_id, product_name, deal_name, total_value, paid_value, status, signature_data) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE contract_number=VALUES(contract_number), status=VALUES(status), signature_data=VALUES(signature_data)',
+      [upya_id, outputFilename, contractData.client_id || null, contractData.product_name || null, contractData.deal_name || null, contractData.total_value || 0, contractData.paid_value || 0, 'FIRMADO', signatureData]
+    );
+
+    res.json({ success: true, id: upya_id, filename: outputFilename });
+  } catch (error) {
+    console.error('Error generando contrato:', error);
+    res.status(500).json({ error: error.message });
+  }
 });
 
 app.get('/api/backoffice/products', async (req, res) => {
