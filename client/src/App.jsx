@@ -561,8 +561,12 @@ const ContractModal = ({ isOpen, onClose, contract, onSave, clients, products })
                 <div className="space-y-6">
                   <h3 className="text-[10px] font-black text-blue-600 uppercase tracking-[0.2em] flex items-center gap-2"><PenTool size={14} /> Firma & Generación (Opcional)</h3>
                   <div className="bg-slate-50 border-2 border-slate-100 rounded-[32px] p-2 relative group overflow-hidden">
-                    <canvas ref={canvasManualRef} className="w-full h-48 cursor-crosshair touch-none bg-white rounded-[24px]" />
-                    <div className="absolute bottom-6 right-6 flex gap-2">
+                    <canvas 
+                      ref={canvasManualRef} 
+                      className="w-full h-48 cursor-crosshair bg-white rounded-[24px] relative z-[100]" 
+                      style={{ touchAction: 'none', pointerEvents: 'auto' }}
+                    />
+                    <div className="absolute bottom-6 right-6 flex gap-2 z-[110]">
                       <button 
                         onClick={handleClearSignature}
                         className="p-3 bg-slate-900 text-white rounded-2xl hover:bg-black transition-all shadow-lg active:scale-95"
@@ -620,8 +624,12 @@ const ContractModal = ({ isOpen, onClose, contract, onSave, clients, products })
                   <div className="space-y-6">
                     <h3 className="text-[10px] font-black text-blue-600 uppercase tracking-[0.2em] flex items-center gap-2"><PenTool size={14} /> Firma del Cliente</h3>
                     <div className="bg-slate-50 border-2 border-slate-100 rounded-[32px] p-2 relative group overflow-hidden">
-                      <canvas ref={canvasImportRef} className="w-full h-64 cursor-crosshair touch-none bg-white rounded-[24px]" />
-                      <div className="absolute bottom-6 right-6 flex gap-2">
+                      <canvas 
+                        ref={canvasImportRef} 
+                        className="w-full h-64 cursor-crosshair bg-white rounded-[24px] relative z-[100]" 
+                        style={{ touchAction: 'none', pointerEvents: 'auto' }}
+                      />
+                      <div className="absolute bottom-6 right-6 flex gap-2 z-[110]">
                         <button 
                           onClick={handleClearSignature}
                           className="p-3 bg-slate-900 text-white rounded-2xl hover:bg-black transition-all shadow-lg active:scale-95"
