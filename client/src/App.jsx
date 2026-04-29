@@ -390,7 +390,11 @@ const ContractModal = ({ isOpen, onClose, contract, onSave, clients, products })
   }, [contract, isOpen, clients]);
 
   useEffect(() => {
-    if (isOpen && activeMode === 'import' && canvasRef.current) {
+    if (isOpen && canvasRef.current) {
+      if (signaturePadRef.current) {
+        signaturePadRef.current.off();
+      }
+      
       signaturePadRef.current = new SignaturePad(canvasRef.current, {
         backgroundColor: 'rgba(255, 255, 255, 0)',
         penColor: 'rgb(15, 23, 42)'
