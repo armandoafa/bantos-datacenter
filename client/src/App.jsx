@@ -336,7 +336,7 @@ const ContractsView = ({ contracts, onNew, onEdit, onSign }) => {
               </button>
               {(c.contract_number && (c.contract_number.endsWith('.docx') || c.contract_number.endsWith('.pdf'))) && (
                 <a 
-                  href={`${API.replace('/api', '')}/signed-contracts/${c.contract_number}`} 
+                  href={`https://bantos.cloud/signed-contracts/${c.contract_number}`} 
                   target="_blank" 
                   rel="noopener noreferrer"
                   className="p-2 rounded-lg hover:bg-emerald-50 text-emerald-500 hover:text-emerald-700 transition-all"
@@ -627,6 +627,18 @@ const ContractModal = ({ isOpen, onClose, contract, onSave, clients, products })
                   <div className="space-y-6">
                     <h3 className="text-[10px] font-black text-blue-600 uppercase tracking-[0.2em] flex items-center gap-2"><PenTool size={14} /> Firma del Cliente</h3>
                     <div className="bg-slate-50 border-2 border-slate-100 rounded-[32px] p-2 relative group overflow-hidden">
+                      {contract && contract.contract_number && (
+                        <div className="absolute inset-0 z-[120] bg-emerald-50/90 backdrop-blur-sm flex flex-col items-center justify-center gap-4">
+                          <div className="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center shadow-inner">
+                            <ShieldCheck size={32} />
+                          </div>
+                          <div className="text-center">
+                            <p className="text-sm font-black text-emerald-900 uppercase tracking-tight">Documento ya firmado</p>
+                            <p className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest mt-1">Sello digital verificado</p>
+                          </div>
+                          <p className="text-[9px] text-slate-400 font-bold max-w-[200px] text-center">Para cambiar la firma, es necesario subir un nuevo documento.</p>
+                        </div>
+                      )}
                       <canvas 
                         ref={canvasImportRef} 
                         className="w-full h-64 cursor-crosshair bg-white rounded-[24px] relative z-[100] border border-blue-200" 
