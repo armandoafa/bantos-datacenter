@@ -392,20 +392,25 @@ const ContractModal = ({ isOpen, onClose, contract, onSave, clients, products })
   }, [contract, isOpen, clients]);
 
   useEffect(() => {
+    let timer;
     if (isOpen) {
-      if (activeMode === 'form' && canvasManualRef.current) {
-        signaturePadManualRef.current = new SignaturePad(canvasManualRef.current, {
-          backgroundColor: 'rgba(255, 255, 255, 0)',
-          penColor: 'rgb(15, 23, 42)'
-        });
-      } else if (activeMode === 'import' && canvasImportRef.current) {
-        signaturePadImportRef.current = new SignaturePad(canvasImportRef.current, {
-          backgroundColor: 'rgba(255, 255, 255, 0)',
-          penColor: 'rgb(15, 23, 42)'
-        });
-      }
+      // Retrasamos un poco la inicialización para asegurar que el DOM sea estable
+      timer = setTimeout(() => {
+        if (activeMode === 'form' && canvasManualRef.current) {
+          signaturePadManualRef.current = new SignaturePad(canvasManualRef.current, {
+            backgroundColor: 'rgba(255, 255, 255, 0)',
+            penColor: 'rgb(15, 23, 42)'
+          });
+        } else if (activeMode === 'import' && canvasImportRef.current) {
+          signaturePadImportRef.current = new SignaturePad(canvasImportRef.current, {
+            backgroundColor: 'rgba(255, 255, 255, 0)',
+            penColor: 'rgb(15, 23, 42)'
+          });
+        }
+      }, 100);
     }
     return () => {
+      clearTimeout(timer);
       signaturePadManualRef.current?.off();
       signaturePadImportRef.current?.off();
     };
