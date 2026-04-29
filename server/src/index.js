@@ -24,16 +24,12 @@ app.use(cors());
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
-// Servir archivos firmados estáticamente
+// Servir archivos firmados estáticamente e inicializar directorios
 const SIGNED_DIR = path.join(process.cwd(), 'signed');
 const UPLOADS_DIR = path.join(process.cwd(), 'uploads');
-app.use('/signed-contracts', express.static(SIGNED_DIR));
-
-// Configuración de directorios y Multer
-const UPLOADS_DIR = path.join(process.cwd(), 'uploads');
-const SIGNED_DIR = path.join(process.cwd(), 'signed');
 if (!fs.existsSync(UPLOADS_DIR)) fs.mkdirSync(UPLOADS_DIR);
 if (!fs.existsSync(SIGNED_DIR)) fs.mkdirSync(SIGNED_DIR);
+app.use('/signed-contracts', express.static(SIGNED_DIR));
 
 const storage = multer.diskStorage({
   destination: (req, file, cb) => cb(null, UPLOADS_DIR),
