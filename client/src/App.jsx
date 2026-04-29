@@ -394,14 +394,18 @@ const ContractModal = ({ isOpen, onClose, contract, onSave, clients, products })
   useEffect(() => {
     let timer;
     if (isOpen) {
-      // Retrasamos un poco la inicialización para asegurar que el DOM sea estable
+      // Retrasamos un poco más la inicialización para asegurar que el modal esté totalmente quieto
       timer = setTimeout(() => {
         const initPad = (canvas, refName) => {
           try {
             if (!canvas) return;
-            console.log(`Initializing ${refName}...`);
             
-            // Forzamos el tamaño antes de crear el objeto
+            // Si el offsetWidth es 0, el lienzo no es visible aún
+            if (canvas.offsetWidth === 0) {
+              console.warn(`Lienzo ${refName} tiene tamaño 0, reintentando...`);
+              return;
+            }
+
             const ratio = Math.max(window.devicePixelRatio || 1, 1);
             canvas.width = canvas.offsetWidth * ratio;
             canvas.height = canvas.offsetHeight * ratio;
@@ -409,23 +413,22 @@ const ContractModal = ({ isOpen, onClose, contract, onSave, clients, products })
 
             const pad = new SignaturePad(canvas, {
               backgroundColor: 'rgba(255, 255, 255, 0)',
-              penColor: 'rgb(15, 23, 42)',
+              penColor: 'rgb(30, 64, 175)', // Azul cobalto intenso
               velocityFilterWeight: 0.7
             });
             
             if (refName === 'manual') signaturePadManualRef.current = pad;
             else signaturePadImportRef.current = pad;
             
-            console.log(`${refName} initialized successfully`);
+            console.log(`Lienzo ${refName} calibrado a ${canvas.width}x${canvas.height}`);
           } catch (err) {
-            console.error(`Error initializing ${refName}:`, err);
-            alert(`Error en firma (${refName}): ` + err.message);
+            console.error(`Error en ${refName}:`, err);
           }
         };
 
         if (activeMode === 'form') initPad(canvasManualRef.current, 'manual');
         else if (activeMode === 'import') initPad(canvasImportRef.current, 'import');
-      }, 300);
+      }, 500);
     }
     return () => {
       clearTimeout(timer);
@@ -563,7 +566,7 @@ const ContractModal = ({ isOpen, onClose, contract, onSave, clients, products })
                   <div className="bg-slate-50 border-2 border-slate-100 rounded-[32px] p-2 relative group overflow-hidden">
                     <canvas 
                       ref={canvasManualRef} 
-                      className="w-full h-48 cursor-crosshair bg-white rounded-[24px] relative z-[100]" 
+                      className="w-full h-48 cursor-crosshair bg-white rounded-[24px] relative z-[100] border border-blue-200" 
                       style={{ touchAction: 'none', pointerEvents: 'auto' }}
                     />
                     <div className="absolute bottom-6 right-6 flex gap-2 z-[110]">
@@ -626,7 +629,7 @@ const ContractModal = ({ isOpen, onClose, contract, onSave, clients, products })
                     <div className="bg-slate-50 border-2 border-slate-100 rounded-[32px] p-2 relative group overflow-hidden">
                       <canvas 
                         ref={canvasImportRef} 
-                        className="w-full h-64 cursor-crosshair bg-white rounded-[24px] relative z-[100]" 
+                        className="w-full h-64 cursor-crosshair bg-white rounded-[24px] relative z-[100] border border-blue-200" 
                         style={{ touchAction: 'none', pointerEvents: 'auto' }}
                       />
                       <div className="absolute bottom-6 right-6 flex gap-2 z-[110]">
