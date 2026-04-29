@@ -246,7 +246,7 @@ const CONTRACT_STATUSES = {
   REJECTED: ['REJECTED', 'NO APROBADO', 'CANCELLED']
 };
 
-const ContractsView = ({ contracts, onCreate, onEdit, onSign }) => {
+const ContractsView = ({ contracts, onNew, onEdit, onSign }) => {
   const [filter, setFilter] = useState('all');
 
   const filtered = contracts.filter(c => {
@@ -284,7 +284,7 @@ const ContractsView = ({ contracts, onCreate, onEdit, onSign }) => {
             ))}
           </div>
           <button 
-            onClick={onCreate}
+            onClick={onNew}
             className="flex items-center gap-3 bg-blue-600 hover:bg-blue-700 text-white px-8 py-4 rounded-[20px] font-black text-xs uppercase tracking-widest shadow-xl shadow-blue-600/20 transition-all active:scale-95"
           >
             <Plus size={18} />
@@ -1788,6 +1788,11 @@ const App = () => {
     }
   };
 
+  const handleNewContract = () => {
+    console.log('Opening modal...');
+    setModalState({ type: 'contract', open: true, item: null });
+  };
+
   if (!session) return (
     <div className="min-h-screen bg-slate-950 flex items-center justify-center p-8">
       <div className="w-full max-w-[440px] bg-white rounded-[48px] p-14 shadow-2xl text-center">
@@ -1878,7 +1883,7 @@ const App = () => {
             {view === 'manage-contracts' && (
               <ContractsView 
                 contracts={data.contracts} 
-                onCreate={() => setActionFormState({ open: true, actionType: 'Nuevo Cliente', prefillData: null })} 
+                onNew={handleNewContract}
                 onEdit={(c) => setModalState({ type: 'contract', open: true, item: c })} 
                 onSign={(c) => setModalState({ type: 'signature', open: true, item: c })}
               />
