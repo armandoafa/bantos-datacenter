@@ -6,19 +6,33 @@ import {
   LogOut, RefreshCw, TrendingUp, DollarSign, Plus, Package,
   ChevronDown, ChevronRight, Database, Building2, Globe, MapPin, Store, Edit, X, Trash2,
   BookOpen, Zap, CheckSquare, MessageSquare, ListTodo, ClipboardCheck,
-  Upload, PenTool, Send, AlertCircle
+  Upload, PenTool, Send, AlertCircle, Printer, Activity
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import axios from 'axios';
+import SupportAgent from './SupportAgent';
+
 
 const API = import.meta.env.VITE_API_URL || (window.location.hostname === 'localhost' ? 'http://localhost:4000/api' : 'https://bantos.cloud/datacenter-api');
 
 // --- Componentes Compartidos ---
 const Badge = ({ status }) => {
-  const ok = ['Active', 'Signed', 'Paid', 'Ready', 'active', 'signed', 'ENABLED', 'VALIDATED', 'FIRMADO', 'SIGNED'].includes(status);
+  const s = (status || '').toUpperCase();
+  const ok = ['ACTIVE', 'SIGNED', 'PAID', 'READY', 'ENABLED', 'VALIDATED', 'FIRMADO'].includes(s);
+  const pending = ['PENDING', 'PENDIENTE', 'LOCKED'].includes(s);
+  const rejected = ['REJECTED', 'NO APROBADO', 'CANCELLED'].includes(s);
+
+  let label = status;
+  if (s === 'LOCKED') label = 'PENDIENTE';
+  
+  let colorClass = 'bg-blue-100 text-blue-700';
+  if (ok) colorClass = 'bg-emerald-100 text-emerald-700';
+  if (pending) colorClass = 'bg-amber-100 text-amber-700';
+  if (rejected) colorClass = 'bg-red-100 text-red-700';
+
   return (
-    <span className={`px-3 py-1.5 rounded-full text-[11px] font-black uppercase tracking-widest ${ok ? 'bg-emerald-100 text-emerald-700' : 'bg-blue-100 text-blue-700'}`}>
-      {status || 'Active'}
+    <span className={`px-3 py-1.5 rounded-full text-[11px] font-black uppercase tracking-widest ${colorClass}`}>
+      {label}
     </span>
   );
 };
@@ -217,12 +231,7 @@ const DashboardView = ({ summary, session }) => (
         <h2 className="text-4xl font-black text-slate-900 tracking-tighter">Dashboard</h2>
         <p className="text-slate-400 font-medium mt-1">Inteligencia operativa en tiempo real</p>
       </div>
-      <div className="bg-blue-50 px-6 py-3 rounded-2xl border border-blue-100 flex items-center gap-3">
-        <ShieldCheck size={20} className="text-blue-600" />
-        <div>
-          <p className="text-[10px] font-black text-blue-400 uppercase tracking-widest leading-none mb-1">Tenant ID Activo</p>
-          <p className="text-sm font-black text-blue-700 leading-none">{session?.tenantId || '—'}</p>
-        </div>
+      <div className="bg-blue-50 px-6 py-3 rounded-2xl border border-blue-100 flex items-center gap-3 opacity-0 pointer-events-none hidden">
       </div>
     </div>
     <div className="grid grid-cols-4 gap-6">
@@ -378,23 +387,30 @@ const ClientModal = ({ isOpen, onClose, client, onGenerateWallet }) => {
 };
 
 const CONTRACT_STATUSES = {
-  SIGNED: ['SIGNED', 'FIRMADO'],
+  SIGNED: ['SIGNED', 'FIRMADO', 'LOCKED'],
   APPROVED: ['APPROVED', 'APROBADO', 'LOCKED', 'ENABLED'],
-  PENDING: ['PENDING', 'PENDIENTE'],
+  PENDING: ['PENDING', 'PENDIENTE', 'LOCKED'],
   REJECTED: ['REJECTED', 'NO APROBADO', 'CANCELLED']
 };
 
-const ContractsView = ({ contracts, onNew, onEdit, onSign }) => {
+const ContractsView = ({ contracts, onNew, onEdit, onSign, session }) => {
   const [filter, setFilter] = useState('all');
+  const [search, setSearch] = useState('');
 
   const filtered = contracts.filter(c => {
     const s = (c.status || '').toUpperCase();
-    if (filter === 'all') return true;
-    if (filter === 'signed') return CONTRACT_STATUSES.SIGNED.includes(s);
-    if (filter === 'approved') return CONTRACT_STATUSES.APPROVED.includes(s);
-    if (filter === 'pending') return CONTRACT_STATUSES.PENDING.includes(s);
-    if (filter === 'rejected') return CONTRACT_STATUSES.REJECTED.includes(s);
-    return true;
+    const matchesFilter = filter === 'all' || 
+      (filter === 'signed' && CONTRACT_STATUSES.SIGNED.includes(s)) ||
+      (filter === 'approved' && CONTRACT_STATUSES.APPROVED.includes(s)) ||
+      (filter === 'pending' && CONTRACT_STATUSES.PENDING.includes(s)) ||
+      (filter === 'rejected' && CONTRACT_STATUSES.REJECTED.includes(s));
+
+    const matchesSearch = !search || 
+      (c.contract_number || '').toLowerCase().includes(search.toLowerCase()) ||
+      (c.client_name || '').toLowerCase().includes(search.toLowerCase()) ||
+      (c.upya_id || '').toLowerCase().includes(search.toLowerCase());
+
+    return matchesFilter && matchesSearch;
   });
 
   return (
@@ -404,6 +420,16 @@ const ContractsView = ({ contracts, onNew, onEdit, onSign }) => {
           <PageHeader title="Contratos" subtitle={`${contracts.length} deals registrados`} />
         </div>
         <div className="flex items-center gap-4">
+          <div className="relative group">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-600 transition-colors" size={18} />
+            <input 
+              type="text"
+              placeholder="Buscar por contrato o cliente..."
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              className="pl-12 pr-6 py-4 bg-white border border-slate-100 rounded-2xl font-bold text-slate-800 focus:border-blue-600 outline-none transition-all shadow-sm w-80 text-sm"
+            />
+          </div>
           <div className="flex bg-white p-1.5 rounded-2xl border border-slate-100 shadow-sm gap-1">
             {[
               { id: 'all', label: 'Todos' },
@@ -421,13 +447,15 @@ const ContractsView = ({ contracts, onNew, onEdit, onSign }) => {
               </button>
             ))}
           </div>
-          <button 
-            onClick={onNew}
-            className="flex items-center gap-3 bg-blue-600 hover:bg-blue-700 text-white px-8 py-4 rounded-[20px] font-black text-sm uppercase tracking-widest shadow-xl shadow-blue-600/20 transition-all active:scale-95"
-          >
-            <Plus size={18} />
-            Nuevo Contrato
-          </button>
+          {session?.tenantId !== 'c-romel' && (
+            <button 
+              onClick={onNew}
+              className="flex items-center gap-3 bg-blue-600 hover:bg-blue-700 text-white px-8 py-4 rounded-[20px] font-black text-sm uppercase tracking-widest shadow-xl shadow-blue-600/20 transition-all active:scale-95"
+            >
+              <Plus size={18} />
+              Nuevo Contrato
+            </button>
+          )}
         </div>
       </div>
 
@@ -483,6 +511,7 @@ const ContractsView = ({ contracts, onNew, onEdit, onSign }) => {
                   <FileText size={16} />
                 </a>
               )}
+              
               {!CONTRACT_STATUSES.SIGNED.includes((c.status || '').toUpperCase()) && (
                 <button 
                   onClick={() => onSign(c)}
@@ -499,7 +528,7 @@ const ContractsView = ({ contracts, onNew, onEdit, onSign }) => {
   );
 };
 
-const ContractModal = ({ isOpen, onClose, contract, onSave, clients, products }) => {
+const ContractModal = ({ isOpen, onClose, onSave, contract, clients, products, tenantId, onOpenPayment }) => {
   const [activeMode, setActiveMode] = useState('form'); // 'form' or 'import'
   const [formData, setFormData] = useState({
     status: '', product_name: '', total_value: 0, paid_value: 0, client_id: '', deal_name: ''
@@ -522,7 +551,7 @@ const ContractModal = ({ isOpen, onClose, contract, onSave, clients, products })
       setFormData({ ...contract, client_id: client_id || '' });
     }
     else {
-      setFormData({ status: 'Signed', product_name: '', total_value: 0, paid_value: 0, client_id: '', deal_name: '' });
+      setFormData({ status: 'Pending', product_name: '', total_value: 0, paid_value: 0, client_id: '', deal_name: '' });
       setSelectedFile(null);
       setSignature(null);
       setActiveMode('form');
@@ -647,7 +676,26 @@ const ContractModal = ({ isOpen, onClose, contract, onSave, clients, products })
               </div>
             )}
           </div>
-          <button onClick={onClose} className="p-3 bg-white rounded-2xl text-slate-400 hover:text-slate-600 hover:shadow-md transition-all border border-slate-100"><X size={20} /></button>
+          <div className="flex items-center gap-2">
+            {contract && (
+              <div className="flex items-center gap-2">
+                <button 
+                  onClick={() => window.open(`/datacenter-api/backoffice/contracts/${contract.upya_id}/pdf?tenantId=${tenantId}`, '_blank')}
+                  className="p-3 bg-white rounded-2xl text-blue-600 hover:text-blue-800 hover:shadow-md transition-all border border-blue-100 flex items-center gap-2 font-black text-[12px] uppercase tracking-widest"
+                >
+                  <Printer size={20} /> Imprimir
+                </button>
+                
+                <button 
+                  onClick={() => onOpenPayment(contract)}
+                  className="p-3 bg-emerald-600 text-white rounded-2xl hover:bg-emerald-700 hover:shadow-lg transition-all border border-emerald-500 flex items-center gap-2 font-black text-[12px] uppercase tracking-widest"
+                >
+                  <CreditCard size={20} /> Pagar
+                </button>
+              </div>
+            )}
+            <button onClick={onClose} className="p-3 bg-white rounded-2xl text-slate-400 hover:text-slate-600 hover:shadow-md transition-all border border-slate-100"><X size={20} /></button>
+          </div>
         </div>
 
         <div className="flex-1 overflow-y-auto p-10">
@@ -667,7 +715,15 @@ const ContractModal = ({ isOpen, onClose, contract, onSave, clients, products })
                     <div className="space-y-1.5">
                       <label className="text-[11px] font-black uppercase tracking-widest text-slate-400 ml-1">Estado del Contrato</label>
                       <select className="w-full bg-slate-50 border-2 border-slate-100 rounded-xl py-3.5 px-5 font-bold text-slate-800 focus:border-blue-600 outline-none transition-all text-base appearance-none" value={formData.status || ''} onChange={e => setFormData({...formData, status: e.target.value})}>
-                        {['Signed', 'Approved', 'Pending', 'Rejected', 'Locked', 'Enabled', 'Paidoff'].map(s => <option key={s} value={s}>{s}</option>)}
+                        {[
+                          { val: 'Signed', lab: 'Signed' },
+                          { val: 'Approved', lab: 'Approved' },
+                          { val: 'Pending', lab: 'Pending' },
+                          { val: 'Rejected', lab: 'Rejected' },
+                          { val: 'Locked', lab: 'Pendiente (Locked)' },
+                          { val: 'Enabled', lab: 'Enabled' },
+                          { val: 'Paidoff', lab: 'Paidoff' }
+                        ].map(s => <option key={s.val} value={s.val}>{s.lab}</option>)}
                       </select>
                     </div>
                   </div>
@@ -944,7 +1000,7 @@ const FAILED_STATUSES = ['FAILED', 'FALLADO', 'REJECTED', 'CANCELED', 'RECHAZADO
 const UNASSIGNED_STATUSES = ['UNASSIGNED', 'NO ASIGNADO', 'PENDING_ASSIGNMENT', 'PENDIENTE', 'UNASSIGNED_PAYMENT'];
 const FINAL_STATUSES = [...ACCEPTED_STATUSES]; // Solo los aceptados son finales/bloqueados ahora
 
-const PaymentsView = ({ payments, onEdit, onCreate }) => {
+const PaymentsView = ({ payments, onEdit, onCreate, session }) => {
   const [filter, setFilter] = useState('all');
   
   const filtered = payments.filter(p => {
@@ -979,9 +1035,11 @@ const PaymentsView = ({ payments, onEdit, onCreate }) => {
       </div>
 
       <div className="flex justify-end mb-4">
-        <button onClick={onCreate} className="flex items-center gap-2 bg-blue-600 text-white px-8 py-4 rounded-2xl font-black uppercase tracking-widest text-[12px] shadow-lg shadow-blue-600/20 hover:scale-105 transition-all">
-          <Plus size={16} /> Nuevo Pago
-        </button>
+        {session?.tenantId !== 'c-romel' && (
+          <button onClick={onCreate} className="flex items-center gap-2 bg-blue-600 text-white px-8 py-4 rounded-2xl font-black uppercase tracking-widest text-[12px] shadow-lg shadow-blue-600/20 hover:scale-105 transition-all">
+            <Plus size={16} /> Nuevo Pago
+          </button>
+        )}
       </div>
 
       <Table 
@@ -1011,10 +1069,19 @@ const PaymentsView = ({ payments, onEdit, onCreate }) => {
               </div>
             </td>
             <td className="px-8 py-5"><Badge status={p.status} /></td>
-            <td className="px-8 py-5">
+            <td className="px-8 py-5 flex items-center gap-2">
+              <button 
+                onClick={() => window.open(`/datacenter-api/backoffice/payments/${p.id}/pdf?tenantId=${session?.tenantId}`, '_blank')}
+                className="p-3 bg-slate-50 text-blue-600 rounded-xl hover:bg-blue-600 hover:text-white transition-all shadow-sm active:scale-95"
+                title="Imprimir Voucher"
+              >
+                <Printer size={16} />
+              </button>
+              
+              
               <button 
                 onClick={() => onEdit(p)} 
-                className={`p-2 rounded-lg transition-all ${FINAL_STATUSES.includes((p.status || '').toUpperCase()) ? 'text-slate-200 cursor-not-allowed' : 'hover:bg-blue-50 text-slate-300 hover:text-blue-600'}`}
+                className={`p-3 rounded-xl transition-all ${FINAL_STATUSES.includes((p.status || '').toUpperCase()) ? 'bg-slate-50 text-slate-200 cursor-not-allowed' : 'bg-slate-50 text-slate-400 hover:bg-blue-600 hover:text-white shadow-sm active:scale-95'}`}
                 title={FINAL_STATUSES.includes((p.status || '').toUpperCase()) ? 'No se puede editar un pago ya aceptado' : 'Editar pago'}
               >
                 <Settings2 size={16} />
@@ -1027,7 +1094,7 @@ const PaymentsView = ({ payments, onEdit, onCreate }) => {
   );
 };
 
-const PaymentModal = ({ isOpen, onClose, payment, onSave, clients }) => {
+const PaymentModal = ({ isOpen, onClose, payment, onSave, clients, session }) => {
   const [formData, setFormData] = useState({
     amount: 0, method: 'Transferencia', status: 'Pending', contract_id: '', client_id: '',
     payment_date: new Date().toISOString().split('T')[0],
@@ -1068,7 +1135,17 @@ const PaymentModal = ({ isOpen, onClose, payment, onSave, clients }) => {
               <p className="text-slate-400 text-[12px] font-bold uppercase tracking-widest mt-0.5">Gestión de Cobranza & Conciliación</p>
             </div>
           </div>
-          <button onClick={onClose} className="p-3 hover:bg-white rounded-2xl transition-all text-slate-400"><X size={20} /></button>
+          <div className="flex items-center gap-2">
+            {payment?.id && (
+              <button 
+                onClick={() => window.open(`/datacenter-api/backoffice/payments/${payment.id}/pdf?tenantId=${session?.tenantId}`, '_blank')}
+                className="p-3 bg-white rounded-2xl text-blue-600 hover:text-blue-800 hover:shadow-md transition-all border border-blue-100 flex items-center gap-2 font-black text-[12px] uppercase tracking-widest"
+              >
+                <Printer size={20} /> Voucher
+              </button>
+            )}
+            <button onClick={onClose} className="p-3 hover:bg-white rounded-2xl transition-all text-slate-400"><X size={20} /></button>
+          </div>
         </div>
 
         <div className="p-8 overflow-y-auto grid grid-cols-2 gap-10">
@@ -1533,152 +1610,501 @@ const TermsView = ({ deals }) => (
   </div>
 );
 
-const OrganizationView = ({ structure }) => {
-  const [expanded, setExpanded] = useState([]);
-  const [selected, setSelected] = useState(null);
-  
-  const toggle = (id) => setExpanded(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+// --- TRUSTONIC LOGS VIEW ---
+const TrustonicLogsView = ({ data, onSync, syncing }) => {
+  const [filters, setFilters] = useState({ brand: '', model: '', imei1: '' });
 
-  const renderLevel = (parentId = null, level = 0) => {
-    const items = structure.filter(i => i.parent_id === parentId);
-    if (items.length === 0) return null;
+  const columns = [
+    { key: 'brand', label: 'Marca' },
+    { key: 'model', label: 'Modelo' },
+    { key: 'imei1', label: 'IMEI1' },
+    { key: 'registration_date', label: 'Fecha Registro', type: 'date' },
+    { key: 'status', label: 'Status' },
+    { key: 'last_active', label: 'Última Fecha Activo', type: 'date' },
+    { key: 'operation_type', label: 'Última Operación' },
+    { key: 'comment', label: 'Causa | Comentario | Mensaje' }
+  ];
 
+  const formatDate = (dateStr) => {
+    if (!dateStr) return '---';
+    return new Date(dateStr).toLocaleString('es-MX', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
+
+  const filteredData = data.filter(item => {
     return (
-      <div className={`${level > 0 ? 'ml-10 border-l-2 border-slate-100 pl-6 mt-3' : 'space-y-4'}`}>
-        {items.map(item => {
-          const hasChildren = structure.some(i => i.parent_id === item.upya_id);
-          const isExpanded = expanded.includes(item.upya_id);
-          const isSelected = selected?.upya_id === item.upya_id;
-          
-          const icons = {
-            Country: Globe,
-            Organisation: Building2,
-            Branch: MapPin,
-            Shop: Store
-          };
-          const Icon = icons[item.type] || Building2;
-
-          return (
-            <div key={item.upya_id} className="group">
-              <div 
-                onClick={() => {
-                  if (hasChildren) toggle(item.upya_id);
-                  setSelected(item);
-                }}
-                className={`flex items-center gap-4 p-4 rounded-[20px] transition-all cursor-pointer ${
-                  isSelected ? 'bg-blue-50 border-blue-200 border shadow-sm' : 
-                  level === 0 ? 'bg-white shadow-sm border border-slate-100' : 'hover:bg-slate-50'
-                }`}
-              >
-                <div className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all ${
-                  item.type === 'Country' ? 'bg-blue-600 text-white' :
-                  item.type === 'Organisation' ? 'bg-emerald-500 text-white' :
-                  item.type === 'Branch' ? 'bg-blue-500 text-white' : 'bg-slate-200 text-slate-500'
-                }`}>
-                  <Icon size={20} />
-                </div>
-                <div className="flex-1">
-                  <p className="text-[11px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">{item.type}</p>
-                  <p className="text-base font-black text-slate-900 tracking-tight">{item.name}</p>
-                </div>
-                {hasChildren && (
-                  <div className={`p-1.5 rounded-lg transition-all ${isExpanded ? 'text-slate-900 rotate-180' : 'text-slate-300'}`}>
-                    <ChevronDown size={16} />
-                  </div>
-                )}
-              </div>
-              {isExpanded && renderLevel(item.upya_id, level + 1)}
-            </div>
-          );
-        })}
-      </div>
+      (item.brand || '').toLowerCase().includes(filters.brand.toLowerCase()) &&
+      (item.model || '').toLowerCase().includes(filters.model.toLowerCase()) &&
+      (item.imei1 || '').toLowerCase().includes(filters.imei1.toLowerCase())
     );
+  });
+
+  return (
+    <div className="flex flex-col gap-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
+      <PageHeader 
+        title="Auditoría de Dispositivos" 
+        subtitle="Movimientos y operaciones registradas en Trustonic" 
+        action={
+          <button 
+            onClick={onSync} 
+            disabled={syncing} 
+            className="flex items-center gap-3 bg-blue-600 hover:bg-blue-700 text-white px-8 py-4 rounded-[20px] font-black text-sm uppercase tracking-widest shadow-xl shadow-blue-600/20 transition-all active:scale-95 disabled:opacity-50"
+          >
+            <RefreshCw size={18} className={syncing ? 'animate-spin' : ''} />
+            {syncing ? 'Sincronizando...' : 'Sincronizar Movimientos'}
+          </button>
+        } 
+      />
+
+      {/* Barra de Filtros */}
+      <div className="bg-slate-50/50 p-6 rounded-[24px] border border-slate-100 flex flex-wrap gap-6 items-end">
+        <div className="flex-1 min-w-[200px]">
+          <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 px-1">Buscar por Marca</label>
+          <div className="relative">
+            <Search size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+            <input 
+              type="text" 
+              placeholder="Ej: Samsung..." 
+              value={filters.brand}
+              onChange={e => setFilters({...filters, brand: e.target.value})}
+              className="w-full pl-10 pr-4 py-3 bg-white border border-slate-200 rounded-xl text-sm font-bold focus:outline-none focus:border-blue-500 transition-colors"
+            />
+          </div>
+        </div>
+        <div className="flex-1 min-w-[200px]">
+          <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 px-1">Buscar por Modelo</label>
+          <div className="relative">
+            <Search size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+            <input 
+              type="text" 
+              placeholder="Ej: Galaxy A54..." 
+              value={filters.model}
+              onChange={e => setFilters({...filters, model: e.target.value})}
+              className="w-full pl-10 pr-4 py-3 bg-white border border-slate-200 rounded-xl text-sm font-bold focus:outline-none focus:border-blue-500 transition-colors"
+            />
+          </div>
+        </div>
+        <div className="flex-1 min-w-[200px]">
+          <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 px-1">Buscar por IMEI1</label>
+          <div className="relative">
+            <Search size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+            <input 
+              type="text" 
+              placeholder="Ingrese IMEI..." 
+              value={filters.imei1}
+              onChange={e => setFilters({...filters, imei1: e.target.value})}
+              className="w-full pl-10 pr-4 py-3 bg-white border border-slate-200 rounded-xl text-sm font-bold focus:outline-none focus:border-blue-500 transition-colors"
+            />
+          </div>
+        </div>
+        <button 
+          onClick={() => setFilters({ brand: '', model: '', imei1: '' })}
+          className="px-6 py-3 text-[11px] font-black uppercase tracking-widest text-slate-400 hover:text-rose-600 transition-colors"
+        >
+          Limpiar
+        </button>
+      </div>
+
+      <div className="bg-white rounded-[32px] border-2 border-slate-100 shadow-sm overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-left border-collapse">
+            <thead>
+              <tr className="bg-slate-50/50">
+                {columns.map(col => (
+                  <th key={col.key} className="px-6 py-5 text-[11px] font-black uppercase tracking-widest text-slate-400 border-b-2 border-slate-100">
+                    {col.label}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody className="divide-y-2 divide-slate-50">
+              {filteredData.map((row, idx) => (
+                <tr key={idx} className="hover:bg-blue-50/30 transition-colors group">
+                  <td className="px-6 py-5">
+                    <span className="font-bold text-slate-900">{row.brand || '---'}</span>
+                  </td>
+                  <td className="px-6 py-5 text-slate-600 font-medium">{row.model || '---'}</td>
+                  <td className="px-6 py-5 font-mono text-[13px] text-blue-600 font-bold">{row.imei1}</td>
+                  <td className="px-6 py-5 text-slate-500 text-sm">{formatDate(row.registration_date)}</td>
+                  <td className="px-6 py-5">
+                    <span className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-tighter ${
+                      row.status === 'Activo' ? 'bg-emerald-100 text-emerald-700' : 
+                      row.status === 'Bloqueado' ? 'bg-rose-100 text-rose-700' : 'bg-slate-100 text-slate-600'
+                    }`}>
+                      {row.status}
+                    </span>
+                  </td>
+                  <td className="px-6 py-5 text-slate-500 text-sm">{formatDate(row.last_active)}</td>
+                  <td className="px-6 py-5">
+                    <div className="flex items-center gap-2">
+                      <div className="w-2 h-2 rounded-full bg-blue-500" />
+                      <span className="text-slate-900 font-bold text-sm">{row.operation_type}</span>
+                    </div>
+                  </td>
+                  <td className="px-6 py-5 text-slate-500 italic text-sm">{row.comment}</td>
+                </tr>
+              ))}
+              {filteredData.length === 0 && (
+                <tr>
+                  <td colSpan={columns.length} className="px-6 py-20 text-center text-slate-400 font-medium italic">
+                    {data.length === 0 ? 'No se han registrado movimientos todavía.' : 'No se encontraron resultados para los filtros aplicados.'}
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const UsersView = ({ users, structure, session, refreshData }) => {
+  const [modalOpen, setModalOpen] = useState(false);
+  const [editingUser, setEditingUser] = useState(null);
+
+  const handleSave = async (e) => {
+    e.preventDefault();
+    const fd = new FormData(e.target);
+    const payload = Object.fromEntries(fd.entries());
+    payload.tenantId = session.tenantId;
+
+    try {
+      if (editingUser?.id) {
+        await axios.put(`${API}/backoffice/users/${editingUser.id}`, payload);
+      } else {
+        await axios.post(`${API}/backoffice/users`, payload);
+      }
+      setModalOpen(false);
+      refreshData();
+    } catch (err) {
+      alert('Error guardando usuario: ' + (err.response?.data?.error || err.message));
+    }
+  };
+
+  const handleDelete = async (id, name) => {
+    if(!confirm(`¿Seguro que deseas eliminar al usuario ${name}?`)) return;
+    try {
+      await axios.delete(`${API}/backoffice/users/${id}?tenantId=${session.tenantId}`);
+      refreshData();
+    } catch (err) {
+      alert('Error eliminando usuario: ' + (err.response?.data?.error || err.message));
+    }
   };
 
   return (
-    <div className="space-y-10">
-      <PageHeader title="Estructura Organizacional" subtitle="Jerarquía de operaciones y puntos de venta sincronizada con Upya" />
-      
-      <div className="flex gap-10 items-start">
-        {/* Tree Sidebar */}
-        <div className="flex-1 max-w-2xl">
-          <div className="bg-slate-100/50 p-6 rounded-[32px] border border-slate-200/50">
-            {renderLevel(null)}
-          </div>
-        </div>
+    <div className="space-y-8 pb-20">
+      <PageHeader 
+        title="Gestión de Usuarios" 
+        subtitle="Administra los accesos y asigna usuarios a la estructura organizacional"
+        action={
+          <button onClick={() => { setEditingUser(null); setModalOpen(true); }} className="bg-blue-600 text-white px-6 py-3 rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl shadow-blue-600/30 hover:scale-105 transition-all flex items-center gap-2">
+            <Plus size={16} /> Nuevo Usuario
+          </button>
+        }
+      />
 
-        {/* Info Panel */}
-        <div className="w-96 sticky top-8">
-          <AnimatePresence mode="wait">
-            {selected ? (
-              <motion.div 
-                key={selected.upya_id}
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                className="bg-white rounded-[32px] border border-slate-100 shadow-xl overflow-hidden"
-              >
-                <div className={`p-8 ${
-                  selected.type === 'Country' ? 'bg-blue-600' :
-                  selected.type === 'Organisation' ? 'bg-emerald-600' :
-                  selected.type === 'Branch' ? 'bg-blue-600' : 'bg-slate-700'
-                } text-white`}>
-                  <p className="text-[12px] font-black uppercase tracking-[0.2em] opacity-60 mb-2">{selected.type}</p>
-                  <h4 className="text-2xl font-black tracking-tighter leading-tight">{selected.name}</h4>
+      <div className="bg-white rounded-[40px] shadow-sm border border-slate-100 overflow-hidden">
+        <table className="w-full text-left border-collapse">
+          <thead>
+            <tr className="bg-slate-50/80 border-b border-slate-100">
+              <th className="py-5 px-6 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Contacto</th>
+              <th className="py-5 px-6 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Usuario</th>
+              <th className="py-5 px-6 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Nodo Asignado</th>
+              <th className="py-5 px-6 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Rol de Nodo</th>
+              <th className="py-5 px-6 text-right"></th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-50">
+            {users.map(u => (
+              <tr key={u.id} className="hover:bg-slate-50/50 transition-colors">
+                <td className="py-5 px-6">
+                  <p className="font-bold text-slate-700 text-sm">{u.contact_name}</p>
+                  <p className="text-xs text-slate-400 font-medium">{u.email}</p>
+                </td>
+                <td className="py-5 px-6">
+                  <p className="font-mono text-blue-600 font-bold text-xs">{u.username || 'N/A'}</p>
+                </td>
+                <td className="py-5 px-6">
+                  {u.org_name ? (
+                    <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-blue-50 text-blue-700 font-bold text-xs">
+                      <Store size={14} /> {u.org_name}
+                    </div>
+                  ) : <span className="text-slate-300 font-bold text-xs italic">Sin Asignar</span>}
+                </td>
+                <td className="py-5 px-6">
+                  <span className={`text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded-lg ${u.scope_role === 'MANAGER' ? 'bg-indigo-100 text-indigo-700' : 'bg-slate-100 text-slate-600'}`}>
+                    {u.scope_role || 'N/A'}
+                  </span>
+                </td>
+                <td className="py-5 px-6 text-right space-x-2">
+                  <button onClick={() => { setEditingUser(u); setModalOpen(true); }} className="p-2 hover:bg-blue-50 hover:text-blue-600 rounded-xl text-slate-400 transition-all"><Edit size={16}/></button>
+                </td>
+              </tr>
+            ))}
+            {users.length === 0 && (
+              <tr><td colSpan="5" className="py-12 text-center text-slate-400 font-bold text-sm">No hay usuarios registrados</td></tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      <AnimatePresence>
+        {modalOpen && (
+          <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+            <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className="bg-white rounded-[40px] w-full max-w-lg shadow-2xl overflow-hidden max-h-[90vh] flex flex-col">
+              <div className="p-8 border-b border-slate-100 flex items-center justify-between shrink-0">
+                <div>
+                  <h3 className="text-2xl font-black tracking-tight text-slate-900">Asignar Rol de Usuario</h3>
+                  <p className="text-slate-400 font-bold text-xs mt-1">Configura el acceso de {editingUser?.contact_name || 'este usuario'}</p>
                 </div>
-                
-                <div className="p-8 space-y-6">
-                  <div className="space-y-4">
-                    <p className="text-[12px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-50 pb-2">Identificación</p>
+                <button onClick={() => setModalOpen(false)} className="w-10 h-10 bg-slate-50 text-slate-400 rounded-2xl flex items-center justify-center hover:bg-slate-100 hover:text-slate-700 transition-colors"><X size={20} /></button>
+              </div>
+              <form onSubmit={handleSave} className="p-8 space-y-6 overflow-y-auto">
+                <div className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-2">Nombre Completo</label>
+                      <input name="contact_name" required defaultValue={editingUser?.contact_name || ''} className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl py-3 px-5 mt-1 font-bold outline-none focus:border-blue-600 transition-all" />
+                    </div>
+                    <div>
+                      <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-2">Email</label>
+                      <input name="email" type="email" defaultValue={editingUser?.email || ''} className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl py-3 px-5 mt-1 font-bold outline-none focus:border-blue-600 transition-all" />
+                    </div>
+                    <div className="col-span-2">
+                      <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-2">Usuario</label>
+                      <input name="username" required defaultValue={editingUser?.username || ''} className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl py-3 px-5 mt-1 font-bold outline-none focus:border-blue-600 transition-all" />
+                    </div>
+                  </div>
+                  
+                  <div className="pt-4 border-t border-slate-100 space-y-4">
+                    <h4 className="text-xs font-black uppercase tracking-widest text-slate-800">Asignación de Rol Organizacional</h4>
                     <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <p className="text-[11px] font-black text-slate-400 uppercase tracking-widest">System ID</p>
-                        <p className="text-sm font-mono font-bold text-slate-800">{selected.entity_number || 'N/A'}</p>
+                        <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-2">Nodo Asignado (Tienda/Sucursal)</label>
+                        <select name="org_id" defaultValue={editingUser?.org_id || ''} className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl py-3 px-5 mt-1 font-bold outline-none focus:border-blue-600 transition-all">
+                          <option value="">-- Sin Asignar --</option>
+                          {structure.map(s => (
+                            <option key={s.id} value={s.id}>{s.name} ({s.type})</option>
+                          ))}
+                        </select>
                       </div>
                       <div>
-                        <p className="text-[11px] font-black text-slate-400 uppercase tracking-widest">External ID</p>
-                        <p className="text-sm font-mono font-bold text-slate-800">{selected.external_id || 'N/A'}</p>
+                        <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-2">Nivel de Acceso (Rol)</label>
+                        <select name="scope_role" defaultValue={editingUser?.scope_role || 'STAFF'} className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl py-3 px-5 mt-1 font-bold outline-none focus:border-blue-600 transition-all">
+                          <option value="STAFF">Vendedor / Staff</option>
+                          <option value="MANAGER">Gerente / Manager</option>
+                        </select>
                       </div>
-                    </div>
-                  </div>
-
-                  <div className="space-y-4">
-                    <p className="text-[12px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-50 pb-2">Información Legal</p>
-                    <div className="space-y-3">
-                      <div>
-                        <p className="text-[11px] font-black text-slate-400 uppercase tracking-widest">Administrador</p>
-                        <p className="text-sm font-bold text-slate-800">{selected.administrator || 'No asignado'}</p>
-                      </div>
-                      <div className="flex items-center gap-3">
-                        <div className="p-2 bg-slate-50 rounded-lg text-slate-400"><Mail size={14} /></div>
-                        <p className="text-sm font-bold text-slate-600">{selected.email || 'Sin correo'}</p>
-                      </div>
-                      <div className="flex items-center gap-3">
-                        <div className="p-2 bg-slate-50 rounded-lg text-slate-400"><Smartphone size={14} /></div>
-                        <p className="text-sm font-bold text-slate-600">{selected.mobile || 'Sin teléfono'}</p>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="space-y-4">
-                    <p className="text-[12px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-50 pb-2">Ubicación</p>
-                    <div className="flex gap-3">
-                      <div className="p-2 bg-slate-50 rounded-lg text-slate-400 shrink-0"><MapPin size={14} /></div>
-                      <p className="text-sm font-bold text-slate-600 leading-relaxed">{selected.address || 'Sin dirección registrada'}</p>
                     </div>
                   </div>
                 </div>
-              </motion.div>
-            ) : (
-              <div className="bg-slate-50 rounded-[32px] border-2 border-dashed border-slate-200 p-12 text-center">
-                <div className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center text-slate-200 mx-auto mb-4 border border-slate-100">
-                  <Database size={24} />
-                </div>
-                <p className="text-sm font-black text-slate-400 uppercase tracking-widest">Selecciona una entidad para ver detalles</p>
-              </div>
-            )}
-          </AnimatePresence>
+                <button type="submit" className="w-full bg-blue-600 text-white font-black text-sm uppercase tracking-widest py-4 rounded-2xl shadow-lg shadow-blue-600/30 hover:bg-blue-700 transition-all shrink-0">
+                  Guardar Usuario
+                </button>
+              </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+};
+
+const OrgTreeNode = ({ node, items, level = 0, onEdit, onDelete }) => {
+  const children = items.filter(item => item.parent_id === node.id);
+  const [isExpanded, setIsExpanded] = useState(level < 1);
+  const hasChildren = children.length > 0;
+
+  const icons = { COUNTRY: Globe, REGION: MapPin, BRANCH: Building2, SHOP: Store, UNIT: Users };
+  const Icon = icons[node.type] || Building2;
+  
+  const colors = {
+    COUNTRY: 'text-blue-600',
+    REGION: 'text-indigo-600',
+    BRANCH: 'text-emerald-600',
+    SHOP: 'text-amber-600',
+    UNIT: 'text-slate-600'
+  };
+  const color = colors[node.type] || 'text-slate-400';
+
+  return (
+    <div className="space-y-2">
+      <div 
+        className={`flex items-center gap-4 p-4 rounded-[28px] border transition-all ${isExpanded ? 'bg-white border-slate-200 shadow-sm' : 'bg-slate-50/50 border-transparent hover:bg-white hover:border-slate-100'}`}
+        style={{ marginLeft: `${level * 24}px` }}
+      >
+        <button 
+          onClick={() => setIsExpanded(!isExpanded)}
+          className={`p-1.5 rounded-lg transition-all ${hasChildren ? 'hover:bg-slate-100' : 'opacity-0 cursor-default'}`}
+        >
+          {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+        </button>
+        
+        <div className={`w-9 h-9 rounded-xl flex items-center justify-center bg-white shadow-sm border border-slate-100 ${color}`}>
+          <Icon size={18} />
+        </div>
+
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 overflow-hidden">
+            <h4 className="font-black text-slate-800 text-sm tracking-tight leading-none truncate">{node.name}</h4>
+            <span className={`text-[8px] font-black uppercase tracking-[0.15em] px-1.5 py-0.5 rounded-md bg-slate-100 text-slate-400 shrink-0`}>
+              {node.type}
+            </span>
+          </div>
+          <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-1 truncate">
+            {node.administrator || 'Sin Responsable'} • {node.upya_id}
+          </p>
+        </div>
+
+        <div className="flex items-center gap-4 pr-2">
+          <div className="text-right shrink-0">
+            <p className="text-[8px] font-black uppercase tracking-widest text-slate-300">Hijos</p>
+            <p className="text-[11px] font-black text-slate-700 leading-none mt-0.5">{children.length}</p>
+          </div>
+          <button onClick={() => onEdit(node)} className="p-2 hover:bg-blue-50 hover:text-blue-600 rounded-xl text-slate-400 transition-all"><Edit size={14} /></button>
+          <button onClick={() => { if(confirm(`¿Eliminar el nodo ${node.name}? Los nodos hijos quedarán sin padre.`)) onDelete(node.id); }} className="p-2 hover:bg-red-50 hover:text-red-600 rounded-xl text-slate-400 transition-all"><Trash2 size={14} /></button>
         </div>
       </div>
+
+      <AnimatePresence>
+        {isExpanded && hasChildren && (
+          <motion.div 
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            className="overflow-hidden"
+          >
+            {children.map(child => (
+              <OrgTreeNode key={child.id} node={child} items={items} level={level + 1} onEdit={onEdit} onDelete={onDelete} />
+            ))}
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+};
+
+const OrganizationView = ({ structure, session, refreshData }) => {
+  const [modalOpen, setModalOpen] = useState(false);
+  const [editingNode, setEditingNode] = useState(null);
+  
+  const rootNodes = (structure || []).filter(item => !item.parent_id);
+
+  const handleSave = async (e) => {
+    e.preventDefault();
+    const fd = new FormData(e.target);
+    const payload = Object.fromEntries(fd.entries());
+    payload.tenantId = session.tenantId;
+
+    try {
+      if (editingNode?.id) {
+        await axios.put(`${API}/backoffice/org-structure/${editingNode.id}`, payload);
+      } else {
+        await axios.post(`${API}/backoffice/org-structure`, payload);
+      }
+      setModalOpen(false);
+      refreshData();
+    } catch (err) {
+      alert('Error guardando el nodo: ' + (err.response?.data?.error || err.message));
+    }
+  };
+
+  const handleDelete = async (id) => {
+    try {
+      await axios.delete(`${API}/backoffice/org-structure/${id}?tenantId=${session.tenantId}`);
+      refreshData();
+    } catch (err) {
+      alert('Error eliminando el nodo: ' + (err.response?.data?.error || err.message));
+    }
+  };
+
+  return (
+    <div className="space-y-10 pb-20">
+      <PageHeader 
+        title="Jerarquía Organizacional" 
+        subtitle="Visualización y gestión del árbol operativo"
+        action={
+          <button onClick={() => { setEditingNode(null); setModalOpen(true); }} className="bg-blue-600 text-white px-6 py-3 rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl shadow-blue-600/30 hover:scale-105 transition-all flex items-center gap-2">
+            <Plus size={16} /> Nuevo Nodo
+          </button>
+        }
+      />
+
+      <div className="bg-slate-100/50 rounded-[48px] p-8 border border-slate-200/30 space-y-3">
+        {rootNodes.length === 0 ? (
+          <div className="py-20 text-center space-y-4">
+            <div className="w-16 h-16 bg-slate-50 rounded-[28px] flex items-center justify-center mx-auto text-slate-200">
+              <Building2 size={32} />
+            </div>
+            <div>
+              <p className="text-slate-400 font-black uppercase tracking-[0.2em] text-xs">Sin Estructura Detectada</p>
+              <p className="text-slate-300 font-bold text-[10px] mt-1">Crea un nodo o ejecuta la sincronización</p>
+            </div>
+          </div>
+        ) : (
+          rootNodes.map(node => (
+            <OrgTreeNode key={node.id} node={node} items={structure} onEdit={(n) => { setEditingNode(n); setModalOpen(true); }} onDelete={handleDelete} />
+          ))
+        )}
+      </div>
+
+      <AnimatePresence>
+        {modalOpen && (
+          <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+            <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className="bg-white rounded-[40px] w-full max-w-lg shadow-2xl overflow-hidden max-h-[90vh] flex flex-col">
+              <div className="p-8 border-b border-slate-100 flex items-center justify-between shrink-0">
+                <div>
+                  <h3 className="text-2xl font-black tracking-tight text-slate-900">{editingNode ? 'Editar Nodo' : 'Nuevo Nodo'}</h3>
+                  <p className="text-slate-400 font-bold text-xs mt-1">Configuración de jerarquía y propiedades</p>
+                </div>
+                <button onClick={() => setModalOpen(false)} className="w-10 h-10 bg-slate-50 text-slate-400 rounded-2xl flex items-center justify-center hover:bg-slate-100 hover:text-slate-700 transition-colors"><X size={20} /></button>
+              </div>
+              <form onSubmit={handleSave} className="p-8 space-y-6 overflow-y-auto">
+                <div className="space-y-4">
+                  <div>
+                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-2">Nombre del Nodo</label>
+                    <input name="name" required defaultValue={editingNode?.name || ''} className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl py-3 px-5 mt-1 font-bold outline-none focus:border-blue-600 transition-all" />
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-2">Tipo</label>
+                      <select name="type" required defaultValue={editingNode?.type || 'BRANCH'} className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl py-3 px-5 mt-1 font-bold outline-none focus:border-blue-600 transition-all">
+                        <option value="COUNTRY">Country / País</option>
+                        <option value="REGION">Region</option>
+                        <option value="BRANCH">Branch / Sucursal</option>
+                        <option value="SHOP">Shop / Tienda</option>
+                        <option value="UNIT">Unit / Agente</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-2">Nodo Padre</label>
+                      <select name="parent_id" defaultValue={editingNode?.parent_id || ''} className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl py-3 px-5 mt-1 font-bold outline-none focus:border-blue-600 transition-all">
+                        <option value="">-- Ninguno (Raíz) --</option>
+                        {structure.filter(s => s.id !== editingNode?.id).map(s => (
+                          <option key={s.id} value={s.id}>{s.name} ({s.type})</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-2">Administrador</label>
+                    <input name="administrator" defaultValue={editingNode?.administrator || ''} className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl py-3 px-5 mt-1 font-bold outline-none focus:border-blue-600 transition-all" />
+                  </div>
+                </div>
+                <button type="submit" className="w-full bg-blue-600 text-white font-black text-sm uppercase tracking-widest py-4 rounded-2xl shadow-lg shadow-blue-600/30 hover:bg-blue-700 transition-all shrink-0">
+                  Guardar Nodo
+                </button>
+              </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };
@@ -2090,12 +2516,21 @@ const PlaceholderView = ({ title, subtitle }) => (
 // --- APP PRINCIPAL ---
 const App = () => {
   const [session, setSession] = useState(() => { try { return JSON.parse(localStorage.getItem('bantos_session')); } catch { return null; } });
-  const [view, setView] = useState('manage-dashboard');
+  const [activeScope, setActiveScope] = useState(session?.scope || null);
+  const [view, setView] = useState(() => {
+    try {
+      const savedSession = JSON.parse(localStorage.getItem('bantos_session'));
+      return (savedSession?.tenantId === 'c-romel' || savedSession?.tenantId === 'C-ROMEL') ? 'manage-contracts' : 'manage-dashboard';
+    } catch {
+      return 'manage-dashboard';
+    }
+  });
   const [expandedMenus, setExpandedMenus] = useState(['setup', 'records']);
   const [summary, setSummary] = useState({ totalClients: 0, totalContracts: 0, totalInventory: 0, totalProducts: 0, totalDataCollections: 0, totalPaid: 0 });
-  const [data, setData] = useState({ clients: [], contracts: [], inventory: [], payments: [], products: [], paymentPlans: [], orgStructure: [], actions: [], audit: [], dataCollections: [], trustonic: { devices: [], summary: [] } });
+  const [data, setData] = useState({ clients: [], contracts: [], inventory: [], payments: [], products: [], paymentPlans: [], orgStructure: [], actions: [], audit: [], dataCollections: [], trustonic: { devices: [], summary: [] }, trustonicLogs: [], users: [] });
   const [syncing, setSyncing] = useState(false);
   const [syncingTrustonic, setSyncingTrustonic] = useState(false);
+  const [syncingTrustonicLogs, setSyncingTrustonicLogs] = useState(false);
   const [modalState, setModalState] = useState({ type: null, open: false, item: null });
   const [actionFormState, setActionFormState] = useState({ open: false, actionType: null, prefillData: null });
   const [isRegistering, setIsRegistering] = useState(false);
@@ -2104,8 +2539,16 @@ const App = () => {
     const tenantId = session?.tenantId;
     if (!tenantId) return;
     try {
-      const config = { params: { tenantId } };
-      const [sumRes, cliRes, conRes, invRes, payRes, proRes, ppRes, orgRes, actRes, dcRes, audRes, truRes] = await Promise.allSettled([
+      const config = { 
+        params: { 
+          tenantId,
+          userId: session?.id,
+          role: session?.role,
+          orgId: activeScope?.orgId,
+          scopeRole: activeScope?.role
+        } 
+      };
+      const [sumRes, cliRes, conRes, invRes, payRes, proRes, ppRes, orgRes, actRes, dcRes, audRes, truRes, truLogRes, usrRes] = await Promise.allSettled([
         axios.get(`${API}/backoffice/summary`, config),
         axios.get(`${API}/backoffice/clients`, config),
         axios.get(`${API}/backoffice/contracts`, config),
@@ -2118,6 +2561,8 @@ const App = () => {
         axios.get(`${API}/backoffice/data-collections`, config),
         axios.get(`${API}/backoffice/audit`, config),
         axios.get(`${API}/backoffice/trustonic-devices`, config),
+        axios.get(`${API}/backoffice/trustonic-logs`, config),
+        axios.get(`${API}/backoffice/users`, config)
       ]);
       if (sumRes.status === 'fulfilled') setSummary(sumRes.value.data);
       setData({
@@ -2132,9 +2577,11 @@ const App = () => {
         dataCollections: dcRes.status === 'fulfilled' ? dcRes.value.data : [],
         audit: audRes.status === 'fulfilled' ? audRes.value.data : [],
         trustonic: truRes.status === 'fulfilled' ? truRes.value.data : { devices: [], summary: [] },
+        trustonicLogs: truLogRes && truLogRes.status === 'fulfilled' ? truLogRes.value.data : [],
+        users: usrRes.status === 'fulfilled' ? usrRes.value.data : [],
       });
     } catch (e) { console.error(e); }
-  }, [session]);
+  }, [session, activeScope]);
 
   useEffect(() => { refreshData(); }, [view, refreshData]);
 
@@ -2171,16 +2618,40 @@ const App = () => {
     } finally { setSyncingTrustonic(false); }
   };
 
+  const handleSyncTrustonicLogs = async () => {
+    setSyncingTrustonicLogs(true);
+    try {
+      const res = await axios.post(`${API}/sync/trustonic-logs`, { tenantId: session.tenantId });
+      if (res.data.success) {
+        await refreshData();
+        alert(`✅ Auditoría actualizada (${res.data.source})\n• Equipos procesados: ${res.data.count}`);
+      } else {
+        alert(`⚠️ Sincronización parcial\n${res.data.message}`);
+      }
+    } catch (e) { 
+      alert('Error: ' + (e.response?.data?.error || e.message)); 
+    } finally { setSyncingTrustonicLogs(false); }
+  };
+
   const handleSavePayment = async (paymentData) => {
     try {
       const payload = { ...paymentData, tenantId: session.tenantId };
-      if (modalState.item) {
-        await axios.put(`${API}/backoffice/payments/${modalState.item.upya_id}`, payload);
+      let savedItem = paymentData;
+      
+      if (modalState.item && modalState.item.id) {
+        await axios.put(`${API}/backoffice/payments/${modalState.item.id}`, payload);
       } else {
-        await axios.post(`${API}/backoffice/payments`, payload);
+        const res = await axios.post(`${API}/backoffice/payments`, payload);
+        if (res.data && res.data.id) {
+          savedItem = { ...paymentData, id: res.data.id };
+        }
       }
-      setModalState({ type: null, open: false, item: null });
+      
+      // Actualizamos el modal con el item guardado (que ahora tiene ID)
+      setModalState(prev => ({ ...prev, item: savedItem }));
       refreshData();
+      
+      console.log('Pago guardado exitosamente:', savedItem);
     } catch (e) {
       alert(e.response?.data?.error || 'Error al guardar el pago');
     }
@@ -2297,6 +2768,28 @@ const App = () => {
     setModalState({ type: 'contract', open: true, item: null });
   };
 
+  const handleOpenPaymentForContract = (contract) => {
+    // 1. Calcular fechas recurrentes (día del mes actual para los siguientes 3 meses)
+    const today = new Date();
+    const day = today.getDate().toString().padStart(2, '0');
+    
+    // Si el nombre del deal tiene "mes", habilitamos recurrencia
+    const isRecurring = (contract.deal_name || '').toLowerCase().includes('mes');
+    
+    const prefillPayment = {
+      amount: contract.upfront_payment || 0,
+      method: 'Transferencia',
+      status: 'Pending',
+      contract_id: contract.contract_number || '',
+      client_id: contract.client_id || '',
+      payment_date: new Date().toISOString().split('T')[0],
+      is_recurring: isRecurring,
+      recurring_dates: isRecurring ? [day] : []
+    };
+
+    setModalState({ type: 'payment', open: true, item: prefillPayment });
+  };
+
   if (!session) return (
     <div className="min-h-screen bg-slate-950 flex items-center justify-center p-8">
       <div className="w-full max-w-[440px] bg-white rounded-[48px] p-10 shadow-2xl text-center">
@@ -2383,6 +2876,7 @@ const App = () => {
         { id: 'manage-contracts', label: 'Contratos', icon: FileText },
         { id: 'manage-inventory', label: 'Inventario', icon: Box },
         { id: 'manage-trustonic', label: 'Dispositivos', icon: Smartphone },
+        // { id: 'manage-trustonic-logs', label: 'Movimientos', icon: Activity },
         { id: 'record-comms', label: 'Comunicaciones', icon: MessageSquare },
         { id: 'manage-payments', label: 'Pagos', icon: CreditCard },
       ]},
@@ -2391,12 +2885,63 @@ const App = () => {
     { section: 'Estructura', items: [ { id: 'setup-system', label: 'Sincronización', icon: RefreshCw }, { id: 'setup-messaging', label: 'Mensajería', icon: Mail }, { id: 'setup-config', label: 'Sistema', icon: Settings2 } ]},
   ];
 
+  const filteredNavItems = (session?.tenantId === 'c-romel' || session?.tenantId === 'C-ROMEL')
+    ? [
+        { section: 'Operación', items: [
+          { id: 'record-actions', label: 'Acciones', icon: Zap },
+          { id: 'manage-contracts', label: 'Contratos', icon: FileText },
+          { id: 'manage-payments', label: 'Pagos', icon: CreditCard },
+          // { id: 'manage-trustonic-logs', label: 'Movimientos', icon: Activity },
+        ]},
+        { section: 'Estructura', items: [
+          { id: 'setup-system', label: 'Sincronización', icon: RefreshCw },
+          { id: 'setup-org', label: 'Organización', icon: Building2 },
+          { id: 'setup-users', label: 'Usuarios', icon: Users },
+        ]}
+      ]
+    : navItems;
+
   return (
     <div className="flex min-h-screen bg-slate-50 font-sans text-slate-800">
       <aside className="w-72 bg-white border-r border-slate-100 flex flex-col p-8 shrink-0">
         <div className="flex items-center gap-3 mb-10"><div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center text-white shadow-lg shadow-blue-600/30"><ShieldCheck size={22} /></div><div className="leading-none"><p className="font-black text-slate-900 text-base tracking-tight">Bantos</p><p className="text-blue-600 font-black text-[12px] uppercase tracking-widest">Data Center</p></div></div>
+        
+        {/* Context Selector for Hierarchy */}
+        {session && (session.role === 'admin' || session.scope?.role === 'MANAGER') && (
+          <div className="mb-10 p-5 bg-slate-50 rounded-[28px] border border-slate-100/50">
+            <div className="flex items-center gap-2 mb-3">
+              <Building2 size={14} className="text-blue-600" />
+              <p className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-400">Contexto Operativo</p>
+            </div>
+            <select 
+              className="w-full bg-white border-2 border-slate-100 rounded-2xl py-2.5 px-4 text-xs font-bold text-slate-700 outline-none focus:border-blue-600 transition-all cursor-pointer shadow-sm"
+              value={activeScope?.orgId || ''}
+              onChange={(e) => {
+                const id = e.target.value;
+                if (!id) setActiveScope(session.role === 'admin' ? null : session.scope);
+                else {
+                  const org = data.orgStructure.find(o => o.id == id);
+                  setActiveScope({ orgId: org.id, orgName: org.name, orgType: org.type, role: 'MANAGER' });
+                }
+              }}
+            >
+              {session.role === 'admin' && <option value="">Global / Central</option>}
+              {data.orgStructure.map(o => (
+                <option key={o.id} value={o.id}>
+                  {o.type === 'COUNTRY' ? '🌎 ' : o.type === 'BRANCH' ? '🏢 ' : '🛒 '} {o.name}
+                </option>
+              ))}
+            </select>
+            {activeScope && (
+              <div className="mt-3 flex items-center gap-2 px-1">
+                <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></div>
+                <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">Filtrado por: {activeScope.orgType}</p>
+              </div>
+            )}
+          </div>
+        )}
         <nav className="flex-1 space-y-6 overflow-y-auto">
-          {navItems.map(({ section, items }) => (
+          {filteredNavItems.map(({ section, items }) => (
             <div key={section}>
               <p className="text-[12px] font-black uppercase tracking-[0.18em] text-slate-300 px-4 mb-3">{section}</p>
               <div className="space-y-0.5">{items.map(({ id, label, icon: Icon, children }) => (
@@ -2419,10 +2964,32 @@ const App = () => {
         </nav>
       </aside>
 
-      <main className="flex-1 overflow-y-auto p-12">
+      <main className="flex-1 flex flex-col h-screen overflow-hidden bg-slate-50">
+        <header className="flex justify-end items-center px-12 py-4 shrink-0 bg-white border-b border-slate-100 z-10">
+          <div className="bg-blue-50 px-6 py-3 rounded-2xl border border-blue-100 flex items-center gap-3">
+            <ShieldCheck size={20} className="text-blue-600" />
+            <div>
+              <p className="text-[10px] font-black text-blue-400 uppercase tracking-widest leading-none mb-1">{session?.email || 'Usuario Activo'}</p>
+              <p className="text-sm font-black text-blue-700 leading-none">Tenant: {session?.tenantId || '—'}</p>
+            </div>
+          </div>
+        </header>
+        <div className="flex-1 overflow-y-auto px-12 pb-12 pt-8">
         <AnimatePresence mode="wait">
           <motion.div key={view} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -12 }} transition={{ duration: 0.18 }}>
-            {view === 'manage-dashboard' && <DashboardView summary={summary} session={session} />}
+            {view === 'manage-dashboard' && (
+              (session?.tenantId === 'c-romel' || session?.tenantId === 'C-ROMEL') ? (
+                <ContractsView 
+                  contracts={data.contracts} 
+                  onNew={handleNewContract}
+                  onEdit={(c) => setModalState({ type: 'contract', open: true, item: c })} 
+                  onSign={(c) => setModalState({ type: 'signature', open: true, item: c })}
+                  session={session}
+                />
+              ) : (
+                <DashboardView summary={summary} session={session} />
+              )
+            )}
             {view === 'manage-clients' && <ClientsView clients={data.clients} onEdit={(c) => setModalState({ type: 'client', open: true, item: c })} />}
             {view === 'manage-contracts' && (
               <ContractsView 
@@ -2430,6 +2997,7 @@ const App = () => {
                 onNew={handleNewContract}
                 onEdit={(c) => setModalState({ type: 'contract', open: true, item: c })} 
                 onSign={(c) => setModalState({ type: 'signature', open: true, item: c })}
+                session={session}
               />
             )}
             {view === 'manage-inventory' && <InventoryView inventory={data.inventory} />}
@@ -2442,12 +3010,20 @@ const App = () => {
                 onCreate={() => setModalState({ type: 'trustonic-device', open: true, item: null })}
               />
             )}
+            {view === 'manage-trustonic-logs' && (
+              <TrustonicLogsView 
+                data={data.trustonicLogs} 
+                onSync={handleSyncTrustonicLogs} 
+                syncing={syncingTrustonicLogs} 
+              />
+            )}
             {view === 'manage-audit' && <AuditView audit={data.audit} />}
             {view === 'setup-system' && <SyncView onSync={handleSync} loading={syncing} />}
             {view === 'setup-products' && <ProductsView products={data.products} onEdit={(p) => setModalState({ type: 'product', open: true, item: p })} onCreate={() => setModalState({ type: 'product', open: true, item: null })} />}
             {view === 'setup-data-collection' && <DataCollectionView collections={data.dataCollections} onEdit={(c) => setModalState({ type: 'collection', open: true, item: c })} onCreate={() => setModalState({ type: 'collection', open: true, item: null })} />}
             {view === 'setup-terms' && <TermsView deals={data.paymentPlans} />}
-            {view === 'setup-org' && <OrganizationView structure={data.orgStructure} />}
+            {view === 'setup-org' && <OrganizationView structure={data.orgStructure} session={session} refreshData={refreshData} />}
+            {view === 'setup-users' && <UsersView users={data.users} structure={data.orgStructure} session={session} refreshData={refreshData} />}
             
             {/* Navigational state for Actions Form vs List */}
             {view === 'record-actions' && !actionFormState.open && (
@@ -2457,10 +3033,10 @@ const App = () => {
                 <ActionFormView actionType={actionFormState.actionType} prefillData={actionFormState.prefillData} deals={data.paymentPlans} products={data.products} onBack={() => setActionFormState({ open: false, actionType: null, prefillData: null })} />
               )}
 
-            {view === 'manage-payments' && <PaymentsView payments={data.payments} onEdit={(p) => setModalState({ type: 'payment', open: true, item: p })} onCreate={() => setModalState({ type: 'payment', open: true, item: null })} />}
+            {view === 'manage-payments' && <PaymentsView payments={data.payments} onEdit={(p) => setModalState({ type: 'payment', open: true, item: p })} onCreate={() => setModalState({ type: 'payment', open: true, item: null })} session={session} />}
             
             {/* Fallbacks */}
-            {['setup-templates', 'setup-users', 'record-todos', 'record-comms'].includes(view) && (
+            {['setup-templates', 'record-todos', 'record-comms'].includes(view) && (
               <PlaceholderView 
                 title={navItems.flatMap(n => n.items).flatMap(i => [i, ...(i.children || [])]).find(x => x.id === view)?.label || 'Módulo'} 
                 subtitle="Funcionalidad programada para la siguiente fase" 
@@ -2468,16 +3044,18 @@ const App = () => {
             )}
           </motion.div>
         </AnimatePresence>
+        </div>
 
         <ProductModal open={modalState.open && modalState.type === 'product'} onClose={() => setModalState({ type: null, open: false, item: null })} onSave={handleSaveProduct} product={modalState.item} />
         <DataCollectionModal open={modalState.open && modalState.type === 'collection'} onClose={() => setModalState({ type: null, open: false, item: null })} onSave={handleSaveCollection} collection={modalState.item} />
         <ActionModal open={modalState.open && modalState.type === 'action'} onClose={() => setModalState({ type: null, open: false, item: null })} onSave={handleSaveAction} action={modalState.item} />
-        <PaymentModal isOpen={modalState.open && modalState.type === 'payment'} onClose={() => setModalState({ type: null, open: false, item: null })} onSave={handleSavePayment} payment={modalState.item} clients={data.clients} />
-        <ContractModal isOpen={modalState.open && modalState.type === 'contract'} onClose={() => setModalState({ type: null, open: false, item: null })} onSave={handleSaveContract} contract={modalState.item} clients={data.clients} products={data.products} />
+        <PaymentModal isOpen={modalState.open && modalState.type === 'payment'} onClose={() => setModalState({ type: null, open: false, item: null })} onSave={handleSavePayment} payment={modalState.item} clients={data.clients} session={session} />
+        <ContractModal isOpen={modalState.open && modalState.type === 'contract'} onClose={() => setModalState({ type: null, open: false, item: null })} onSave={handleSaveContract} contract={modalState.item} clients={data.clients} products={data.products} tenantId={session?.tenantId} onOpenPayment={handleOpenPaymentForContract} />
         <SignatureModal isOpen={modalState.open && modalState.type === 'signature'} onClose={() => setModalState({ type: null, open: false, item: null })} onSave={handleSaveSignature} contract={modalState.item} />
         <TrustonicDeviceModal isOpen={modalState.open && modalState.type === 'trustonic-device'} onClose={() => setModalState({ type: null, open: false, item: null })} onSave={handleSaveDevice} device={modalState.item} />
-+        <ClientModal isOpen={modalState.open && modalState.type === 'client'} onClose={() => setModalState({ type: null, open: false, item: null })} client={modalState.item} onGenerateWallet={handleGenerateWallet} />
+        <ClientModal isOpen={modalState.open && modalState.type === 'client'} onClose={() => setModalState({ type: null, open: false, item: null })} client={modalState.item} onGenerateWallet={handleGenerateWallet} />
       </main>
+      <SupportAgent />
     </div>
   );
 };
