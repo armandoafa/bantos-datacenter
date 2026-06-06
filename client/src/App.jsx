@@ -39,17 +39,19 @@ const Badge = ({ status }) => {
 
 const Table = ({ cols, rows, render }) => (
   <div className="bg-white rounded-[32px] overflow-hidden border border-slate-100 shadow-sm">
-    <table className="w-full text-left text-[15px] font-bold text-slate-800">
-      <thead className="bg-slate-50 border-b border-slate-100 text-[12px] font-black uppercase tracking-widest text-slate-400">
-        <tr>{cols.map(c => <th key={c} className="px-8 py-6">{c}</th>)}</tr>
-      </thead>
-      <tbody>
-        {rows.length === 0
-          ? <tr><td colSpan={cols.length} className="px-8 py-16 text-center text-slate-300 font-black uppercase tracking-widest text-[12px]">Sin datos — Ejecuta la Sincronización</td></tr>
-          : rows.map((row, i) => <tr key={i} className="border-b border-slate-50 hover:bg-slate-50 transition-all">{render(row)}</tr>)
-        }
-      </tbody>
-    </table>
+    <div className="overflow-x-auto">
+      <table className="w-full text-left text-[15px] font-bold text-slate-800 whitespace-nowrap min-w-max">
+        <thead className="bg-slate-50 border-b border-slate-100 text-[12px] font-black uppercase tracking-widest text-slate-400">
+          <tr>{cols.map(c => <th key={c} className="px-8 py-6">{c}</th>)}</tr>
+        </thead>
+        <tbody>
+          {rows.length === 0
+            ? <tr><td colSpan={cols.length} className="px-8 py-16 text-center text-slate-300 font-black uppercase tracking-widest text-[12px]">Sin datos — Ejecuta la Sincronización</td></tr>
+            : rows.map((row, i) => <tr key={i} className="border-b border-slate-50 hover:bg-slate-50 transition-all">{render(row)}</tr>)
+          }
+        </tbody>
+      </table>
+    </div>
   </div>
 );
 
@@ -528,7 +530,7 @@ const ContractsView = ({ contracts, onNew, onEdit, onSign, session }) => {
   );
 };
 
-const ContractModal = ({ isOpen, onClose, onSave, contract, clients, products, tenantId, onOpenPayment }) => {
+const ContractModal = ({ isOpen, onClose, onSave, contract, clients, inventory, tenantId, onOpenPayment }) => {
   const [activeMode, setActiveMode] = useState('form'); // 'form' or 'import'
   const [formData, setFormData] = useState({
     status: '', product_name: '', total_value: 0, paid_value: 0, client_id: '', deal_name: ''
@@ -731,10 +733,16 @@ const ContractModal = ({ isOpen, onClose, onSave, contract, clients, products, t
                   <div className="space-y-6">
                     <h3 className="text-[12px] font-black text-emerald-600 uppercase tracking-[0.2em] flex items-center gap-2"><CreditCard size={14} /> Detalles del Plan</h3>
                     <div className="space-y-1.5">
-                      <label className="text-[11px] font-black uppercase tracking-widest text-slate-400 ml-1">Producto / Dispositivo</label>
+                      <label className="text-[11px] font-black uppercase tracking-widest text-slate-400 ml-1">Dispositivo (Inventario Upya)</label>
                       <select className="w-full bg-slate-50 border-2 border-slate-100 rounded-xl py-3.5 px-5 font-bold text-slate-800 focus:border-emerald-500 outline-none transition-all text-base appearance-none" value={formData.product_name || ''} onChange={e => setFormData({...formData, product_name: e.target.value})}>
-                        <option value="">Seleccionar producto...</option>
-                        {(products || []).map(p => <option key={p.upya_id} value={p.name}>{p.name}</option>)}
+                        <option value="">Seleccionar dispositivo...</option>
+                        {(inventory || []).map(a => {
+                          const val = `N/S: ${a.serial_number} - ${a.model}`;
+                          return <option key={a.upya_id || a.serial_number} value={val}>{val}</option>;
+                        })}
+                        {formData.product_name && !(inventory || []).some(a => `N/S: ${a.serial_number} - ${a.model}` === formData.product_name) && (
+                          <option value={formData.product_name}>{formData.product_name}</option>
+                        )}
                       </select>
                     </div>
                     <div className="space-y-1.5">
@@ -990,7 +998,7 @@ const SignatureModal = ({ isOpen, onClose, contract, onSave }) => {
 
 const InventoryView = ({ inventory }) => (
   <div className="space-y-8">
-    <PageHeader title="Inventario" subtitle={`${inventory.length} activos técnicos`} />
+    <PageHeader title="Dispositivos" subtitle={`${inventory.length} activos técnicos`} />
     <Table cols={['Serial Number', 'Modelo', 'Estado']} rows={inventory} render={a => (<><td className="px-8 py-5 font-mono text-sm">{a.serial_number}</td><td className="px-8 py-5 text-slate-500">{a.model}</td><td className="px-8 py-5"><Badge status={a.status} /></td></>)} />
   </div>
 );
@@ -1233,11 +1241,11 @@ const PaymentModal = ({ isOpen, onClose, payment, onSave, clients, session }) =>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1.5">
                   <label className="text-[11px] font-black uppercase tracking-widest text-slate-400 ml-1">Vencimiento</label>
-                  <input disabled={isReadOnly} type="text" className="w-full bg-white border-2 border-slate-100 rounded-xl py-3.5 px-5 font-bold text-slate-800 text-base" placeholder="MM/YY" />
+                  <input disabled={isReadOnly} type="text" autoComplete="cc-exp" className="w-full bg-white border-2 border-slate-100 rounded-xl py-3.5 px-5 font-bold text-slate-800 text-base" placeholder="MM/YY" />
                 </div>
                 <div className="space-y-1.5">
                   <label className="text-[11px] font-black uppercase tracking-widest text-slate-400 ml-1">CVV</label>
-                  <input disabled={isReadOnly} type="password" maxlength="4" className="w-full bg-white border-2 border-slate-100 rounded-xl py-3.5 px-5 font-bold text-slate-800 text-base" placeholder="***" />
+                  <input disabled={isReadOnly} type="text" autoComplete="cc-csc" maxLength="4" className="w-full bg-white border-2 border-slate-100 rounded-xl py-3.5 px-5 font-bold text-slate-800 text-base" placeholder="***" />
                 </div>
               </div>
             </div>
@@ -2000,6 +2008,12 @@ const OrganizationView = ({ structure, session, refreshData }) => {
     e.preventDefault();
     const fd = new FormData(e.target);
     const payload = Object.fromEntries(fd.entries());
+    
+    if (!payload.name || payload.name.trim() === '') {
+      alert('El nombre del nodo no puede estar en blanco.');
+      return;
+    }
+    payload.name = payload.name.trim();
     payload.tenantId = session.tenantId;
 
     try {
@@ -2069,7 +2083,7 @@ const OrganizationView = ({ structure, session, refreshData }) => {
                 <div className="space-y-4">
                   <div>
                     <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-2">Nombre del Nodo</label>
-                    <input name="name" required defaultValue={editingNode?.name || ''} className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl py-3 px-5 mt-1 font-bold outline-none focus:border-blue-600 transition-all" />
+                    <input name="name" defaultValue={editingNode?.name || ''} className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl py-3 px-5 mt-1 font-bold outline-none focus:border-blue-600 transition-all" />
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
@@ -2635,7 +2649,7 @@ const App = () => {
 
   const handleSavePayment = async (paymentData) => {
     try {
-      const payload = { ...paymentData, tenantId: session.tenantId };
+      const payload = { ...paymentData, tenantId: session.tenantId, userId: session.id, orgId: session.scope?.orgId };
       let savedItem = paymentData;
       
       if (modalState.item && modalState.item.id) {
@@ -2665,13 +2679,15 @@ const App = () => {
         const fd = contractData instanceof FormData ? contractData : new FormData();
         if (!(contractData instanceof FormData)) Object.entries(contractData).forEach(([k,v]) => fd.append(k,v));
         fd.append('tenantId', tenantId);
+        fd.append('userId', session.id);
+        if (session.scope?.orgId) fd.append('orgId', session.scope.orgId);
         await axios.post(`${API}/backoffice/contracts/import-and-sign`, fd, {
           headers: { 'Content-Type': 'multipart/form-data' }
         });
       } else if (mode === 'generate') { // Generate from form
-        await axios.post(`${API}/backoffice/contracts/generate-and-sign`, { ...contractData, tenantId });
+        await axios.post(`${API}/backoffice/contracts/generate-and-sign`, { ...contractData, tenantId, userId: session.id, orgId: session.scope?.orgId });
       } else {
-        const payload = { ...contractData, tenantId };
+        const payload = { ...contractData, tenantId, userId: session.id, orgId: session.scope?.orgId };
         if (id) {
           await axios.put(`${API}/backoffice/contracts/${id}`, payload);
         } else {
@@ -2874,8 +2890,8 @@ const App = () => {
         { id: 'record-todos', label: 'To-Dos', icon: CheckSquare },
         { id: 'manage-clients', label: 'Clientes', icon: Users },
         { id: 'manage-contracts', label: 'Contratos', icon: FileText },
-        { id: 'manage-inventory', label: 'Inventario', icon: Box },
-        { id: 'manage-trustonic', label: 'Dispositivos', icon: Smartphone },
+        { id: 'manage-inventory', label: 'Dispositivos', icon: Smartphone },
+        // { id: 'manage-trustonic', label: 'Trustonic (Deprecado)', icon: Smartphone },
         // { id: 'manage-trustonic-logs', label: 'Movimientos', icon: Activity },
         { id: 'record-comms', label: 'Comunicaciones', icon: MessageSquare },
         { id: 'manage-payments', label: 'Pagos', icon: CreditCard },
@@ -2888,7 +2904,6 @@ const App = () => {
   const filteredNavItems = (session?.tenantId === 'c-romel' || session?.tenantId === 'C-ROMEL')
     ? [
         { section: 'Operación', items: [
-          { id: 'record-actions', label: 'Acciones', icon: Zap },
           { id: 'manage-contracts', label: 'Contratos', icon: FileText },
           { id: 'manage-payments', label: 'Pagos', icon: CreditCard },
           // { id: 'manage-trustonic-logs', label: 'Movimientos', icon: Activity },
@@ -3050,7 +3065,7 @@ const App = () => {
         <DataCollectionModal open={modalState.open && modalState.type === 'collection'} onClose={() => setModalState({ type: null, open: false, item: null })} onSave={handleSaveCollection} collection={modalState.item} />
         <ActionModal open={modalState.open && modalState.type === 'action'} onClose={() => setModalState({ type: null, open: false, item: null })} onSave={handleSaveAction} action={modalState.item} />
         <PaymentModal isOpen={modalState.open && modalState.type === 'payment'} onClose={() => setModalState({ type: null, open: false, item: null })} onSave={handleSavePayment} payment={modalState.item} clients={data.clients} session={session} />
-        <ContractModal isOpen={modalState.open && modalState.type === 'contract'} onClose={() => setModalState({ type: null, open: false, item: null })} onSave={handleSaveContract} contract={modalState.item} clients={data.clients} products={data.products} tenantId={session?.tenantId} onOpenPayment={handleOpenPaymentForContract} />
+        <ContractModal isOpen={modalState.open && modalState.type === 'contract'} onClose={() => setModalState({ type: null, open: false, item: null })} onSave={handleSaveContract} contract={modalState.item} clients={data.clients} inventory={data.inventory} tenantId={session?.tenantId} onOpenPayment={handleOpenPaymentForContract} />
         <SignatureModal isOpen={modalState.open && modalState.type === 'signature'} onClose={() => setModalState({ type: null, open: false, item: null })} onSave={handleSaveSignature} contract={modalState.item} />
         <TrustonicDeviceModal isOpen={modalState.open && modalState.type === 'trustonic-device'} onClose={() => setModalState({ type: null, open: false, item: null })} onSave={handleSaveDevice} device={modalState.item} />
         <ClientModal isOpen={modalState.open && modalState.type === 'client'} onClose={() => setModalState({ type: null, open: false, item: null })} client={modalState.item} onGenerateWallet={handleGenerateWallet} />
