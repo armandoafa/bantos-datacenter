@@ -1,0 +1,642 @@
+=== ANALISIS DE DATOS IMPORTADOS DE TRUSTONIC ===
+
+--- 1. Resumen de Dispositivos por Tenant y Status ---
+┌─────────┬──────────────────────┬────────────────────────────────┬───────┐
+│ (index) │ tenant_id            │ status                         │ count │
+├─────────┼──────────────────────┼────────────────────────────────┼───────┤
+│ 0       │ 'acellserra'         │ 'Active'                       │ 31    │
+│ 1       │ 'acellserra'         │ 'Ready For Use'                │ 2     │
+│ 2       │ 'acellserra'         │ 'Idle'                         │ 1     │
+│ 3       │ 'alo'                │ '9. Bloqueado'                 │ 58898 │
+│ 4       │ 'alo'                │ 'Liberar'                      │ 7927  │
+│ 5       │ 'alo'                │ 'Perú. Activo'                 │ 4417  │
+│ 6       │ 'alo'                │ '1. Activo'                    │ 4029  │
+│ 7       │ 'alo'                │ 'Perú. Notificación Bloqueo'   │ 3728  │
+│ 8       │ 'alo'                │ '8. Día de Pago cero'          │ 1639  │
+│ 9       │ 'alo'                │ 'Active'                       │ 879   │
+│ 10      │ 'alo'                │ 'Perú 5 días'                  │ 810   │
+│ 11      │ 'alo'                │ 'Perú 0 día'                   │ 335   │
+│ 12      │ 'alo'                │ 'Perú 3 días'                  │ 298   │
+│ 13      │ 'alo'                │ 'Perú 1 día'                   │ 271   │
+│ 14      │ 'alo'                │ '7. Un día antes de pago'      │ 265   │
+│ 15      │ 'alo'                │ '2. Siete días antes de pago'  │ 192   │
+│ 16      │ 'alo'                │ '5. Tres días antes de pago'   │ 187   │
+│ 17      │ 'alo'                │ '6. Dos días antes de pago'    │ 165   │
+│ 18      │ 'alo'                │ '3. Cinco días antes de pago'  │ 142   │
+│ 19      │ 'alo'                │ '4. Cuatro días antes de pago' │ 114   │
+│ 20      │ 'alo'                │ 'Perú 7 días'                  │ 41    │
+│ 21      │ 'alo'                │ ''                             │ 13    │
+│ 22      │ 'alo'                │ '1784523978'                   │ 1     │
+│ 23      │ 'alo'                │ '1784268155'                   │ 1     │
+│ 24      │ 'alo'                │ '1784523866'                   │ 1     │
+│ 25      │ 'alo'                │ '1784523814'                   │ 1     │
+│ 26      │ 'alo'                │ '1784523836'                   │ 1     │
+│ 27      │ 'alo'                │ '1784533980'                   │ 1     │
+│ 28      │ 'alo'                │ '1784527366'                   │ 1     │
+│ 29      │ 'alo'                │ '1784527336'                   │ 1     │
+│ 30      │ 'alo'                │ '1784524894'                   │ 1     │
+│ 31      │ 'bantos-msp'         │ '1. FINANCIADO'                │ 30202 │
+│ 32      │ 'bantos-msp'         │ '6. BLOQUEADO'                 │ 14512 │
+│ 33      │ 'bantos-msp'         │ '7. Released'                  │ 2430  │
+│ 34      │ 'bantos-msp'         │ '4. REALIZA TU PAGO'           │ 527   │
+│ 35      │ 'bantos-msp'         │ 'Active'                       │ 302   │
+│ 36      │ 'bantos-msp'         │ '3. Cinco días antes de pago'  │ 138   │
+│ 37      │ 'bantos-msp'         │ ''                             │ 110   │
+│ 38      │ 'bantos-msp'         │ '1. Activo'                    │ 88    │
+│ 39      │ 'bantos-msp'         │ '2. Siete días antes de pago'  │ 19    │
+│ 40      │ 'bantos-msp'         │ '1784523997'                   │ 3     │
+│ 41      │ 'bantos-msp'         │ '1784524760'                   │ 2     │
+│ 42      │ 'bantos-msp'         │ '1784529518'                   │ 1     │
+│ 43      │ 'bantos-msp'         │ '1784538690'                   │ 1     │
+│ 44      │ 'bantos-msp'         │ '1784553091'                   │ 1     │
+│ 45      │ 'bantos-msp'         │ '1784537740'                   │ 1     │
+│ 46      │ 'bantos-msp'         │ '1784536869'                   │ 1     │
+│ 47      │ 'bantos-msp'         │ '1784536333'                   │ 1     │
+│ 48      │ 'bantos-msp'         │ '1784534615'                   │ 1     │
+│ 49      │ 'bantos-msp'         │ '1784533729'                   │ 1     │
+│ 50      │ 'bantos-msp'         │ '1784533137'                   │ 1     │
+│ 51      │ 'bantos-msp'         │ '1784532872'                   │ 1     │
+│ 52      │ 'bantos-msp'         │ '1784526628'                   │ 1     │
+│ 53      │ 'bantos-msp'         │ '1784526464'                   │ 1     │
+│ 54      │ 'bantos-msp'         │ '1784528776'                   │ 1     │
+│ 55      │ 'bantos-msp'         │ '1784526542'                   │ 1     │
+│ 56      │ 'bantos-msp'         │ '1784528514'                   │ 1     │
+│ 57      │ 'bantos-msp'         │ '1784527830'                   │ 1     │
+│ 58      │ 'bantos-msp'         │ '1784527777'                   │ 1     │
+│ 59      │ 'bantos-msp'         │ '1784527270'                   │ 1     │
+│ 60      │ 'bantos-msp'         │ '1784526685'                   │ 1     │
+│ 61      │ 'bantos-msp'         │ '1784553145'                   │ 1     │
+│ 62      │ 'bantos-msp'         │ '1784560323'                   │ 1     │
+│ 63      │ 'bantos-msp'         │ '1784558688'                   │ 1     │
+│ 64      │ 'bantos-msp'         │ '1784558550'                   │ 1     │
+│ 65      │ 'bantos-msp'         │ '1784558427'                   │ 1     │
+│ 66      │ 'bantos-msp'         │ '1784557888'                   │ 1     │
+│ 67      │ 'bantos-msp'         │ '1784557075'                   │ 1     │
+│ 68      │ 'bantos-msp'         │ '1784556396'                   │ 1     │
+│ 69      │ 'bantos-msp'         │ '1784555836'                   │ 1     │
+│ 70      │ 'bantos-msp'         │ '1784554127'                   │ 1     │
+│ 71      │ 'bantos-msp'         │ '1784541298'                   │ 1     │
+│ 72      │ 'bantos-msp'         │ '1784552404'                   │ 1     │
+│ 73      │ 'bantos-msp'         │ '1784550747'                   │ 1     │
+│ 74      │ 'bantos-msp'         │ '1784550644'                   │ 1     │
+│ 75      │ 'bantos-msp'         │ '1784549115'                   │ 1     │
+│ 76      │ 'bantos-msp'         │ '1784548662'                   │ 1     │
+│ 77      │ 'bantos-msp'         │ '1784548130'                   │ 1     │
+│ 78      │ 'bantos-msp'         │ '1784546586'                   │ 1     │
+│ 79      │ 'bantos-msp'         │ '1784545670'                   │ 1     │
+│ 80      │ 'bantos-msp'         │ '1784541688'                   │ 1     │
+│ 81      │ 'bantos-msp'         │ '1784505360'                   │ 1     │
+│ 82      │ 'bantos-msp'         │ '1784523982'                   │ 1     │
+│ 83      │ 'bantos-msp'         │ '1784523979'                   │ 1     │
+│ 84      │ 'bantos-msp'         │ '1784523958'                   │ 1     │
+│ 85      │ 'bantos-msp'         │ '1784523950'                   │ 1     │
+│ 86      │ 'bantos-msp'         │ '1784523934'                   │ 1     │
+│ 87      │ 'bantos-msp'         │ '1784523839'                   │ 1     │
+│ 88      │ 'bantos-msp'         │ '1784523733'                   │ 1     │
+│ 89      │ 'bantos-msp'         │ '1784523272'                   │ 1     │
+│ 90      │ 'bantos-msp'         │ '1784520899'                   │ 1     │
+│ 91      │ 'bantos-msp'         │ '1784520076'                   │ 1     │
+│ 92      │ 'bantos-msp'         │ '1784516618'                   │ 1     │
+│ 93      │ 'bantos-msp'         │ '1784480789'                   │ 1     │
+│ 94      │ 'bantos-msp'         │ '1784419012'                   │ 1     │
+│ 95      │ 'bantos-msp'         │ '1784377332'                   │ 1     │
+│ 96      │ 'bantos-msp'         │ '1784146150'                   │ 1     │
+│ 97      │ 'bantos-msp'         │ '1783780350'                   │ 1     │
+│ 98      │ 'bantos-msp'         │ '1783516668'                   │ 1     │
+│ 99      │ 'bantos-msp'         │ '1783278901'                   │ 1     │
+│ 100     │ 'bantos-msp'         │ '1783110651'                   │ 1     │
+│ 101     │ 'bantos-msp'         │ '1782824938'                   │ 1     │
+│ 102     │ 'bantos-msp'         │ '1734029153'                   │ 1     │
+│ 103     │ 'bantos-msp'         │ '1784526098'                   │ 1     │
+│ 104     │ 'bantos-msp'         │ '1784523985'                   │ 1     │
+│ 105     │ 'bantos-msp'         │ '1784526057'                   │ 1     │
+│ 106     │ 'bantos-msp'         │ '1784525843'                   │ 1     │
+│ 107     │ 'bantos-msp'         │ '1784525698'                   │ 1     │
+│ 108     │ 'bantos-msp'         │ '1784525448'                   │ 1     │
+│ 109     │ 'bantos-msp'         │ '1784525155'                   │ 1     │
+│ 110     │ 'bantos-msp'         │ '1784525144'                   │ 1     │
+│ 111     │ 'bantos-msp'         │ '1784524916'                   │ 1     │
+│ 112     │ 'bantos-msp'         │ '1784524755'                   │ 1     │
+│ 113     │ 'bantos-msp'         │ '1784524750'                   │ 1     │
+│ 114     │ 'bantos-msp'         │ '1784524716'                   │ 1     │
+│ 115     │ 'bantos-msp'         │ '1784523987'                   │ 1     │
+│ 116     │ 'bantos-msp'         │ '1784524612'                   │ 1     │
+│ 117     │ 'bantos-msp'         │ '1784523986'                   │ 1     │
+│ 118     │ 'bantos-msp'         │ '1784523988'                   │ 1     │
+│ 119     │ 'bantos-msp'         │ '1784523996'                   │ 1     │
+│ 120     │ 'bantos-msp'         │ '1784524125'                   │ 1     │
+│ 121     │ 'bantos-msp'         │ '1784524259'                   │ 1     │
+│ 122     │ 'bantos-msp'         │ '1784524450'                   │ 1     │
+│ 123     │ 'bantos-msp'         │ '1784524484'                   │ 1     │
+│ 124     │ 'bantos-msp'         │ '1784524560'                   │ 1     │
+│ 125     │ 'bantos-msp'         │ '1784523983'                   │ 1     │
+│ 126     │ 'bantos-prod'        │ 'Active'                       │ 15625 │
+│ 127     │ 'bantos-prod'        │ 'Locked'                       │ 2853  │
+│ 128     │ 'bantos-prod'        │ 'Idle'                         │ 827   │
+│ 129     │ 'bantos-prod'        │ 'Ready For Use'                │ 58    │
+│ 130     │ 'bantos-prod'        │ 'Released'                     │ 25    │
+│ 131     │ 'barahona'           │ 'Active'                       │ 15    │
+│ 132     │ 'barahona'           │ 'Released'                     │ 2     │
+│ 133     │ 'barahona'           │ 'Locked'                       │ 2     │
+│ 134     │ 'bip-innovation'     │ 'Active'                       │ 5     │
+│ 135     │ 'c-romel'            │ 'Active'                       │ 15    │
+│ 136     │ 'c-romel'            │ 'Locked'                       │ 1     │
+│ 137     │ 'casasmart'          │ 'Active'                       │ 7     │
+│ 138     │ 'casasmart'          │ 'Released'                     │ 1     │
+│ 139     │ 'comli-shop'         │ 'Active'                       │ 52    │
+│ 140     │ 'comli-shop'         │ 'Locked'                       │ 12    │
+│ 141     │ 'crediflex'          │ 'Active'                       │ 4     │
+│ 142     │ 'crediflex'          │ 'Locked'                       │ 3     │
+│ 143     │ 'crediflex'          │ 'Idle'                         │ 1     │
+│ 144     │ 'credigold'          │ '1. FINANCIADO'                │ 2506  │
+│ 145     │ 'credigold'          │ '6. BLOQUEADO'                 │ 2147  │
+│ 146     │ 'credigold'          │ '7. Released'                  │ 272   │
+│ 147     │ 'credigold'          │ 'Active'                       │ 43    │
+│ 148     │ 'credigold'          │ '5. Temporary Lock'            │ 2     │
+│ 149     │ 'credigold'          │ '4. REALIZA TU PAGO'           │ 1     │
+│ 150     │ 'credimasbcs-prod'   │ 'Active'                       │ 612   │
+│ 151     │ 'credimasbcs-prod'   │ 'Locked'                       │ 140   │
+│ 152     │ 'credimasbcs-prod'   │ 'Ready For Use'                │ 14    │
+│ 153     │ 'credimasbcs-prod'   │ 'Idle'                         │ 10    │
+│ 154     │ 'credimasbcs-prod'   │ 'Released'                     │ 3     │
+│ 155     │ 'dynamicore-prod'    │ 'Active'                       │ 77    │
+│ 156     │ 'dynamicore-prod'    │ 'Ready For Use'                │ 34    │
+│ 157     │ 'dynamicore-prod'    │ 'Locked'                       │ 30    │
+│ 158     │ 'dynamicore-prod'    │ 'Released'                     │ 1     │
+│ 159     │ 'ecredit-prod'       │ 'Active'                       │ 177   │
+│ 160     │ 'ecredit-prod'       │ 'Locked'                       │ 31    │
+│ 161     │ 'ecredit-prod'       │ 'Ready For Use'                │ 1     │
+│ 162     │ 'enlaces-integrados' │ 'Active'                       │ 323   │
+│ 163     │ 'enlaces-integrados' │ 'Locked'                       │ 39    │
+│ 164     │ 'enlaces-integrados' │ 'Released'                     │ 14    │
+│ 165     │ 'enlaces-integrados' │ 'Idle'                         │ 10    │
+│ 166     │ 'flexpay'            │ 'Active'                       │ 505   │
+│ 167     │ 'flexpay'            │ 'Released'                     │ 77    │
+│ 168     │ 'flexpay'            │ 'Locked'                       │ 63    │
+│ 169     │ 'flexpay'            │ 'Ready For Use'                │ 1     │
+│ 170     │ 'flexpay'            │ 'Idle'                         │ 1     │
+│ 171     │ 'getmobi'            │ 'Locked'                       │ 1     │
+│ 172     │ 'jairospm'           │ 'Active'                       │ 77    │
+│ 173     │ 'jairospm'           │ 'Locked'                       │ 12    │
+│ 174     │ 'jairospm'           │ 'Released'                     │ 10    │
+│ 175     │ 'jairospm'           │ 'Ready For Use'                │ 2     │
+│ 176     │ 'microtec'           │ '1 Financed'                   │ 25113 │
+│ 177     │ 'microtec'           │ '6 Locked'                     │ 20783 │
+│ 178     │ 'microtec'           │ '7. Released'                  │ 14598 │
+│ 179     │ 'microtec'           │ 'Active'                       │ 3737  │
+│ 180     │ 'mobiastra'          │ 'Active'                       │ 1     │
+│ 181     │ 'movilselect'        │ 'Active'                       │ 16    │
+│ 182     │ 'movilselect'        │ 'Locked'                       │ 3     │
+│ 183     │ 'movilselect'        │ 'Released'                     │ 3     │
+│ 184     │ 'paguishop'          │ 'Active'                       │ 623   │
+│ 185     │ 'paguishop'          │ 'Locked'                       │ 159   │
+│ 186     │ 'paguishop'          │ 'Idle'                         │ 15    │
+│ 187     │ 'paguishop'          │ 'Ready For Use'                │ 14    │
+│ 188     │ 'paguishop'          │ 'Released'                     │ 3     │
+│ 189     │ 'payphone-mx'        │ 'Active'                       │ 7     │
+│ 190     │ 'payphone-mx'        │ 'Ready For Use'                │ 1     │
+│ 191     │ 'smartdu'            │ 'Active'                       │ 57    │
+│ 192     │ 'smartdu'            │ 'Released'                     │ 8     │
+│ 193     │ 'smartdu'            │ 'Locked'                       │ 3     │
+│ 194     │ 'sotelo'             │ 'Active'                       │ 14    │
+│ 195     │ 'sotelo'             │ 'Locked'                       │ 3     │
+│ 196     │ 'tecmobile'          │ 'Active'                       │ 114   │
+│ 197     │ 'tecmobile'          │ 'Locked'                       │ 15    │
+│ 198     │ 'tecmobile'          │ 'Released'                     │ 8     │
+│ 199     │ 'tecmobile'          │ 'Idle'                         │ 1     │
+│ 200     │ 'tecnomarket'        │ 'Active'                       │ 3     │
+│ 201     │ 'tecnomarket'        │ 'Released'                     │ 2     │
+│ 202     │ 'tests'              │ 'Locked'                       │ 1     │
+│ 203     │ 'tiendaamiga'        │ 'Active'                       │ 79    │
+│ 204     │ 'tiendaamiga'        │ 'Ready For Use'                │ 16    │
+│ 205     │ 'tiendaamiga'        │ 'Locked'                       │ 2     │
+│ 206     │ 'tiendaamiga'        │ 'Idle'                         │ 1     │
+│ 207     │ 'wewow-prod'         │ 'Active'                       │ 517   │
+│ 208     │ 'wewow-prod'         │ 'Locked'                       │ 87    │
+│ 209     │ 'wewow-prod'         │ 'Ready For Use'                │ 23    │
+│ 210     │ 'wewow-prod'         │ 'Released'                     │ 20    │
+│ 211     │ 'wewow-prod'         │ 'Idle'                         │ 6     │
+│ 212     │ 'ximple'             │ 'Active'                       │ 59    │
+│ 213     │ 'ximple'             │ 'Ready For Use'                │ 7     │
+│ 214     │ 'ximple'             │ 'Locked'                       │ 5     │
+│ 215     │ 'ximple'             │ 'Released'                     │ 1     │
+│ 216     │ 'xonacredit'         │ 'Active'                       │ 49    │
+│ 217     │ 'xonacredit'         │ 'Locked'                       │ 3     │
+│ 218     │ 'xonacredit'         │ 'Released'                     │ 3     │
+└─────────┴──────────────────────┴────────────────────────────────┴───────┘
+
+--- 2. Totales por Tenant ---
+┌─────────┬──────────────────────┬───────────────┬─────────────┐
+│ (index) │ tenant_id            │ total_devices │ brand_count │
+├─────────┼──────────────────────┼───────────────┼─────────────┤
+│ 0       │ 'alo'                │ 84359         │ 13          │
+│ 1       │ 'microtec'           │ 64231         │ 5           │
+│ 2       │ 'bantos-msp'         │ 48417         │ 1           │
+│ 3       │ 'bantos-prod'        │ 19388         │ 6           │
+│ 4       │ 'credigold'          │ 4971          │ 5           │
+│ 5       │ 'paguishop'          │ 814           │ 7           │
+│ 6       │ 'credimasbcs-prod'   │ 779           │ 5           │
+│ 7       │ 'wewow-prod'         │ 653           │ 5           │
+│ 8       │ 'flexpay'            │ 647           │ 7           │
+│ 9       │ 'enlaces-integrados' │ 386           │ 4           │
+│ 10      │ 'ecredit-prod'       │ 209           │ 5           │
+│ 11      │ 'dynamicore-prod'    │ 142           │ 6           │
+│ 12      │ 'tecmobile'          │ 138           │ 3           │
+│ 13      │ 'jairospm'           │ 101           │ 4           │
+│ 14      │ 'tiendaamiga'        │ 98            │ 6           │
+│ 15      │ 'ximple'             │ 72            │ 3           │
+│ 16      │ 'smartdu'            │ 68            │ 6           │
+│ 17      │ 'comli-shop'         │ 64            │ 7           │
+│ 18      │ 'xonacredit'         │ 55            │ 4           │
+│ 19      │ 'acellserra'         │ 34            │ 4           │
+│ 20      │ 'movilselect'        │ 22            │ 4           │
+│ 21      │ 'barahona'           │ 19            │ 1           │
+│ 22      │ 'sotelo'             │ 17            │ 4           │
+│ 23      │ 'c-romel'            │ 16            │ 4           │
+│ 24      │ 'payphone-mx'        │ 8             │ 1           │
+│ 25      │ 'crediflex'          │ 8             │ 3           │
+│ 26      │ 'casasmart'          │ 8             │ 2           │
+│ 27      │ 'tecnomarket'        │ 5             │ 2           │
+│ 28      │ 'bip-innovation'     │ 5             │ 2           │
+│ 29      │ 'mobiastra'          │ 1             │ 1           │
+│ 30      │ 'getmobi'            │ 1             │ 1           │
+│ 31      │ 'tests'              │ 1             │ 1           │
+└─────────┴──────────────────────┴───────────────┴─────────────┘
+
+--- 3. Top Marcas por Tenant ---
+┌─────────┬──────────────────┬────────────┬───────┐
+│ (index) │ tenant_id        │ brand      │ count │
+├─────────┼──────────────────┼────────────┼───────┤
+│ 0       │ 'acellserra'     │ 'REALME'   │ 15    │
+│ 1       │ 'acellserra'     │ 'MOTOROLA' │ 8     │
+│ 2       │ 'acellserra'     │ 'SAMSUNG'  │ 8     │
+│ 3       │ 'acellserra'     │ 'XIAOMI'   │ 3     │
+│ 4       │ 'alo'            │ 'XIAOMI'   │ 22690 │
+│ 5       │ 'alo'            │ 'Infinix'  │ 17297 │
+│ 6       │ 'alo'            │ 'TECNO'    │ 15746 │
+│ 7       │ 'alo'            │ 'MOTOROLA' │ 9869  │
+│ 8       │ 'alo'            │ 'Honor'    │ 7896  │
+│ 9       │ 'alo'            │ 'OPPO'     │ 6253  │
+│ 10      │ 'alo'            │ 'VivO'     │ 2389  │
+│ 11      │ 'alo'            │ 'REALME'   │ 1759  │
+│ 12      │ 'alo'            │ 'ZTE'      │ 273   │
+│ 13      │ 'alo'            │ 'Samsung'  │ 114   │
+│ 14      │ 'alo'            │ 'X6725'    │ 45    │
+│ 15      │ 'alo'            │ 'NUBIA'    │ 27    │
+│ 16      │ 'alo'            │ 'HUAWEI'   │ 1     │
+│ 17      │ 'bantos-msp'     │ 'HONOR'    │ 1     │
+│ 18      │ 'bantos-prod'    │ 'MOTOROLA' │ 10206 │
+│ 19      │ 'bantos-prod'    │ 'XIAOMI'   │ 5276  │
+│ 20      │ 'bantos-prod'    │ 'HONOR'    │ 3874  │
+│ 21      │ 'bantos-prod'    │ 'VIVO'     │ 27    │
+│ 22      │ 'bantos-prod'    │ 'SAMSUNG'  │ 4     │
+│ 23      │ 'bantos-prod'    │ 'OPPO'     │ 1     │
+│ 24      │ 'barahona'       │ 'SAMSUNG'  │ 19    │
+│ 25      │ 'bip-innovation' │ 'TECNO'    │ 3     │
+│ 26      │ 'bip-innovation' │ 'SAMSUNG'  │ 2     │
+│ 27      │ 'c-romel'        │ 'MOTOROLA' │ 7     │
+│ 28      │ 'c-romel'        │ 'SAMSUNG'  │ 6     │
+│ 29      │ 'c-romel'        │ 'TECNO'    │ 2     │
+│ 30      │ 'c-romel'        │ 'INFINIX'  │ 1     │
+│ 31      │ 'casasmart'      │ 'INFINIX'  │ 6     │
+│ 32      │ 'casasmart'      │ 'SAMSUNG'  │ 2     │
+│ 33      │ 'comli-shop'     │ 'INFINIX'  │ 25    │
+│ 34      │ 'comli-shop'     │ 'TECNO'    │ 23    │
+│ 35      │ 'comli-shop'     │ 'MOTOROLA' │ 7     │
+│ 36      │ 'comli-shop'     │ 'ZTE'      │ 5     │
+│ 37      │ 'comli-shop'     │ 'SAMSUNG'  │ 2     │
+│ 38      │ 'comli-shop'     │ 'OPPO'     │ 1     │
+│ 39      │ 'comli-shop'     │ 'HONOR'    │ 1     │
+└─────────┴──────────────────┴────────────┴───────┘
+
+--- 4. Clasificación de Operaciones por Tenant ---
+┌─────────┬──────────────────┬────────────────────────────────────────┬────────┐
+│ (index) │ tenant_id        │ operation_type                         │ count  │
+├─────────┼──────────────────┼────────────────────────────────────────┼────────┤
+│ 0       │ 'acellserra'     │ 'Send message'                         │ 20     │
+│ 1       │ 'acellserra'     │ 'Default Activation'                   │ 9      │
+│ 2       │ 'acellserra'     │ 'Register'                             │ 3      │
+│ 3       │ 'acellserra'     │ 'Unlock'                               │ 2      │
+│ 4       │ 'alamodigital'   │ 'Policy: 1. FINANCIADO'                │ 28802  │
+│ 5       │ 'alamodigital'   │ 'Policy: 6. BLOQUEADO'                 │ 16058  │
+│ 6       │ 'alamodigital'   │ 'Policy: 7. Released'                  │ 2596   │
+│ 7       │ 'alamodigital'   │ 'Policy: 4. REALIZA TU PAGO'           │ 495    │
+│ 8       │ 'alo'            │ 'Policy: 1. Activo'                    │ 73878  │
+│ 9       │ 'alo'            │ 'Policy: 9. Bloqueado'                 │ 65473  │
+│ 10      │ 'alo'            │ 'Policy: Liberar'                      │ 8603   │
+│ 11      │ 'alo'            │ 'Policy: 2. Siete días antes de pago'  │ 5762   │
+│ 12      │ 'alo'            │ 'Policy: Perú. Activo'                 │ 4339   │
+│ 13      │ 'alo'            │ 'Policy: Perú. Notificación Bloqueo'   │ 4324   │
+│ 14      │ 'alo'            │ 'Policy: 3. Cinco días antes de pago'  │ 3446   │
+│ 15      │ 'alo'            │ 'Policy: 8. Día de Pago cero'          │ 3190   │
+│ 16      │ 'alo'            │ 'Policy: 6. Dos días antes de pago'    │ 2511   │
+│ 17      │ 'alo'            │ 'Policy: 7. Un día antes de pago'      │ 2294   │
+│ 18      │ 'alo'            │ 'Policy: 5. Tres días antes de pago'   │ 2262   │
+│ 19      │ 'alo'            │ 'Policy: 4. Cuatro días antes de pago' │ 2196   │
+│ 20      │ 'alo'            │ 'Policy: Perú 5 días'                  │ 792    │
+│ 21      │ 'alo'            │ 'Policy: Perú 0 día'                   │ 287    │
+│ 22      │ 'alo'            │ 'Policy: Perú 1 día'                   │ 234    │
+│ 23      │ 'alo'            │ 'Policy: Perú 3 días'                  │ 196    │
+│ 24      │ 'bantos-msp'     │ 'Carga Inicial (Consolidado 2.0)'      │ 163867 │
+│ 25      │ 'bantos-msp'     │ 'Unlock'                               │ 1      │
+│ 26      │ 'bantos-prod'    │ 'Send message'                         │ 11316  │
+│ 27      │ 'bantos-prod'    │ 'Unlock'                               │ 4251   │
+│ 28      │ 'bantos-prod'    │ 'Lock'                                 │ 2853   │
+│ 29      │ 'bantos-prod'    │ 'Deregister'                           │ 813    │
+│ 30      │ 'bantos-prod'    │ 'Register'                             │ 72     │
+│ 31      │ 'bantos-prod'    │ 'Default Activation'                   │ 58     │
+│ 32      │ 'bantos-prod'    │ 'Release'                              │ 25     │
+│ 33      │ 'barahona'       │ 'Unlock'                               │ 13     │
+│ 34      │ 'barahona'       │ 'Default Activation'                   │ 2      │
+│ 35      │ 'barahona'       │ 'Lock'                                 │ 2      │
+│ 36      │ 'barahona'       │ 'Release'                              │ 2      │
+│ 37      │ 'bip-innovation' │ 'Unlock'                               │ 5      │
+│ 38      │ 'c-romel'        │ 'Unlock'                               │ 8      │
+│ 39      │ 'c-romel'        │ 'Reload'                               │ 5      │
+└─────────┴──────────────────┴────────────────────────────────────────┴────────┘
+
+--- 5. Crecimiento de Registros/Operaciones por Tenant (Temporal) ---
+┌─────────┬──────────────────────┬──────┬───────┬─────────────┐
+│ (index) │ tenant_id            │ year │ month │ new_records │
+├─────────┼──────────────────────┼──────┼───────┼─────────────┤
+│ 0       │ 'acellserra'         │ 2026 │ 7     │ 34          │
+│ 1       │ 'alamodigital'       │ 2021 │ 7     │ 3           │
+│ 2       │ 'alamodigital'       │ 2021 │ 10    │ 6           │
+│ 3       │ 'alamodigital'       │ 2021 │ 11    │ 3           │
+│ 4       │ 'alamodigital'       │ 2021 │ 12    │ 2           │
+│ 5       │ 'alamodigital'       │ 2022 │ 1     │ 3           │
+│ 6       │ 'alamodigital'       │ 2022 │ 2     │ 3           │
+│ 7       │ 'alamodigital'       │ 2022 │ 3     │ 8           │
+│ 8       │ 'alamodigital'       │ 2022 │ 4     │ 18          │
+│ 9       │ 'alamodigital'       │ 2022 │ 5     │ 43          │
+│ 10      │ 'alamodigital'       │ 2022 │ 6     │ 114         │
+│ 11      │ 'alamodigital'       │ 2022 │ 7     │ 59          │
+│ 12      │ 'alamodigital'       │ 2022 │ 8     │ 62          │
+│ 13      │ 'alamodigital'       │ 2022 │ 9     │ 74          │
+│ 14      │ 'alamodigital'       │ 2022 │ 10    │ 190         │
+│ 15      │ 'alamodigital'       │ 2022 │ 11    │ 217         │
+│ 16      │ 'alamodigital'       │ 2022 │ 12    │ 347         │
+│ 17      │ 'alamodigital'       │ 2023 │ 1     │ 353         │
+│ 18      │ 'alamodigital'       │ 2023 │ 2     │ 431         │
+│ 19      │ 'alamodigital'       │ 2023 │ 3     │ 843         │
+│ 20      │ 'alamodigital'       │ 2023 │ 4     │ 507         │
+│ 21      │ 'alamodigital'       │ 2023 │ 5     │ 885         │
+│ 22      │ 'alamodigital'       │ 2023 │ 6     │ 513         │
+│ 23      │ 'alamodigital'       │ 2023 │ 7     │ 556         │
+│ 24      │ 'alamodigital'       │ 2023 │ 8     │ 457         │
+│ 25      │ 'alamodigital'       │ 2023 │ 9     │ 439         │
+│ 26      │ 'alamodigital'       │ 2023 │ 10    │ 486         │
+│ 27      │ 'alamodigital'       │ 2023 │ 11    │ 496         │
+│ 28      │ 'alamodigital'       │ 2023 │ 12    │ 499         │
+│ 29      │ 'alamodigital'       │ 2024 │ 1     │ 555         │
+│ 30      │ 'alamodigital'       │ 2024 │ 2     │ 459         │
+│ 31      │ 'alamodigital'       │ 2024 │ 3     │ 461         │
+│ 32      │ 'alamodigital'       │ 2024 │ 4     │ 442         │
+│ 33      │ 'alamodigital'       │ 2024 │ 5     │ 487         │
+│ 34      │ 'alamodigital'       │ 2024 │ 6     │ 551         │
+│ 35      │ 'alamodigital'       │ 2024 │ 7     │ 508         │
+│ 36      │ 'alamodigital'       │ 2024 │ 8     │ 446         │
+│ 37      │ 'alamodigital'       │ 2024 │ 9     │ 467         │
+│ 38      │ 'alamodigital'       │ 2024 │ 10    │ 452         │
+│ 39      │ 'alamodigital'       │ 2024 │ 11    │ 478         │
+│ 40      │ 'alamodigital'       │ 2024 │ 12    │ 498         │
+│ 41      │ 'alamodigital'       │ 2025 │ 1     │ 767         │
+│ 42      │ 'alamodigital'       │ 2025 │ 2     │ 446         │
+│ 43      │ 'alamodigital'       │ 2025 │ 3     │ 292         │
+│ 44      │ 'alamodigital'       │ 2025 │ 4     │ 276         │
+│ 45      │ 'alamodigital'       │ 2025 │ 5     │ 218         │
+│ 46      │ 'alamodigital'       │ 2025 │ 6     │ 495         │
+│ 47      │ 'alamodigital'       │ 2025 │ 7     │ 490         │
+│ 48      │ 'alamodigital'       │ 2025 │ 8     │ 405         │
+│ 49      │ 'alamodigital'       │ 2025 │ 9     │ 438         │
+│ 50      │ 'alamodigital'       │ 2025 │ 10    │ 462         │
+│ 51      │ 'alamodigital'       │ 2025 │ 11    │ 3887        │
+│ 52      │ 'alamodigital'       │ 2025 │ 12    │ 794         │
+│ 53      │ 'alamodigital'       │ 2026 │ 1     │ 709         │
+│ 54      │ 'alamodigital'       │ 2026 │ 2     │ 686         │
+│ 55      │ 'alamodigital'       │ 2026 │ 3     │ 819         │
+│ 56      │ 'alamodigital'       │ 2026 │ 4     │ 1424        │
+│ 57      │ 'alamodigital'       │ 2026 │ 5     │ 1357        │
+│ 58      │ 'alamodigital'       │ 2026 │ 6     │ 9772        │
+│ 59      │ 'alamodigital'       │ 2026 │ 7     │ 10793       │
+│ 60      │ 'alo'                │ 2023 │ 5     │ 1           │
+│ 61      │ 'alo'                │ 2023 │ 7     │ 1           │
+│ 62      │ 'alo'                │ 2023 │ 10    │ 3           │
+│ 63      │ 'alo'                │ 2023 │ 11    │ 2           │
+│ 64      │ 'alo'                │ 2023 │ 12    │ 17          │
+│ 65      │ 'alo'                │ 2024 │ 1     │ 10          │
+│ 66      │ 'alo'                │ 2024 │ 2     │ 22          │
+│ 67      │ 'alo'                │ 2024 │ 3     │ 38          │
+│ 68      │ 'alo'                │ 2024 │ 4     │ 70          │
+│ 69      │ 'alo'                │ 2024 │ 5     │ 109         │
+│ 70      │ 'alo'                │ 2024 │ 6     │ 165         │
+│ 71      │ 'alo'                │ 2024 │ 7     │ 240         │
+│ 72      │ 'alo'                │ 2024 │ 8     │ 307         │
+│ 73      │ 'alo'                │ 2024 │ 9     │ 307         │
+│ 74      │ 'alo'                │ 2024 │ 10    │ 489         │
+│ 75      │ 'alo'                │ 2024 │ 11    │ 521         │
+│ 76      │ 'alo'                │ 2024 │ 12    │ 615         │
+│ 77      │ 'alo'                │ 2025 │ 1     │ 623         │
+│ 78      │ 'alo'                │ 2025 │ 2     │ 639         │
+│ 79      │ 'alo'                │ 2025 │ 3     │ 725         │
+│ 80      │ 'alo'                │ 2025 │ 4     │ 665         │
+│ 81      │ 'alo'                │ 2025 │ 5     │ 702         │
+│ 82      │ 'alo'                │ 2025 │ 6     │ 699         │
+│ 83      │ 'alo'                │ 2025 │ 7     │ 716         │
+│ 84      │ 'alo'                │ 2025 │ 8     │ 849         │
+│ 85      │ 'alo'                │ 2025 │ 9     │ 5391        │
+│ 86      │ 'alo'                │ 2025 │ 10    │ 2304        │
+│ 87      │ 'alo'                │ 2025 │ 11    │ 2869        │
+│ 88      │ 'alo'                │ 2025 │ 12    │ 4380        │
+│ 89      │ 'alo'                │ 2026 │ 1     │ 5386        │
+│ 90      │ 'alo'                │ 2026 │ 2     │ 6813        │
+│ 91      │ 'alo'                │ 2026 │ 3     │ 8008        │
+│ 92      │ 'alo'                │ 2026 │ 4     │ 9555        │
+│ 93      │ 'alo'                │ 2026 │ 5     │ 14018       │
+│ 94      │ 'alo'                │ 2026 │ 6     │ 16937       │
+│ 95      │ 'alo'                │ 2026 │ 7     │ 95591       │
+│ 96      │ 'bantos-msp'         │ 2021 │ 6     │ 2           │
+│ 97      │ 'bantos-msp'         │ 2021 │ 7     │ 2           │
+│ 98      │ 'bantos-msp'         │ 2021 │ 10    │ 20          │
+│ 99      │ 'bantos-msp'         │ 2021 │ 11    │ 47          │
+│ 100     │ 'bantos-msp'         │ 2021 │ 12    │ 57          │
+│ 101     │ 'bantos-msp'         │ 2022 │ 1     │ 61          │
+│ 102     │ 'bantos-msp'         │ 2022 │ 2     │ 328         │
+│ 103     │ 'bantos-msp'         │ 2022 │ 3     │ 433         │
+│ 104     │ 'bantos-msp'         │ 2022 │ 4     │ 514         │
+│ 105     │ 'bantos-msp'         │ 2022 │ 5     │ 349         │
+│ 106     │ 'bantos-msp'         │ 2022 │ 6     │ 585         │
+│ 107     │ 'bantos-msp'         │ 2022 │ 7     │ 749         │
+│ 108     │ 'bantos-msp'         │ 2022 │ 8     │ 487         │
+│ 109     │ 'bantos-msp'         │ 2022 │ 9     │ 735         │
+│ 110     │ 'bantos-msp'         │ 2022 │ 10    │ 489         │
+│ 111     │ 'bantos-msp'         │ 2022 │ 11    │ 1237        │
+│ 112     │ 'bantos-msp'         │ 2022 │ 12    │ 887         │
+│ 113     │ 'bantos-msp'         │ 2023 │ 1     │ 418         │
+│ 114     │ 'bantos-msp'         │ 2023 │ 2     │ 163         │
+│ 115     │ 'bantos-msp'         │ 2023 │ 3     │ 557         │
+│ 116     │ 'bantos-msp'         │ 2023 │ 4     │ 593         │
+│ 117     │ 'bantos-msp'         │ 2023 │ 5     │ 512         │
+│ 118     │ 'bantos-msp'         │ 2023 │ 6     │ 517         │
+│ 119     │ 'bantos-msp'         │ 2023 │ 7     │ 491         │
+│ 120     │ 'bantos-msp'         │ 2023 │ 8     │ 474         │
+│ 121     │ 'bantos-msp'         │ 2023 │ 9     │ 762         │
+│ 122     │ 'bantos-msp'         │ 2023 │ 10    │ 713         │
+│ 123     │ 'bantos-msp'         │ 2023 │ 11    │ 1010        │
+│ 124     │ 'bantos-msp'         │ 2023 │ 12    │ 658         │
+│ 125     │ 'bantos-msp'         │ 2024 │ 1     │ 1143        │
+│ 126     │ 'bantos-msp'         │ 2024 │ 2     │ 896         │
+│ 127     │ 'bantos-msp'         │ 2024 │ 3     │ 842         │
+│ 128     │ 'bantos-msp'         │ 2024 │ 4     │ 1121        │
+│ 129     │ 'bantos-msp'         │ 2024 │ 5     │ 2455        │
+│ 130     │ 'bantos-msp'         │ 2024 │ 6     │ 1447        │
+│ 131     │ 'bantos-msp'         │ 2024 │ 7     │ 1166        │
+│ 132     │ 'bantos-msp'         │ 2024 │ 8     │ 1810        │
+│ 133     │ 'bantos-msp'         │ 2024 │ 9     │ 1116        │
+│ 134     │ 'bantos-msp'         │ 2024 │ 10    │ 1691        │
+│ 135     │ 'bantos-msp'         │ 2024 │ 11    │ 1267        │
+│ 136     │ 'bantos-msp'         │ 2024 │ 12    │ 1729        │
+│ 137     │ 'bantos-msp'         │ 2025 │ 1     │ 1983        │
+│ 138     │ 'bantos-msp'         │ 2025 │ 2     │ 1628        │
+│ 139     │ 'bantos-msp'         │ 2025 │ 3     │ 1619        │
+│ 140     │ 'bantos-msp'         │ 2025 │ 4     │ 1975        │
+│ 141     │ 'bantos-msp'         │ 2025 │ 5     │ 2767        │
+│ 142     │ 'bantos-msp'         │ 2025 │ 6     │ 2974        │
+│ 143     │ 'bantos-msp'         │ 2025 │ 7     │ 2368        │
+│ 144     │ 'bantos-msp'         │ 2025 │ 8     │ 2571        │
+│ 145     │ 'bantos-msp'         │ 2025 │ 9     │ 3121        │
+│ 146     │ 'bantos-msp'         │ 2025 │ 10    │ 5743        │
+│ 147     │ 'bantos-msp'         │ 2025 │ 11    │ 6852        │
+│ 148     │ 'bantos-msp'         │ 2025 │ 12    │ 9788        │
+│ 149     │ 'bantos-msp'         │ 2026 │ 1     │ 8240        │
+│ 150     │ 'bantos-msp'         │ 2026 │ 2     │ 10097       │
+│ 151     │ 'bantos-msp'         │ 2026 │ 3     │ 12926       │
+│ 152     │ 'bantos-msp'         │ 2026 │ 4     │ 13341       │
+│ 153     │ 'bantos-msp'         │ 2026 │ 5     │ 17433       │
+│ 154     │ 'bantos-msp'         │ 2026 │ 6     │ 18388       │
+│ 155     │ 'bantos-msp'         │ 2026 │ 7     │ 9635        │
+│ 156     │ 'bantos-prod'        │ 2026 │ 7     │ 19388       │
+│ 157     │ 'barahona'           │ 2026 │ 7     │ 19          │
+│ 158     │ 'bip-innovation'     │ 2026 │ 7     │ 5           │
+│ 159     │ 'c-romel'            │ 2026 │ 7     │ 16          │
+│ 160     │ 'casasmart'          │ 2026 │ 7     │ 8           │
+│ 161     │ 'comli-shop'         │ 2026 │ 7     │ 64          │
+│ 162     │ 'crediflex'          │ 2026 │ 7     │ 8           │
+│ 163     │ 'credigold'          │ 2023 │ 1     │ 2           │
+│ 164     │ 'credigold'          │ 2023 │ 2     │ 52          │
+│ 165     │ 'credigold'          │ 2023 │ 3     │ 16          │
+│ 166     │ 'credigold'          │ 2023 │ 4     │ 5           │
+│ 167     │ 'credigold'          │ 2023 │ 5     │ 12          │
+│ 168     │ 'credigold'          │ 2023 │ 6     │ 11          │
+│ 169     │ 'credigold'          │ 2023 │ 7     │ 26          │
+│ 170     │ 'credigold'          │ 2023 │ 8     │ 19          │
+│ 171     │ 'credigold'          │ 2023 │ 9     │ 25          │
+│ 172     │ 'credigold'          │ 2023 │ 10    │ 17          │
+│ 173     │ 'credigold'          │ 2023 │ 11    │ 21          │
+│ 174     │ 'credigold'          │ 2023 │ 12    │ 20          │
+│ 175     │ 'credigold'          │ 2024 │ 1     │ 12          │
+│ 176     │ 'credigold'          │ 2024 │ 2     │ 11          │
+│ 177     │ 'credigold'          │ 2024 │ 3     │ 27          │
+│ 178     │ 'credigold'          │ 2024 │ 4     │ 22          │
+│ 179     │ 'credigold'          │ 2024 │ 5     │ 15          │
+│ 180     │ 'credigold'          │ 2024 │ 6     │ 42          │
+│ 181     │ 'credigold'          │ 2024 │ 7     │ 52          │
+│ 182     │ 'credigold'          │ 2024 │ 8     │ 33          │
+│ 183     │ 'credigold'          │ 2024 │ 9     │ 39          │
+│ 184     │ 'credigold'          │ 2024 │ 10    │ 48          │
+│ 185     │ 'credigold'          │ 2024 │ 11    │ 48          │
+│ 186     │ 'credigold'          │ 2024 │ 12    │ 22          │
+│ 187     │ 'credigold'          │ 2025 │ 1     │ 56          │
+│ 188     │ 'credigold'          │ 2025 │ 2     │ 22          │
+│ 189     │ 'credigold'          │ 2025 │ 3     │ 24          │
+│ 190     │ 'credigold'          │ 2025 │ 4     │ 25          │
+│ 191     │ 'credigold'          │ 2025 │ 5     │ 17          │
+│ 192     │ 'credigold'          │ 2025 │ 6     │ 22          │
+│ 193     │ 'credigold'          │ 2025 │ 7     │ 23          │
+│ 194     │ 'credigold'          │ 2025 │ 8     │ 32          │
+│ 195     │ 'credigold'          │ 2025 │ 9     │ 37          │
+│ 196     │ 'credigold'          │ 2025 │ 10    │ 63          │
+│ 197     │ 'credigold'          │ 2025 │ 11    │ 392         │
+│ 198     │ 'credigold'          │ 2025 │ 12    │ 117         │
+│ 199     │ 'credigold'          │ 2026 │ 1     │ 98          │
+│ 200     │ 'credigold'          │ 2026 │ 2     │ 72          │
+│ 201     │ 'credigold'          │ 2026 │ 3     │ 112         │
+│ 202     │ 'credigold'          │ 2026 │ 4     │ 155         │
+│ 203     │ 'credigold'          │ 2026 │ 5     │ 174         │
+│ 204     │ 'credigold'          │ 2026 │ 6     │ 1053        │
+│ 205     │ 'credigold'          │ 2026 │ 7     │ 1880        │
+│ 206     │ 'credimasbcs-prod'   │ 2026 │ 7     │ 779         │
+│ 207     │ 'dynamicore-prod'    │ 2026 │ 7     │ 142         │
+│ 208     │ 'ecredit-prod'       │ 2026 │ 7     │ 209         │
+│ 209     │ 'enlaces-integrados' │ 2026 │ 7     │ 386         │
+│ 210     │ 'flexpay'            │ 2026 │ 7     │ 647         │
+│ 211     │ 'getmobi'            │ 2026 │ 7     │ 1           │
+│ 212     │ 'jairospm'           │ 2026 │ 7     │ 101         │
+│ 213     │ 'microtec'           │ 2022 │ 2     │ 7           │
+│ 214     │ 'microtec'           │ 2022 │ 3     │ 17          │
+│ 215     │ 'microtec'           │ 2022 │ 4     │ 15          │
+│ 216     │ 'microtec'           │ 2022 │ 5     │ 35          │
+│ 217     │ 'microtec'           │ 2022 │ 6     │ 72          │
+│ 218     │ 'microtec'           │ 2022 │ 7     │ 125         │
+│ 219     │ 'microtec'           │ 2022 │ 8     │ 194         │
+│ 220     │ 'microtec'           │ 2022 │ 9     │ 271         │
+│ 221     │ 'microtec'           │ 2022 │ 10    │ 234         │
+│ 222     │ 'microtec'           │ 2022 │ 11    │ 343         │
+│ 223     │ 'microtec'           │ 2022 │ 12    │ 485         │
+│ 224     │ 'microtec'           │ 2023 │ 1     │ 440         │
+│ 225     │ 'microtec'           │ 2023 │ 2     │ 577         │
+│ 226     │ 'microtec'           │ 2023 │ 3     │ 696         │
+│ 227     │ 'microtec'           │ 2023 │ 4     │ 996         │
+│ 228     │ 'microtec'           │ 2023 │ 5     │ 831         │
+│ 229     │ 'microtec'           │ 2023 │ 6     │ 907         │
+│ 230     │ 'microtec'           │ 2023 │ 7     │ 913         │
+│ 231     │ 'microtec'           │ 2023 │ 8     │ 994         │
+│ 232     │ 'microtec'           │ 2023 │ 9     │ 827         │
+│ 233     │ 'microtec'           │ 2023 │ 10    │ 910         │
+│ 234     │ 'microtec'           │ 2023 │ 11    │ 923         │
+│ 235     │ 'microtec'           │ 2023 │ 12    │ 991         │
+│ 236     │ 'microtec'           │ 2024 │ 1     │ 840         │
+│ 237     │ 'microtec'           │ 2024 │ 2     │ 814         │
+│ 238     │ 'microtec'           │ 2024 │ 3     │ 821         │
+│ 239     │ 'microtec'           │ 2024 │ 4     │ 824         │
+│ 240     │ 'microtec'           │ 2024 │ 5     │ 750         │
+│ 241     │ 'microtec'           │ 2024 │ 6     │ 639         │
+│ 242     │ 'microtec'           │ 2024 │ 7     │ 693         │
+│ 243     │ 'microtec'           │ 2024 │ 8     │ 783         │
+│ 244     │ 'microtec'           │ 2024 │ 9     │ 820         │
+│ 245     │ 'microtec'           │ 2024 │ 10    │ 816         │
+│ 246     │ 'microtec'           │ 2024 │ 11    │ 846         │
+│ 247     │ 'microtec'           │ 2024 │ 12    │ 854         │
+│ 248     │ 'microtec'           │ 2025 │ 1     │ 796         │
+│ 249     │ 'microtec'           │ 2025 │ 2     │ 747         │
+│ 250     │ 'microtec'           │ 2025 │ 3     │ 872         │
+│ 251     │ 'microtec'           │ 2025 │ 4     │ 837         │
+│ 252     │ 'microtec'           │ 2025 │ 5     │ 827         │
+│ 253     │ 'microtec'           │ 2025 │ 6     │ 866         │
+│ 254     │ 'microtec'           │ 2025 │ 7     │ 842         │
+│ 255     │ 'microtec'           │ 2025 │ 8     │ 792         │
+│ 256     │ 'microtec'           │ 2025 │ 9     │ 714         │
+│ 257     │ 'microtec'           │ 2025 │ 10    │ 767         │
+│ 258     │ 'microtec'           │ 2025 │ 11    │ 732         │
+│ 259     │ 'microtec'           │ 2025 │ 12    │ 707         │
+│ 260     │ 'microtec'           │ 2026 │ 1     │ 625         │
+│ 261     │ 'microtec'           │ 2026 │ 2     │ 557         │
+│ 262     │ 'microtec'           │ 2026 │ 3     │ 621         │
+│ 263     │ 'microtec'           │ 2026 │ 4     │ 600         │
+│ 264     │ 'microtec'           │ 2026 │ 5     │ 823         │
+│ 265     │ 'microtec'           │ 2026 │ 6     │ 808         │
+│ 266     │ 'microtec'           │ 2026 │ 7     │ 29396       │
+│ 267     │ 'mobiastra'          │ 2026 │ 7     │ 1           │
+│ 268     │ 'movilselect'        │ 2026 │ 7     │ 22          │
+│ 269     │ 'paguishop'          │ 2026 │ 7     │ 814         │
+│ 270     │ 'payphone-mx'        │ 2026 │ 7     │ 8           │
+│ 271     │ 'smartdu'            │ 2026 │ 7     │ 68          │
+│ 272     │ 'sotelo'             │ 2026 │ 7     │ 17          │
+│ 273     │ 'tecmobile'          │ 2026 │ 7     │ 138         │
+│ 274     │ 'tecnomarket'        │ 2026 │ 7     │ 5           │
+│ 275     │ 'tests'              │ 2026 │ 7     │ 1           │
+│ 276     │ 'tiendaamiga'        │ 2026 │ 7     │ 98          │
+│ 277     │ 'wewow-prod'         │ 2026 │ 7     │ 653         │
+│ 278     │ 'ximple'             │ 2026 │ 7     │ 72          │
+│ 279     │ 'xonacredit'         │ 2026 │ 7     │ 55          │
+└─────────┴──────────────────────┴──────┴───────┴─────────────┘

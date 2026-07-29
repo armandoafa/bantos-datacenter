@@ -4373,7 +4373,7 @@ const App = () => {
         <SignatureModal isOpen={modalState.open && modalState.type === 'signature'} onClose={() => setModalState({ type: null, open: false, item: null })} onSave={handleSaveSignature} contract={modalState.item} />
         <TrustonicDeviceModal isOpen={modalState.open && modalState.type === 'trustonic-device'} onClose={() => setModalState({ type: null, open: false, item: null })} onSave={handleSaveDevice} device={modalState.item} />
         <ClientModal isOpen={modalState.open && modalState.type === 'client'} onClose={() => setModalState({ type: null, open: false, item: null })} client={modalState.item} onGenerateWallet={handleGenerateWallet} />
-        <SettlementModal isOpen={modalState.open && modalState.type === 'settlement'} onClose={() => setModalState({ type: null, open: false, item: null })} contract={modalState.item} session={session} onSettled={loadData} />
+        <SettlementModal isOpen={modalState.open && modalState.type === 'settlement'} onClose={() => setModalState({ type: null, open: false, item: null })} contract={modalState.item} session={session} onSettled={refreshData} />
       </main>
       <SupportAgent />
     </div>

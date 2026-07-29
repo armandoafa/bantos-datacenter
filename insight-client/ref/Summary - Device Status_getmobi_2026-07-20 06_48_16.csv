@@ -1,0 +1,2 @@
+Tenant id,Device id,IMEI/SN,IMEI2,Service,Current state,Registered at,First active at,Provisioning type,Brand,Model,Last action,Message title,Requester,Last changed,Last checkin,Expiration timestamp,Organization Name,Account Number,Due Date,Amount owed,Days past due
+getmobi,1190218224963529,352433393264814,,POSTPAID,Locked,2025-08-23 16:02:44,2025-08-23 16:06:56,Motosafe,MOTOROLA,XT2435-1,Lock,"",vk@getmobi.me,2026-07-06 13:32:24,2026-07-09 13:32:13,,"GetMobi","","","",""
