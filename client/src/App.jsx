@@ -6,12 +6,57 @@ import {
   LogOut, RefreshCw, TrendingUp, DollarSign, Plus, Package,
   ChevronDown, ChevronRight, Database, Building2, Globe, MapPin, Store, Edit, X, Trash2,
   BookOpen, Zap, CheckSquare, MessageSquare, ListTodo, ClipboardCheck,
-  Upload, PenTool, Send, AlertCircle, Printer, Activity
+  Upload, PenTool, Send, AlertCircle, Printer, Activity, Menu, Calendar,
+  FileSpreadsheet, Check
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import axios from 'axios';
 import SupportAgent from './SupportAgent';
+import MessagingSetup from './MessagingSetup';
+import ConfigSetup from './ConfigSetup';
 
+const loadXLSXLib = () => {
+  return new Promise((resolve, reject) => {
+    if (window.XLSX) return resolve(window.XLSX);
+    const existingScript = document.getElementById('xlsx-cdn-script');
+    if (existingScript) {
+      existingScript.addEventListener('load', () => resolve(window.XLSX));
+      existingScript.addEventListener('error', (e) => reject(e));
+      return;
+    }
+    const script = document.createElement('script');
+    script.id = 'xlsx-cdn-script';
+    script.src = 'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js';
+    script.onload = () => resolve(window.XLSX);
+    script.onerror = (err) => reject(new Error('No se pudo cargar la librería de lectura de Excel desde CDN.'));
+    document.head.appendChild(script);
+  });
+};
+
+class ViewErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+  static getDerivedStateFromError(error) {
+    return { hasError: true, error };
+  }
+  componentDidCatch(error, errorInfo) {
+    console.error("View Error:", error, errorInfo);
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="p-8 bg-red-50 border border-red-100 rounded-3xl text-red-600 space-y-3 text-center my-6">
+          <h3 className="text-lg font-bold">Ocurrió un error al cargar este módulo</h3>
+          <p className="text-xs font-mono bg-white p-3 rounded-xl border border-red-200">{String(this.state.error)}</p>
+          <button onClick={() => this.setState({ hasError: false })} className="px-6 py-2.5 bg-red-600 text-white rounded-xl text-xs font-bold uppercase tracking-wider shadow-md hover:bg-red-700">Reintentar</button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
 
 const API = import.meta.env.VITE_API_URL || (window.location.hostname === 'localhost' ? 'http://localhost:4000/api' : 'https://bantos.cloud/datacenter-api');
 
@@ -37,22 +82,32 @@ const Badge = ({ status }) => {
   );
 };
 
-const Table = ({ cols, rows, render }) => (
-  <div className="bg-white rounded-[32px] overflow-hidden border border-slate-100 shadow-sm">
-    <div className="overflow-x-auto">
-      <table className="w-full text-left text-[15px] font-bold text-slate-800 whitespace-nowrap min-w-max">
-        <thead className="bg-slate-50 border-b border-slate-100 text-[12px] font-black uppercase tracking-widest text-slate-400">
-          <tr>{cols.map(c => <th key={c} className="px-8 py-6">{c}</th>)}</tr>
-        </thead>
-        <tbody>
-          {rows.length === 0
-            ? <tr><td colSpan={cols.length} className="px-8 py-16 text-center text-slate-300 font-black uppercase tracking-widest text-[12px]">Sin datos — Ejecuta la Sincronización</td></tr>
-            : rows.map((row, i) => <tr key={i} className="border-b border-slate-50 hover:bg-slate-50 transition-all">{render(row)}</tr>)
-          }
-        </tbody>
-      </table>
+const Table = ({ cols, rows, render, renderMobile }) => (
+  <>
+    <div className={`bg-white rounded-[32px] overflow-hidden border border-slate-100 shadow-sm ${renderMobile ? 'hidden md:block' : ''}`}>
+      <div className="overflow-x-auto">
+        <table className="w-full text-left text-[15px] font-bold text-slate-800 whitespace-nowrap min-w-max">
+          <thead className="bg-slate-50 border-b border-slate-100 text-[12px] font-black uppercase tracking-widest text-slate-400">
+            <tr>{cols.map(c => <th key={c} className="px-8 py-6">{c}</th>)}</tr>
+          </thead>
+          <tbody>
+            {rows.length === 0
+              ? <tr><td colSpan={cols.length} className="px-8 py-16 text-center text-slate-300 font-black uppercase tracking-widest text-[12px]">Sin datos — Ejecuta la Sincronización</td></tr>
+              : rows.map((row, i) => <tr key={i} className="border-b border-slate-50 hover:bg-slate-50 transition-all">{render(row)}</tr>)
+            }
+          </tbody>
+        </table>
+      </div>
     </div>
-  </div>
+    {renderMobile && (
+      <div className="md:hidden space-y-4 pb-8">
+        {rows.length === 0
+          ? <div className="p-5 md:p-8 text-center bg-white rounded-2xl border border-slate-100 text-slate-300 font-black uppercase tracking-widest text-[12px]">Sin datos</div>
+          : rows.map((row, i) => <div key={i}>{renderMobile(row)}</div>)
+        }
+      </div>
+    )}
+  </>
 );
 
 const PageHeader = ({ title, subtitle, action }) => (
@@ -65,26 +120,64 @@ const PageHeader = ({ title, subtitle, action }) => (
   </div>
 );
 
+const matchesProduct = (invModel, prodName) => {
+  if (!invModel || !prodName) return false;
+  const iM = invModel.toLowerCase();
+  const pN = prodName.toLowerCase();
+  if (iM === pN) return true;
+  if (iM.includes(pN) || pN.includes(iM)) return true;
+  
+  const extractWords = (str) => str.replace(/[^a-z0-9]/g, ' ').split(/\s+/).filter(w => w.length > 2);
+  const iMWords = extractWords(iM);
+  const pNWords = extractWords(pN);
+  
+  const intersection = iMWords.filter(w => pNWords.includes(w));
+  return intersection.length >= 2 && intersection.some(w => /\d/.test(w));
+};
+
+const ProductInput = ({ label, value, type = 'text', onChange }) => (
+  <div className="space-y-1.5">
+    <label className="text-[11px] font-black uppercase tracking-widest text-slate-400 ml-1">{label}</label>
+    <input type={type} className="w-full bg-slate-50 border-2 border-slate-100 rounded-xl py-3.5 px-5 font-bold text-slate-800 focus:border-blue-600 outline-none transition-all text-base" value={value !== undefined && value !== null ? value : ''} onChange={onChange} />
+  </div>
+);
+
 // --- MODAL DE PRODUCTO ---
-const ProductModal = ({ isOpen, onClose, product, onSave, session }) => {
+const ProductModal = ({ isOpen, onClose, product, onSave, session, inventory = [], onAddInventory }) => {
+  const [activeTab, setActiveTab] = useState('general');
   const [formData, setFormData] = useState({
-    name: '', category: '', productReference: '', lockable: false, manufacturer: '', nonSerialized: false, description: '', picture_url: '', tac: '', build: '', default_managed_by: '', base_value: 0, productType: 'Handset', vat_rate: 0, ...product
+    name: '', model: '', variant: '', category: '', productReference: '', lockable: false, manufacturer: '', is_serialized: true, description: '', picture_url: '', tac: '', build: '', default_managed_by: '', base_value: 0, productType: 'Handset', vat_rate: 0, ...product
   });
   useEffect(() => {
-    if (product) setFormData({ ...product, nonSerialized: !product.is_serialized, productReference: product.reference || product.productReference });
-    else setFormData({ name: '', category: '', productReference: '', lockable: false, manufacturer: '', nonSerialized: false, description: '', picture_url: '', tac: '', build: '', default_managed_by: '', base_value: 0, productType: 'Handset', vat_rate: 0 });
-  }, [product]);
+    setActiveTab('general');
+    if (product) setFormData({ ...product, is_serialized: product.is_serialized !== false, productReference: product.reference || product.productReference, model: product.model || '', variant: product.variant || '' });
+    else setFormData({ name: '', model: '', variant: '', category: '', productReference: '', lockable: false, manufacturer: '', is_serialized: true, description: '', picture_url: '', tac: '', build: '', default_managed_by: '', base_value: 0, productType: 'Handset', vat_rate: 0 });
+  }, [product, isOpen]);
+
+  const handleImageUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const form = new FormData();
+    form.append('file', file);
+    try {
+      const res = await axios.post(`${API}/backoffice/upload`, form, { headers: { 'Content-Type': 'multipart/form-data' }});
+      if (res.data.url) setFormData({ ...formData, picture_url: res.data.url });
+    } catch (err) {
+      alert('Error uploading image');
+    }
+  };
+
+  const handleNumericInput = (field, val) => {
+    const cleaned = val.replace(/[^0-9.]/g, '');
+    const parts = cleaned.split('.');
+    setFormData({...formData, [field]: parts[0] + (parts.length > 1 ? '.' + parts[1] : '')});
+  };
+
   if (!isOpen) return null;
-  const Input = ({ label, value, field, type = 'text' }) => (
-    <div className="space-y-1.5">
-      <label className="text-[11px] font-black uppercase tracking-widest text-slate-400 ml-1">{label}</label>
-      <input type={type} className="w-full bg-slate-50 border-2 border-slate-100 rounded-xl py-3.5 px-5 font-bold text-slate-800 focus:border-blue-600 outline-none transition-all text-base" value={value} onChange={e => setFormData({...formData, [field]: e.target.value})} />
-    </div>
-  );
   return (
-    <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-6">
-      <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="bg-white w-full max-w-4xl rounded-[40px] shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
-        <div className="p-8 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+    <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-0 md:p-6">
+      <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="bg-white w-full h-full md:h-auto md:max-w-5xl rounded-none md:rounded-[40px] shadow-2xl overflow-hidden flex flex-col max-h-[100dvh] md:max-h-[90vh]">
+        <div className="p-5 md:p-8 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
           <div className="flex items-center gap-4">
             <div className="w-12 h-12 bg-blue-600 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-blue-600/20"><Package size={24} /></div>
             <div>
@@ -94,49 +187,214 @@ const ProductModal = ({ isOpen, onClose, product, onSave, session }) => {
           </div>
           <button onClick={onClose} className="p-3 hover:bg-white rounded-2xl transition-all text-slate-400"><LogOut size={20} /></button>
         </div>
-        <div className="p-8 overflow-y-auto grid grid-cols-3 gap-8">
-          <div className="col-span-2 grid grid-cols-2 gap-5">
-            <div className="col-span-2"><p className="text-[12px] font-black text-blue-600 uppercase tracking-[0.2em] mb-2">Información Técnica</p></div>
-            <Input label="Nombre del Producto (*)" value={formData.name} field="name" />
-            <Input label="Referencia / SKU (*)" value={formData.productReference} field="productReference" />
-            <Input label="Fabricante" value={formData.manufacturer} field="manufacturer" />
-            <Input label="Categoría" value={formData.category} field="category" />
+        {product && (
+          <div className="flex border-b border-slate-100 bg-white px-8">
+            <button onClick={() => setActiveTab('general')} className={`py-4 px-6 font-bold text-sm tracking-wide border-b-2 transition-colors ${activeTab === 'general' ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-400 hover:text-slate-600'}`}>Configuración Comercial</button>
+            <button onClick={() => setActiveTab('inventory')} className={`py-4 px-6 font-bold text-sm tracking-wide border-b-2 transition-colors ${activeTab === 'inventory' ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-400 hover:text-slate-600'}`}>Stock (Dispositivos)</button>
+          </div>
+        )}
+        <div className="p-8 overflow-y-auto flex-1 max-h-[60vh]">
+          {activeTab === 'general' ? (
+            <div className="grid grid-cols-1 md:grid-cols-5 gap-4 md:gap-6">
+              <div className="col-span-1 md:col-span-3 grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-5">
+                <div className="col-span-1 md:col-span-2"><p className="text-[12px] font-black text-blue-600 uppercase tracking-[0.2em] mb-2">Información Técnica</p></div>
+                <ProductInput label="Nombre del Producto (*)" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} />
+                <ProductInput label="Referencia / SKU (*)" value={formData.productReference} onChange={e => setFormData({...formData, productReference: e.target.value})} />
+                <ProductInput label="Modelo" value={formData.model} onChange={e => setFormData({...formData, model: e.target.value})} />
+                <ProductInput label="Variante" value={formData.variant} onChange={e => setFormData({...formData, variant: e.target.value})} />
+                <ProductInput label="Fabricante" value={formData.manufacturer} onChange={e => setFormData({...formData, manufacturer: e.target.value})} />
+                <ProductInput label="Categoría" value={formData.category} onChange={e => setFormData({...formData, category: e.target.value})} />
+                <div className="space-y-1.5">
+                  <label className="text-[11px] font-black uppercase tracking-widest text-slate-400 ml-1">Tipo de Producto</label>
+                  <select className="w-full bg-slate-50 border-2 border-slate-100 rounded-xl py-3.5 px-5 font-bold text-slate-800 focus:border-blue-600 outline-none transition-all text-base appearance-none" value={formData.productType} onChange={e => setFormData({...formData, productType: e.target.value})}>
+                    {['Handset', 'Standalone', 'Component', 'Package'].map(t => <option key={t} value={t}>{t}</option>)}
+                  </select>
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-[11px] font-black uppercase tracking-widest text-slate-400 ml-1">Estatus del Producto</label>
+                  <select className="w-full bg-slate-50 border-2 border-slate-100 rounded-xl py-3.5 px-5 font-bold text-slate-800 focus:border-blue-600 outline-none transition-all text-base appearance-none" value={formData.is_serialized ? 'true' : 'false'} onChange={e => setFormData({...formData, is_serialized: e.target.value === 'true'})}>
+                    <option value="true">Serializado</option>
+                    <option value="false">No serializado</option>
+                  </select>
+                </div>
+                <ProductInput label="TAC" value={formData.tac} onChange={e => setFormData({...formData, tac: e.target.value})} />
+                <ProductInput label="Build" value={formData.build} onChange={e => setFormData({...formData, build: e.target.value})} />
+                <ProductInput label="Default Managed By" value={formData.default_managed_by} onChange={e => setFormData({...formData, default_managed_by: e.target.value})} />
+              </div>
+              <div className="col-span-1 md:col-span-2 space-y-6">
+                <div><p className="text-[12px] font-black text-emerald-600 uppercase tracking-[0.2em] mb-4">Configuración & Comercial</p></div>
+                <div className="bg-slate-50 p-6 rounded-[32px] space-y-5 border border-slate-100">
+                  <ProductInput label="Precio Base ($)" value={formData.base_value} onChange={e => handleNumericInput('base_value', e.target.value)} />
+                  <ProductInput label="Tasa IVA (%)" value={formData.vat_rate} onChange={e => handleNumericInput('vat_rate', e.target.value)} />
+                  <div className="space-y-1.5">
+                    <label className="text-[11px] font-black uppercase tracking-widest text-slate-400 ml-1">Picture URL</label>
+                    <div className="flex gap-2">
+                      <input type="text" className="flex-1 min-w-0 bg-slate-50 border-2 border-slate-100 rounded-xl py-3.5 px-5 font-bold text-slate-800 focus:border-blue-600 outline-none transition-all text-base" value={formData.picture_url || ''} onChange={e => setFormData({...formData, picture_url: e.target.value})} />
+                      <label className="bg-blue-600 text-white rounded-xl px-5 flex items-center justify-center gap-2 cursor-pointer hover:bg-blue-700 transition-all font-bold text-sm whitespace-nowrap shrink-0">
+                        <Upload size={18} />
+                        Subir Foto
+                        <input type="file" className="hidden" accept="image/*" onChange={handleImageUpload} />
+                      </label>
+                    </div>
+                  </div>
+                  {formData.picture_url && (
+                    <div className="mt-4 flex justify-center">
+                      <div className="bg-white p-3 rounded-2xl shadow-sm border border-slate-200 inline-block">
+                        <img src={formData.picture_url} alt="Vista previa" className="max-h-48 rounded-xl object-contain" />
+                      </div>
+                    </div>
+                  )}
+                </div>
+                <div className="space-y-4 px-2">
+                  <label className="flex items-center gap-3 cursor-pointer group">
+                    <div onClick={() => setFormData({...formData, lockable: !formData.lockable})} className={`w-5 h-5 rounded-lg border-2 flex items-center justify-center transition-all ${formData.lockable ? 'bg-emerald-500 border-emerald-500 text-white' : 'border-slate-200'}`}>{formData.lockable && <Zap size={12} />}</div>
+                    <span className="text-sm font-black text-slate-600 uppercase tracking-wider">Lockable</span>
+                  </label>
+                </div>
+              </div>
+              <div className="col-span-3 space-y-1.5">
+                <label className="text-[11px] font-black uppercase tracking-widest text-slate-400 ml-1">Descripción Detallada</label>
+                <textarea rows={3} className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl py-4 px-6 font-bold text-slate-800 focus:border-blue-600 outline-none transition-all resize-none text-base" value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} />
+              </div>
+            </div>
+          ) : (
+            (() => {
+              const matchedInventory = inventory.filter(i => matchesProduct(i.model, product.name));
+              
+              return (
+                <div className="space-y-4">
+                  <div className="flex justify-between items-center mb-6">
+                    <div>
+                      <h4 className="font-black text-slate-800 text-lg">Dispositivos en Inventario</h4>
+                      <p className="text-slate-500 text-sm">{matchedInventory.length} unidades en stock</p>
+                    </div>
+                    <button onClick={() => onAddInventory(product.name)} className="px-5 py-2.5 bg-blue-50 text-blue-600 font-bold text-sm rounded-xl hover:bg-blue-100 transition-colors flex items-center gap-2"><Plus size={16}/> Agregar Serial</button>
+                  </div>
+                  <Table cols={['Serial Number', 'Modelo Real', 'Estado']} rows={matchedInventory} 
+                    render={a => (<><td className="px-6 py-4 font-mono text-sm">{a.serial_number}</td><td className="px-6 py-4 text-xs text-slate-500">{a.model}</td><td className="px-6 py-4"><Badge status={a.status} /></td></>)}
+                    renderMobile={a => (<div className="bg-white p-4 rounded-xl border border-slate-100 flex justify-between items-center"><div className="space-y-1"><p className="font-mono text-sm font-bold text-slate-800">{a.serial_number}</p><p className="text-slate-500 text-[10px]">{a.model}</p></div><Badge status={a.status} /></div>)}
+                  />
+                </div>
+              );
+            })()
+          )}
+        </div>
+        <div className="p-5 md:p-8 bg-slate-50 border-t border-slate-100 flex gap-4">
+          <button onClick={onClose} className="px-10 py-4 rounded-2xl font-black uppercase tracking-widest text-[12px] text-slate-400 hover:text-slate-600 transition-all">Cerrar</button>
+          {activeTab === 'general' && (
+            <><div className="flex-1" /><button onClick={() => onSave(formData)} className="px-14 bg-blue-600 text-white py-4 rounded-2xl font-black uppercase tracking-widest text-[12px] shadow-xl shadow-blue-600/30 hover:scale-[1.02] active:scale-95 transition-all">{product ? 'Guardar Cambios' : 'Crear Producto Maestro'}</button></>
+          )}
+        </div>
+      </motion.div>
+    </div>
+  );
+};
+
+// --- MODAL DE TÉRMINOS ---
+const TermModal = ({ isOpen, onClose, term, onSave }) => {
+  const [formData, setFormData] = useState({
+    type: 'PAYG', name: '', status: 'Active', description: '', upfront_percentage: '', interest_percentage: '', frequency_days: 7, installments_count: 1, ...term
+  });
+  
+  useEffect(() => {
+    if (term) setFormData({ ...term });
+    else setFormData({ type: 'PAYG', name: '', status: 'Active', description: '', upfront_percentage: '', interest_percentage: '', frequency_days: 7, installments_count: 1 });
+  }, [term]);
+
+  useEffect(() => {
+    if (formData.type === 'INSTALMENTS') {
+      let iters = 1;
+      const freq = parseInt(formData.frequency_days) || 7;
+      if (freq === 7) iters = 52;
+      else if (freq === 15) iters = 24;
+      else if (freq === 30) iters = 12;
+      
+      if (formData.installments_count !== iters) {
+        setFormData(prev => ({ ...prev, installments_count: iters }));
+      }
+    }
+  }, [formData.frequency_days, formData.type]);
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-0 md:p-6">
+      <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="bg-white w-full h-full md:h-auto md:max-w-2xl rounded-none md:rounded-[40px] shadow-2xl overflow-hidden flex flex-col max-h-[100dvh] md:max-h-[90vh]">
+        <div className="p-5 md:p-8 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 bg-blue-600 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-blue-600/20"><Tag size={24} /></div>
+            <div>
+              <h3 className="text-xl font-black text-slate-900 tracking-tighter">{term ? 'Editar Término' : 'Nuevo Término'}</h3>
+              <p className="text-slate-400 text-[12px] font-bold uppercase tracking-widest mt-0.5">Gestión de Planes</p>
+            </div>
+          </div>
+          <button onClick={onClose} className="p-3 hover:bg-white rounded-2xl transition-all text-slate-400"><X size={20} /></button>
+        </div>
+        <div className="p-8 overflow-y-auto space-y-5">
+          <div className="grid grid-cols-2 gap-5">
             <div className="space-y-1.5">
-              <label className="text-[11px] font-black uppercase tracking-widest text-slate-400 ml-1">Tipo de Producto</label>
-              <select className="w-full bg-slate-50 border-2 border-slate-100 rounded-xl py-3.5 px-5 font-bold text-slate-800 focus:border-blue-600 outline-none transition-all text-base appearance-none" value={formData.productType} onChange={e => setFormData({...formData, productType: e.target.value})}>
-                {['Handset', 'Standalone', 'Component', 'Package'].map(t => <option key={t} value={t}>{t}</option>)}
+              <label className="text-[11px] font-black uppercase tracking-widest text-slate-400 ml-1">Tipo de Plan</label>
+              <select className="w-full bg-slate-50 border-2 border-slate-100 rounded-xl py-3.5 px-5 font-bold text-slate-800 focus:border-blue-600 outline-none transition-all text-base appearance-none" value={formData.type} onChange={e => setFormData({...formData, type: e.target.value})}>
+                {['PAYG', 'INSTALMENTS'].map(t => <option key={t} value={t}>{t}</option>)}
               </select>
             </div>
-            <Input label="TAC" value={formData.tac} field="tac" />
-            <Input label="Build" value={formData.build} field="build" />
-            <Input label="Default Managed By" value={formData.default_managed_by} field="default_managed_by" />
-          </div>
-          <div className="space-y-6">
-            <div><p className="text-[12px] font-black text-emerald-600 uppercase tracking-[0.2em] mb-4">Configuración & Comercial</p></div>
-            <div className="bg-slate-50 p-6 rounded-[32px] space-y-5 border border-slate-100">
-              <Input label="Precio Base ($)" value={formData.base_value} field="base_value" type="number" />
-              <Input label="Tasa IVA (%)" value={formData.vat_rate} field="vat_rate" type="number" />
-              <Input label="Picture URL" value={formData.picture_url} field="picture_url" />
+            <div className="space-y-1.5">
+              <label className="text-[11px] font-black uppercase tracking-widest text-slate-400 ml-1">Nombre del Plan (*)</label>
+              <input type="text" className="w-full bg-slate-50 border-2 border-slate-100 rounded-xl py-3.5 px-5 font-bold text-slate-800 focus:border-blue-600 outline-none transition-all text-base" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} />
             </div>
-            <div className="space-y-4 px-2">
-              <label className="flex items-center gap-3 cursor-pointer group">
-                <div onClick={() => setFormData({...formData, nonSerialized: !formData.nonSerialized})} className={`w-5 h-5 rounded-lg border-2 flex items-center justify-center transition-all ${formData.nonSerialized ? 'bg-blue-600 border-blue-600 text-white' : 'border-slate-200'}`}>{formData.nonSerialized && <CheckSquare size={12} />}</div>
-                <span className="text-sm font-black text-slate-600 uppercase tracking-wider">No Serializado</span>
-              </label>
-              <label className="flex items-center gap-3 cursor-pointer group">
-                <div onClick={() => setFormData({...formData, lockable: !formData.lockable})} className={`w-5 h-5 rounded-lg border-2 flex items-center justify-center transition-all ${formData.lockable ? 'bg-emerald-500 border-emerald-500 text-white' : 'border-slate-200'}`}>{formData.lockable && <Zap size={12} />}</div>
-                <span className="text-sm font-black text-slate-600 uppercase tracking-wider">Lockable</span>
-              </label>
+            
+            {formData.type === 'INSTALMENTS' && (
+              <>
+                <div className="space-y-1.5">
+                  <label className="text-[11px] font-black uppercase tracking-widest text-slate-400 ml-1">% Enganche</label>
+                  <input type="text" className="w-full bg-slate-50 border-2 border-slate-100 rounded-xl py-3.5 px-5 font-bold text-slate-800 focus:border-blue-600 outline-none transition-all text-base" value={formData.upfront_percentage} onChange={e => setFormData({...formData, upfront_percentage: e.target.value})} />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-[11px] font-black uppercase tracking-widest text-slate-400 ml-1">% Interés</label>
+                  <input type="text" className="w-full bg-slate-50 border-2 border-slate-100 rounded-xl py-3.5 px-5 font-bold text-slate-800 focus:border-blue-600 outline-none transition-all text-base" value={formData.interest_percentage || ''} onChange={e => setFormData({...formData, interest_percentage: e.target.value})} />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-[11px] font-black uppercase tracking-widest text-slate-400 ml-1">Frecuencia (Días)</label>
+                  <select className="w-full bg-slate-50 border-2 border-slate-100 rounded-xl py-3.5 px-5 font-bold text-slate-800 focus:border-blue-600 outline-none transition-all text-base appearance-none" value={formData.frequency_days || 7} onChange={e => setFormData({...formData, frequency_days: parseInt(e.target.value)})}>
+                    {[7, 15, 30].map(t => <option key={t} value={t}>{t} días</option>)}
+                  </select>
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-[11px] font-black uppercase tracking-widest text-slate-400 ml-1">No. Iteraciones (Auto)</label>
+                  <input type="text" disabled className="w-full bg-slate-100 border-2 border-slate-100 rounded-xl py-3.5 px-5 font-bold text-slate-500 outline-none transition-all text-base cursor-not-allowed" value={formData.installments_count || 1} />
+                </div>
+              </>
+            )}
+
+            <div className="space-y-1.5">
+              <label className="text-[11px] font-black uppercase tracking-widest text-slate-400 ml-1">Estado</label>
+              <select className="w-full bg-slate-50 border-2 border-slate-100 rounded-xl py-3.5 px-5 font-bold text-slate-800 focus:border-blue-600 outline-none transition-all text-base appearance-none" value={formData.status} onChange={e => setFormData({...formData, status: e.target.value})}>
+                {['Active', 'Inactive'].map(t => <option key={t} value={t}>{t}</option>)}
+              </select>
             </div>
           </div>
-          <div className="col-span-3 space-y-1.5">
-            <label className="text-[11px] font-black uppercase tracking-widest text-slate-400 ml-1">Descripción Detallada</label>
+
+          {formData.type === 'INSTALMENTS' && formData.installments_count > 0 && (
+            <div className="bg-blue-50 p-5 rounded-2xl border border-blue-100 flex gap-4 text-sm text-blue-800">
+              <AlertCircle size={24} className="shrink-0 text-blue-500" />
+              <div>
+                <p className="font-bold text-blue-900 mb-1">Funcionamiento del Plan a Crédito</p>
+                <p className="font-medium text-blue-800/80">
+                  Al vender un producto con este plan, la plataforma calculará automáticamente un enganche del <strong>{formData.upfront_percentage || 0}%</strong> sobre el precio del producto. 
+                  El saldo restante será dividido en <strong>{formData.installments_count} pagos iguales</strong> que el cliente deberá cubrir cada <strong>{formData.frequency_days || 7} días</strong>.
+                </p>
+              </div>
+            </div>
+          )}
+
+          <div className="space-y-1.5">
+            <label className="text-[11px] font-black uppercase tracking-widest text-slate-400 ml-1">Descripción</label>
             <textarea rows={3} className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl py-4 px-6 font-bold text-slate-800 focus:border-blue-600 outline-none transition-all resize-none text-base" value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} />
           </div>
         </div>
-        <div className="p-8 bg-slate-50 border-t border-slate-100 flex gap-4">
+        <div className="p-5 md:p-8 bg-slate-50 border-t border-slate-100 flex gap-4">
           <button onClick={onClose} className="px-10 py-4 rounded-2xl font-black uppercase tracking-widest text-[12px] text-slate-400 hover:text-slate-600 transition-all">Cancelar</button>
-          <div className="flex-1" /><button onClick={() => onSave(formData)} className="px-14 bg-blue-600 text-white py-4 rounded-2xl font-black uppercase tracking-widest text-[12px] shadow-xl shadow-blue-600/30 hover:scale-[1.02] active:scale-95 transition-all">{product ? 'Guardar Cambios' : 'Crear Producto Maestro'}</button>
+          <div className="flex-1" /><button onClick={() => onSave(formData)} className="px-14 bg-blue-600 text-white py-4 rounded-2xl font-black uppercase tracking-widest text-[12px] shadow-xl shadow-blue-600/30 hover:scale-[1.02] active:scale-95 transition-all">{term ? 'Guardar Cambios' : 'Crear Término'}</button>
         </div>
       </motion.div>
     </div>
@@ -162,9 +420,9 @@ const DataCollectionModal = ({ isOpen, onClose, collection, onSave }) => {
   };
 
   return (
-    <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-6">
-      <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="bg-white w-full max-w-4xl rounded-[40px] shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
-        <div className="p-8 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+    <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-0 md:p-6">
+      <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="bg-white w-full h-full md:h-auto md:max-w-4xl rounded-none md:rounded-[40px] shadow-2xl overflow-hidden flex flex-col max-h-[100dvh] md:max-h-[90vh]">
+        <div className="p-5 md:p-8 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
           <div className="flex items-center gap-4">
             <div className="w-12 h-12 bg-emerald-600 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-emerald-600/20"><ClipboardCheck size={24} /></div>
             <div>
@@ -175,8 +433,8 @@ const DataCollectionModal = ({ isOpen, onClose, collection, onSave }) => {
           <button onClick={onClose} className="p-3 hover:bg-white rounded-2xl transition-all text-slate-400"><LogOut size={20} /></button>
         </div>
         
-        <div className="p-8 overflow-y-auto space-y-8">
-          <div className="grid grid-cols-2 gap-6">
+        <div className="p-5 md:p-8 overflow-y-auto space-y-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-1.5">
               <label className="text-[11px] font-black uppercase tracking-widest text-slate-400 ml-1">Nombre del Formulario</label>
               <input className="w-full bg-slate-50 border-2 border-slate-100 rounded-xl py-3.5 px-5 font-bold text-slate-800 focus:border-blue-600 outline-none transition-all text-base" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} />
@@ -216,7 +474,7 @@ const DataCollectionModal = ({ isOpen, onClose, collection, onSave }) => {
           </div>
         </div>
 
-        <div className="p-8 bg-slate-50 border-t border-slate-100 flex gap-4">
+        <div className="p-5 md:p-8 bg-slate-50 border-t border-slate-100 flex gap-4">
           <button onClick={onClose} className="px-10 py-4 rounded-2xl font-black uppercase tracking-widest text-[12px] text-slate-400 hover:text-slate-600 transition-all">Cancelar</button>
           <div className="flex-1" /><button onClick={() => onSave(formData)} className="px-14 bg-emerald-600 text-white py-4 rounded-2xl font-black uppercase tracking-widest text-[12px] shadow-xl shadow-emerald-600/30 hover:scale-[1.02] active:scale-95 transition-all">{collection ? 'Guardar Cambios' : 'Crear Flujo de Datos'}</button>
         </div>
@@ -304,9 +562,9 @@ const ClientModal = ({ isOpen, onClose, client, onGenerateWallet }) => {
   };
 
   return (
-    <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-6">
+    <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-0 md:p-6">
       <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="bg-white w-full max-w-2xl rounded-[40px] shadow-2xl overflow-hidden">
-        <div className="p-8 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+        <div className="p-5 md:p-8 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
           <div className="flex items-center gap-4">
             <div className="w-12 h-12 bg-blue-600 rounded-2xl flex items-center justify-center text-white"><Users size={24} /></div>
             <div>
@@ -318,7 +576,7 @@ const ClientModal = ({ isOpen, onClose, client, onGenerateWallet }) => {
         </div>
 
         <div className="p-10 space-y-8">
-          <div className="grid grid-cols-2 gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-5 md:p-8">
             <div className="space-y-1">
               <p className="text-[11px] font-black text-slate-300 uppercase tracking-widest">ID de Sistema</p>
               <p className="font-mono text-blue-600 font-bold">{client.upya_id}</p>
@@ -329,7 +587,7 @@ const ClientModal = ({ isOpen, onClose, client, onGenerateWallet }) => {
             </div>
           </div>
 
-          <div className="bg-slate-50 rounded-3xl p-8 border border-slate-100 space-y-6">
+          <div className="bg-slate-50 rounded-3xl p-5 md:p-8 border border-slate-100 space-y-6">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 bg-emerald-100 rounded-xl flex items-center justify-center text-emerald-600"><CreditCard size={20} /></div>
@@ -344,7 +602,7 @@ const ClientModal = ({ isOpen, onClose, client, onGenerateWallet }) => {
                   <p className="text-[10px] font-black text-emerald-500 uppercase tracking-[0.2em] mb-2">CLABE Interbancaria</p>
                   <p className="text-2xl font-mono font-black text-emerald-700 tracking-[0.1em]">{client.clabe}</p>
                 </div>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="bg-white/50 border border-slate-100 rounded-xl p-3">
                     <p className="text-[9px] font-black text-slate-400 uppercase">Wallet ID</p>
                     <p className="text-[11px] font-mono font-bold text-slate-600">{client.wallet_account_id}</p>
@@ -380,7 +638,7 @@ const ClientModal = ({ isOpen, onClose, client, onGenerateWallet }) => {
           </div>
         </div>
 
-        <div className="p-8 bg-slate-50/50 border-t border-slate-100 flex justify-end">
+        <div className="p-5 md:p-8 bg-slate-50/50 border-t border-slate-100 flex justify-end">
           <button onClick={onClose} className="px-8 py-3 font-black text-[12px] uppercase tracking-widest text-slate-400 hover:text-slate-600">Cerrar</button>
         </div>
       </motion.div>
@@ -389,13 +647,13 @@ const ClientModal = ({ isOpen, onClose, client, onGenerateWallet }) => {
 };
 
 const CONTRACT_STATUSES = {
-  SIGNED: ['SIGNED', 'FIRMADO', 'LOCKED'],
-  APPROVED: ['APPROVED', 'APROBADO', 'LOCKED', 'ENABLED'],
+  SIGNED: ['SIGNED', 'FIRMADO', 'ENABLED'],
+  APPROVED: ['APPROVED', 'APROBADO', 'ENABLED'],
   PENDING: ['PENDING', 'PENDIENTE', 'LOCKED'],
   REJECTED: ['REJECTED', 'NO APROBADO', 'CANCELLED']
 };
 
-const ContractsView = ({ contracts, onNew, onEdit, onSign, session }) => {
+const ContractsView = ({ contracts, onNew, onEdit, onSign, onSettle, session }) => {
   const [filter, setFilter] = useState('all');
   const [search, setSearch] = useState('');
 
@@ -502,9 +760,16 @@ const ContractsView = ({ contracts, onNew, onEdit, onSign, session }) => {
               >
                 <Settings2 size={16} />
               </button>
-              {(c.contract_number && (c.contract_number.endsWith('.docx') || c.contract_number.endsWith('.pdf'))) && (
+              <button 
+                onClick={() => onSettle && onSettle(c)}
+                className="px-2.5 py-1 bg-amber-50 text-amber-700 rounded-lg font-bold text-[11px] hover:bg-amber-600 hover:text-white transition-all border border-amber-200"
+                title="Finiquitar / Liquidar Crédito Anticipadamente"
+              >
+                Finiquitar
+              </button>
+              {(CONTRACT_STATUSES.SIGNED.includes((c.status || '').toUpperCase()) || c.signature_image || c.signature_data) && (
                 <a 
-                  href={`https://bantos.cloud/signed-contracts/${c.contract_number}`} 
+                  href={c.contract_number && (c.contract_number.endsWith('.docx') || c.contract_number.endsWith('.pdf')) ? `https://bantos.cloud/signed-contracts/${c.contract_number}` : `/datacenter-api/backoffice/contracts/${c.upya_id}/pdf?tenantId=${session?.tenantId}`} 
                   target="_blank" 
                   rel="noopener noreferrer"
                   className="p-2 rounded-lg hover:bg-emerald-50 text-emerald-500 hover:text-emerald-700 transition-all"
@@ -514,7 +779,7 @@ const ContractsView = ({ contracts, onNew, onEdit, onSign, session }) => {
                 </a>
               )}
               
-              {!CONTRACT_STATUSES.SIGNED.includes((c.status || '').toUpperCase()) && (
+              {!CONTRACT_STATUSES.SIGNED.includes((c.status || '').toUpperCase()) && !c.signature_image && !c.signature_data && (
                 <button 
                   onClick={() => onSign(c)}
                   className="px-3 py-1.5 bg-blue-50 text-blue-600 rounded-lg font-black text-[11px] uppercase tracking-widest hover:bg-blue-600 hover:text-white transition-all border border-blue-100"
@@ -524,13 +789,48 @@ const ContractsView = ({ contracts, onNew, onEdit, onSign, session }) => {
               )}
             </td>
           </>
-        )} 
+        )}
+        renderMobile={c => (
+          <div className="bg-white p-6 rounded-2xl border border-slate-100 space-y-4">
+            <div className="flex justify-between items-start">
+              <div>
+                <p className="font-black text-slate-900 tracking-tight">{c.contract_number || c.upya_id}</p>
+                <p className="text-[12px] text-slate-400 font-bold uppercase tracking-widest">{c.client_name || '—'}</p>
+              </div>
+              <Badge status={c.status} />
+            </div>
+            <div className="pt-4 border-t border-slate-50 space-y-3">
+              <div className="flex justify-between text-sm">
+                <span className="text-slate-400 font-bold">Producto:</span>
+                <span className="font-black text-slate-800">{c.product_name || 'N/A'}</span>
+              </div>
+              <div className="space-y-1">
+                <div className="flex justify-between text-[11px] font-black text-slate-400 uppercase tracking-widest">
+                  <span>Pago: ${Number(c.paid_value || 0).toLocaleString()}</span>
+                  <span>{Math.round((Number(c.paid_value || 0) / Number(c.total_value || 1)) * 100)}%</span>
+                </div>
+                <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
+                  <div className="h-full bg-blue-600 rounded-full" style={{ width: `${(Number(c.paid_value || 0) / Number(c.total_value || 1)) * 100}%` }} />
+                </div>
+              </div>
+              <div className="flex justify-end gap-2 pt-2">
+                <button onClick={() => onEdit(c)} className="p-2.5 rounded-lg bg-slate-50 text-slate-400 hover:text-slate-600"><Settings2 size={16} /></button>
+                {(CONTRACT_STATUSES.SIGNED.includes((c.status || '').toUpperCase()) || c.signature_image || c.signature_data) && (
+                  <a href={c.contract_number && (c.contract_number.endsWith('.docx') || c.contract_number.endsWith('.pdf')) ? `https://bantos.cloud/signed-contracts/${c.contract_number}` : `/datacenter-api/backoffice/contracts/${c.upya_id}/pdf?tenantId=${session?.tenantId}`} target="_blank" rel="noopener noreferrer" className="p-2.5 rounded-lg bg-emerald-50 text-emerald-500 hover:bg-emerald-100 transition-all" title="Ver documento firmado"><FileText size={16} /></a>
+                )}
+                {!CONTRACT_STATUSES.SIGNED.includes((c.status || '').toUpperCase()) && !c.signature_image && !c.signature_data && (
+                  <button onClick={() => onSign(c)} className="px-4 py-2 bg-blue-50 text-blue-600 rounded-lg font-black text-[11px] uppercase tracking-widest border border-blue-100">Firmar</button>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
       />
     </div>
   );
 };
 
-const ContractModal = ({ isOpen, onClose, onSave, contract, clients, inventory, tenantId, onOpenPayment }) => {
+const ContractModal = ({ isOpen, onClose, onSave, contract, clients, inventory, paymentPlans, tenantId, onOpenPayment }) => {
   const [activeMode, setActiveMode] = useState('form'); // 'form' or 'import'
   const [formData, setFormData] = useState({
     status: '', product_name: '', total_value: 0, paid_value: 0, client_id: '', deal_name: ''
@@ -652,9 +952,9 @@ const ContractModal = ({ isOpen, onClose, onSave, contract, clients, inventory, 
   };
 
   return (
-    <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-6">
+    <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-0 md:p-6">
       <motion.div initial={{ opacity: 0, scale: 0.9, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} className="bg-white rounded-[40px] shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col border border-slate-100">
-        <div className="p-8 border-b border-slate-50 flex items-center justify-between bg-slate-50/50">
+        <div className="p-5 md:p-8 border-b border-slate-50 flex items-center justify-between bg-slate-50/50">
           <div className="flex items-center gap-6">
             <div>
               <h2 className="text-2xl font-black text-slate-800 tracking-tight">{contract ? `Editar Contrato` : 'Nuevo Contrato'}</h2>
@@ -689,7 +989,7 @@ const ContractModal = ({ isOpen, onClose, onSave, contract, clients, inventory, 
                 </button>
                 
                 <button 
-                  onClick={() => onOpenPayment(contract)}
+                  onClick={() => onOpenPayment({ ...contract, ...formData })}
                   className="p-3 bg-emerald-600 text-white rounded-2xl hover:bg-emerald-700 hover:shadow-lg transition-all border border-emerald-500 flex items-center gap-2 font-black text-[12px] uppercase tracking-widest"
                 >
                   <CreditCard size={20} /> Pagar
@@ -704,19 +1004,19 @@ const ContractModal = ({ isOpen, onClose, onSave, contract, clients, inventory, 
           <AnimatePresence mode="wait">
             {activeMode === 'form' ? (
               <motion.div key="form" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} className="space-y-10">
-                <div className="grid grid-cols-2 gap-10">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
                   <div className="space-y-6">
                     <h3 className="text-[12px] font-black text-blue-600 uppercase tracking-[0.2em] flex items-center gap-2"><Users size={14} /> Información del Cliente</h3>
                     <div className="space-y-1.5">
                       <label className="text-[11px] font-black uppercase tracking-widest text-slate-400 ml-1">Cliente Asociado</label>
-                      <select className="w-full bg-slate-50 border-2 border-slate-100 rounded-xl py-3.5 px-5 font-bold text-slate-800 focus:border-blue-600 outline-none transition-all text-base appearance-none" value={formData.client_id || ''} onChange={e => setFormData({...formData, client_id: e.target.value})}>
+                      <select className="w-full bg-slate-50 border-2 border-slate-100 rounded-xl py-3.5 px-5 font-bold text-slate-800 focus:border-blue-600 outline-none transition-all text-base" value={formData.client_id || ''} onChange={e => setFormData({...formData, client_id: e.target.value})}>
                         <option value="">Seleccionar cliente...</option>
                         {(clients || []).map(c => <option key={c.upya_id} value={c.upya_id}>{c.name} ({c.client_number})</option>)}
                       </select>
                     </div>
                     <div className="space-y-1.5">
                       <label className="text-[11px] font-black uppercase tracking-widest text-slate-400 ml-1">Estado del Contrato</label>
-                      <select className="w-full bg-slate-50 border-2 border-slate-100 rounded-xl py-3.5 px-5 font-bold text-slate-800 focus:border-blue-600 outline-none transition-all text-base appearance-none" value={formData.status || ''} onChange={e => setFormData({...formData, status: e.target.value})}>
+                      <select className="w-full bg-slate-50 border-2 border-slate-100 rounded-xl py-3.5 px-5 font-bold text-slate-800 focus:border-blue-600 outline-none transition-all text-base" value={formData.status || ''} onChange={e => setFormData({...formData, status: e.target.value})}>
                         {[
                           { val: 'Signed', lab: 'Signed' },
                           { val: 'Approved', lab: 'Approved' },
@@ -734,7 +1034,7 @@ const ContractModal = ({ isOpen, onClose, onSave, contract, clients, inventory, 
                     <h3 className="text-[12px] font-black text-emerald-600 uppercase tracking-[0.2em] flex items-center gap-2"><CreditCard size={14} /> Detalles del Plan</h3>
                     <div className="space-y-1.5">
                       <label className="text-[11px] font-black uppercase tracking-widest text-slate-400 ml-1">Dispositivo (Inventario Upya)</label>
-                      <select className="w-full bg-slate-50 border-2 border-slate-100 rounded-xl py-3.5 px-5 font-bold text-slate-800 focus:border-emerald-500 outline-none transition-all text-base appearance-none" value={formData.product_name || ''} onChange={e => setFormData({...formData, product_name: e.target.value})}>
+                      <select className="w-full bg-slate-50 border-2 border-slate-100 rounded-xl py-3.5 px-5 font-bold text-slate-800 focus:border-emerald-500 outline-none transition-all text-base" value={formData.product_name || ''} onChange={e => setFormData({...formData, product_name: e.target.value})}>
                         <option value="">Seleccionar dispositivo...</option>
                         {(inventory || []).map(a => {
                           const val = `N/S: ${a.serial_number} - ${a.model}`;
@@ -747,12 +1047,17 @@ const ContractModal = ({ isOpen, onClose, onSave, contract, clients, inventory, 
                     </div>
                     <div className="space-y-1.5">
                       <label className="text-[11px] font-black uppercase tracking-widest text-slate-400 ml-1">Nombre del Plan (Deal)</label>
-                      <input type="text" className="w-full bg-slate-50 border-2 border-slate-100 rounded-xl py-3.5 px-5 font-bold text-slate-800 focus:border-emerald-500 outline-none transition-all text-base" value={formData.deal_name || ''} onChange={e => setFormData({...formData, deal_name: e.target.value})} placeholder="Ej. 12 Meses PAYG" />
+                      <select className="w-full bg-slate-50 border-2 border-slate-100 rounded-xl py-3.5 px-5 font-bold text-slate-800 focus:border-emerald-500 outline-none transition-all text-base" value={formData.deal_name || ''} onChange={e => setFormData({...formData, deal_name: e.target.value})}>
+                        <option value="">Seleccionar plan...</option>
+                        {(paymentPlans || []).map(p => (
+                          <option key={p.upya_id || p.id} value={p.name}>{p.name} ({p.type})</option>
+                        ))}
+                      </select>
                     </div>
                   </div>
                 </div>
 
-                <div className="bg-slate-50 p-8 rounded-[40px] border border-slate-100 grid grid-cols-2 gap-8">
+                <div className="bg-slate-50 p-8 rounded-[40px] border border-slate-100 grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-5 md:p-8">
                   <div className="space-y-1.5">
                     <label className="text-[11px] font-black uppercase tracking-widest text-slate-400 ml-1">Valor Total del Contrato</label>
                     <input type="number" className="w-full bg-white border-2 border-slate-100 rounded-xl py-3.5 px-5 font-bold text-slate-800 focus:border-blue-600 outline-none transition-all text-base" value={formData.total_value || 0} onChange={e => setFormData({...formData, total_value: e.target.value})} />
@@ -809,7 +1114,7 @@ const ContractModal = ({ isOpen, onClose, onSave, contract, clients, inventory, 
               </motion.div>
             ) : (
               <motion.div key="import" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-8">
-                <div className="grid grid-cols-2 gap-10">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
                   <div className="space-y-6">
                     <h3 className="text-[12px] font-black text-blue-600 uppercase tracking-[0.2em] flex items-center gap-2"><Upload size={14} /> Importación de Documento</h3>
                     
@@ -898,7 +1203,7 @@ const ContractModal = ({ isOpen, onClose, onSave, contract, clients, inventory, 
           </AnimatePresence>
         </div>
 
-        <div className="p-8 border-t border-slate-50 bg-slate-50/50 flex justify-end gap-4">
+        <div className="p-5 md:p-8 border-t border-slate-50 bg-slate-50/50 flex justify-end gap-4">
           <button onClick={onClose} className="px-8 py-4 rounded-2xl font-black text-sm uppercase tracking-widest text-slate-400 hover:text-slate-600 transition-all">Cancelar</button>
           <button 
             onClick={handleLocalSave} 
@@ -951,9 +1256,9 @@ const SignatureModal = ({ isOpen, onClose, contract, onSave }) => {
   };
 
   return (
-    <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-6">
+    <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-0 md:p-6">
       <motion.div initial={{ opacity: 0, scale: 0.9, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} className="bg-white rounded-[40px] shadow-2xl w-full max-w-2xl border border-slate-100 overflow-hidden">
-        <div className="p-8 border-b border-slate-50 flex items-center justify-between">
+        <div className="p-5 md:p-8 border-b border-slate-50 flex items-center justify-between">
           <div>
             <h2 className="text-2xl font-black text-slate-800 tracking-tight">Firmar Contrato</h2>
             <p className="text-sm font-bold text-slate-400 uppercase tracking-widest mt-1">Ref: {contract?.contract_number || contract?.upya_id}</p>
@@ -987,7 +1292,7 @@ const SignatureModal = ({ isOpen, onClose, contract, onSave }) => {
           </div>
         </div>
 
-        <div className="p-8 border-t border-slate-50 bg-slate-50/50 flex justify-end gap-4">
+        <div className="p-5 md:p-8 border-t border-slate-50 bg-slate-50/50 flex justify-end gap-4">
           <button onClick={onClose} className="px-8 py-4 rounded-2xl font-black text-sm uppercase tracking-widest text-slate-400 hover:text-slate-600 transition-all">Cancelar</button>
           <button onClick={handleSign} className="px-10 py-4 bg-blue-600 text-white rounded-2xl font-black text-sm uppercase tracking-widest hover:bg-blue-700 hover:shadow-xl transition-all active:scale-95 shadow-lg shadow-blue-600/20">Confirmar Firma</button>
         </div>
@@ -996,12 +1301,7 @@ const SignatureModal = ({ isOpen, onClose, contract, onSave }) => {
   );
 };
 
-const InventoryView = ({ inventory }) => (
-  <div className="space-y-8">
-    <PageHeader title="Dispositivos" subtitle={`${inventory.length} activos técnicos`} />
-    <Table cols={['Serial Number', 'Modelo', 'Estado']} rows={inventory} render={a => (<><td className="px-8 py-5 font-mono text-sm">{a.serial_number}</td><td className="px-8 py-5 text-slate-500">{a.model}</td><td className="px-8 py-5"><Badge status={a.status} /></td></>)} />
-  </div>
-);
+
 
 const ACCEPTED_STATUSES = ['PAID', 'VALIDATED', 'ACCEPTED', 'ACEPTADO', 'PAGADO', 'VALIDADO'];
 const FAILED_STATUSES = ['FAILED', 'FALLADO', 'REJECTED', 'CANCELED', 'RECHAZADO', 'CANCELADO', 'REVERSED'];
@@ -1089,42 +1389,240 @@ const PaymentsView = ({ payments, onEdit, onCreate, session }) => {
               
               <button 
                 onClick={() => onEdit(p)} 
-                className={`p-3 rounded-xl transition-all ${FINAL_STATUSES.includes((p.status || '').toUpperCase()) ? 'bg-slate-50 text-slate-200 cursor-not-allowed' : 'bg-slate-50 text-slate-400 hover:bg-blue-600 hover:text-white shadow-sm active:scale-95'}`}
-                title={FINAL_STATUSES.includes((p.status || '').toUpperCase()) ? 'No se puede editar un pago ya aceptado' : 'Editar pago'}
+                className={`p-3 rounded-xl transition-all ${FINAL_STATUSES.includes((p.status || '').toUpperCase()) ? 'bg-slate-50 text-slate-400 hover:bg-slate-200 shadow-sm active:scale-95' : 'bg-slate-50 text-slate-400 hover:bg-blue-600 hover:text-white shadow-sm active:scale-95'}`}
+                title={FINAL_STATUSES.includes((p.status || '').toUpperCase()) ? 'Ver detalle de pago' : 'Editar pago'}
               >
                 <Settings2 size={16} />
               </button>
             </td>
           </>
-        )} 
+        )}
+        renderMobile={p => (
+          <div className="bg-white p-6 rounded-2xl border border-slate-100 space-y-4">
+            <div className="flex justify-between items-start">
+              <div>
+                <p className="font-black text-slate-900 text-lg">${Number(p.amount || 0).toLocaleString()}</p>
+                <p className="text-[11px] text-slate-400 font-bold uppercase tracking-widest mt-1">{p.payment_date ? new Date(p.payment_date).toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'}</p>
+              </div>
+              <Badge status={p.status} />
+            </div>
+            <div className="pt-4 border-t border-slate-50 space-y-2">
+              <div className="flex justify-between text-sm">
+                <span className="text-slate-400 font-bold">Cliente:</span>
+                <span className="font-black text-slate-800 text-right">{p.client_name || '—'}<br/><span className="text-blue-600 text-[10px] uppercase">{p.client_number || 'S/N'}</span></span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-slate-400 font-bold">Método:</span>
+                <div className="flex items-center gap-1.5 text-slate-600 font-medium"><CreditCard size={14} /> {p.method || '—'}</div>
+              </div>
+              <div className="flex justify-end gap-2 pt-2">
+                <button onClick={() => window.open(`/datacenter-api/backoffice/payments/${p.id}/pdf?tenantId=${session?.tenantId}`, '_blank')} className="p-2.5 bg-slate-50 text-blue-600 rounded-xl"><Printer size={16} /></button>
+                <button onClick={() => onEdit(p)} className={`p-2.5 rounded-xl ${FINAL_STATUSES.includes((p.status || '').toUpperCase()) ? 'bg-slate-50 text-slate-200' : 'bg-slate-50 text-slate-400'}`}><Settings2 size={16} /></button>
+              </div>
+            </div>
+          </div>
+        )}
       />
     </div>
   );
 };
 
-const PaymentModal = ({ isOpen, onClose, payment, onSave, clients, session }) => {
+const SettlementModal = ({ isOpen, onClose, contract, session, onSettled }) => {
+  const [quote, setQuote] = useState(null);
+  const [loadingQuote, setLoadingQuote] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [discountAmount, setDiscountAmount] = useState(0);
+  const [method, setMethod] = useState('Transferencia SPEI');
+  const [notes, setNotes] = useState('');
+
+  useEffect(() => {
+    if (isOpen && contract) {
+      fetchQuote();
+    } else {
+      setQuote(null);
+      setDiscountAmount(0);
+      setNotes('');
+    }
+  }, [isOpen, contract]);
+
+  const fetchQuote = async () => {
+    setLoadingQuote(true);
+    try {
+      const res = await axios.get(`${API}/backoffice/contracts/${contract.upya_id || contract.contract_number}/settlement-quote?tenantId=${session?.tenantId}`);
+      setQuote(res.data);
+    } catch (e) {
+      alert('Error al cotizar el finiquito: ' + (e.response?.data?.error || e.message));
+      onClose();
+    } finally {
+      setLoadingQuote(false);
+    }
+  };
+
+  if (!isOpen || !contract) return null;
+
+  const remaining = quote ? quote.remaining_balance : 0;
+  const finalAmount = Math.max(0, remaining - parseFloat(discountAmount || 0));
+
+  const handleSettle = async (e) => {
+    e.preventDefault();
+    if (finalAmount <= 0 && remaining > 0 && !confirm('El monto a pagar es $0. ¿Seguro que deseas condonar/finiquitar el 100% restante?')) {
+      return;
+    }
+    setSubmitting(true);
+    try {
+      const res = await axios.post(`${API}/backoffice/contracts/${contract.upya_id || contract.contract_number}/settle`, {
+        tenantId: session?.tenantId,
+        userId: session?.id,
+        orgId: session?.scope?.orgId,
+        amount: finalAmount,
+        discount_amount: parseFloat(discountAmount || 0),
+        method,
+        notes
+      });
+      alert(res.data.message || 'Finiquito procesado exitosamente.');
+      if (onSettled) onSettled();
+      onClose();
+    } catch (err) {
+      alert('Error al finiquitar el crédito: ' + (err.response?.data?.error || err.message));
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
+      <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl space-y-6">
+        <div className="flex justify-between items-center border-b pb-4">
+          <div>
+            <h3 className="text-lg font-black text-slate-900">Finiquitar Crédito Anticipadamente</h3>
+            <p className="text-xs text-slate-500 font-bold uppercase tracking-wider">Contrato: {contract.contract_number || contract.upya_id}</p>
+          </div>
+          <button onClick={onClose} className="p-2 text-slate-400 hover:text-slate-600 rounded-lg"><X size={20} /></button>
+        </div>
+
+        {loadingQuote ? (
+          <div className="py-12 text-center text-slate-500 font-bold">Calculando desglose del finiquito...</div>
+        ) : quote ? (
+          <form onSubmit={handleSettle} className="space-y-4">
+            <div className="bg-slate-50 p-4 rounded-xl space-y-2 border border-slate-100 text-sm">
+              <div className="flex justify-between">
+                <span className="text-slate-500 font-medium">Cliente:</span>
+                <span className="font-bold text-slate-800">{quote.client_name || 'N/A'} ({quote.client_number || '—'})</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-500 font-medium">Monto Total Financiado:</span>
+                <span className="font-bold text-slate-800">${Number(quote.total_value).toLocaleString()}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-500 font-medium">Abonado hasta el momento:</span>
+                <span className="font-bold text-emerald-600">${Number(quote.paid_amount).toLocaleString()}</span>
+              </div>
+              <div className="flex justify-between border-t pt-2 font-black">
+                <span className="text-slate-700">Saldo Restante Insoluto:</span>
+                <span className="text-amber-600 text-base">${Number(quote.remaining_balance).toLocaleString()}</span>
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-black uppercase text-slate-500 tracking-wider mb-1">Descuento por Pronto Pago / Ajuste ($)</label>
+              <input 
+                type="number" 
+                step="0.01"
+                min="0"
+                max={quote.remaining_balance}
+                value={discountAmount} 
+                onChange={e => setDiscountAmount(e.target.value)}
+                className="w-full px-3 py-2 border rounded-xl font-bold text-slate-800 focus:ring-2 focus:ring-amber-500"
+                placeholder="0.00"
+              />
+            </div>
+
+            <div className="p-4 bg-amber-50 rounded-xl border border-amber-200">
+              <span className="text-xs font-black text-amber-800 uppercase tracking-widest block mb-1">Monto Neto a Pagar para Finiquitar</span>
+              <span className="text-2xl font-black text-amber-900">${finalAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+            </div>
+
+            <div>
+              <label className="block text-xs font-black uppercase text-slate-500 tracking-wider mb-1">Método de Pago</label>
+              <select 
+                value={method} 
+                onChange={e => setMethod(e.target.value)} 
+                className="w-full px-3 py-2 border rounded-xl font-bold text-slate-800"
+              >
+                <option value="Transferencia SPEI">Transferencia SPEI</option>
+                <option value="Efectivo / Ventanilla">Efectivo / Ventanilla</option>
+                <option value="Tarjeta de Débito/Crédito">Tarjeta de Débito/Crédito</option>
+                <option value="Condonación Total">Condonación Total</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-xs font-black uppercase text-slate-500 tracking-wider mb-1">Notas / Justificación del Finiquito</label>
+              <textarea 
+                rows="2" 
+                value={notes} 
+                onChange={e => setNotes(e.target.value)} 
+                className="w-full px-3 py-2 border rounded-xl text-xs text-slate-800" 
+                placeholder="Ej. Cliente liquida por pronto pago con bonificación acordada..."
+              />
+            </div>
+
+            <div className="flex justify-end gap-3 pt-4 border-t">
+              <button type="button" onClick={onClose} className="px-4 py-2.5 rounded-xl font-bold text-slate-500 hover:bg-slate-100 text-xs uppercase tracking-wider">Cancelar</button>
+              <button type="submit" disabled={submitting} className="px-5 py-2.5 bg-amber-600 hover:bg-amber-700 text-white rounded-xl font-black text-xs uppercase tracking-wider shadow-lg shadow-amber-600/30">
+                {submitting ? 'Procesando...' : 'Confirmar Finiquito'}
+              </button>
+            </div>
+          </form>
+        ) : null}
+      </div>
+    </div>
+  );
+};
+
+const PaymentModal = ({ isOpen, onClose, payment, onSave, clients, contracts, session }) => {
   const [formData, setFormData] = useState({
     amount: 0, method: 'Transferencia', status: 'Pending', contract_id: '', client_id: '',
     payment_date: new Date().toISOString().split('T')[0],
-    account_number: '', card_holder: '', is_recurring: false, recurring_dates: []
+    account_number: '', card_holder: '', is_recurring: false, recurring_dates: [],
+    repayment_frequency: null, repayment_amount: null
   });
+  const [showSchedule, setShowSchedule] = useState(false);
 
   useEffect(() => {
+    setShowSchedule(false);
     if (payment) {
       setFormData({
         ...payment,
         is_recurring: !!payment.is_recurring,
         payment_date: payment.payment_date ? new Date(payment.payment_date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
-        recurring_dates: payment.recurring_dates ? (typeof payment.recurring_dates === 'string' ? JSON.parse(payment.recurring_dates) : payment.recurring_dates) : []
+        recurring_dates: payment.recurring_dates ? (typeof payment.recurring_dates === 'string' ? JSON.parse(payment.recurring_dates) : payment.recurring_dates) : [],
+        repayment_frequency: payment.repayment_frequency ?? null,
+        repayment_amount: payment.repayment_amount ?? null
       });
     } else {
       setFormData({
         amount: 0, method: 'Transferencia', status: 'Pending', contract_id: '', client_id: '',
         payment_date: new Date().toISOString().split('T')[0],
-        account_number: '', card_holder: '', is_recurring: false, recurring_dates: []
+        account_number: '', card_holder: '', is_recurring: false, recurring_dates: [],
+        repayment_frequency: null, repayment_amount: null
       });
     }
   }, [payment]);
+
+  useEffect(() => {
+    if (formData.contract_id && contracts && !payment) {
+      const contract = contracts.find(c => c.contract_number === formData.contract_id || c.upya_id === formData.contract_id);
+      if (contract && contract.repayment_frequency) {
+        setFormData(prev => ({
+          ...prev,
+          is_recurring: true,
+          repayment_frequency: contract.repayment_frequency,
+          repayment_amount: contract.repayment_amount || prev.amount
+        }));
+      }
+    }
+  }, [formData.contract_id, contracts, payment]);
 
   if (!isOpen) return null;
 
@@ -1133,9 +1631,9 @@ const PaymentModal = ({ isOpen, onClose, payment, onSave, clients, session }) =>
   const isAccepted = ACCEPTED_STATUSES.includes(statusUpper);
 
   return (
-    <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-6">
-      <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="bg-white w-full max-w-4xl rounded-[40px] shadow-2xl overflow-hidden flex flex-col max-h-[95vh]">
-        <div className="p-8 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+    <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-0 md:p-6">
+      <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="bg-white w-full h-full md:h-auto md:max-w-4xl rounded-none md:rounded-[40px] shadow-2xl overflow-hidden flex flex-col max-h-[100dvh] md:max-h-[95vh]">
+        <div className="p-5 md:p-8 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
           <div className="flex items-center gap-4">
             <div className="w-12 h-12 bg-blue-600 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-blue-600/20"><CreditCard size={24} /></div>
             <div>
@@ -1156,11 +1654,11 @@ const PaymentModal = ({ isOpen, onClose, payment, onSave, clients, session }) =>
           </div>
         </div>
 
-        <div className="p-8 overflow-y-auto grid grid-cols-2 gap-10">
+        <div className="p-5 md:p-8 overflow-y-auto grid grid-cols-1 md:grid-cols-2 gap-10">
           <div className="space-y-6">
             <p className="text-[12px] font-black text-blue-600 uppercase tracking-[0.2em] mb-4">Información del Pago</p>
             
-            <div className="grid grid-cols-2 gap-5">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-5">
               <div className="col-span-2 space-y-1.5">
                 <label className="text-[11px] font-black uppercase tracking-widest text-slate-400 ml-1">Monto ($)</label>
                 <input disabled={isReadOnly} type="number" className="w-full bg-slate-50 border-2 border-slate-100 rounded-xl py-3.5 px-5 font-bold text-slate-800 focus:border-blue-600 outline-none transition-all text-base" value={formData.amount} onChange={e => setFormData({...formData, amount: e.target.value})} />
@@ -1214,8 +1712,91 @@ const PaymentModal = ({ isOpen, onClose, payment, onSave, clients, session }) =>
  
               {!!formData.is_recurring && (
                 <div className="space-y-3 pt-2 animate-in fade-in slide-in-from-top-2">
-                  <label className="text-[11px] font-black uppercase tracking-widest text-blue-400 ml-1">Días de Recurrencia (Ej. 01, 15)</label>
-                  <input disabled={isReadOnly} type="text" className="w-full bg-white border-2 border-blue-100 rounded-xl py-3 px-5 font-bold text-slate-800 text-base" placeholder="Separados por coma" value={formData.recurring_dates.join(', ')} onChange={e => setFormData({...formData, recurring_dates: e.target.value.split(',').map(s => s.trim())})} />
+                  {formData.repayment_frequency ? (
+                    <div>
+                      <label className="text-[11px] font-black uppercase tracking-widest text-blue-400 ml-1">Frecuencia de Pago Automática</label>
+                      <div className="w-full bg-white border-2 border-blue-100 rounded-xl py-3 px-5 font-bold text-slate-800 text-base flex justify-between items-center">
+                        <span>Cada {formData.repayment_frequency} días</span>
+                        {formData.repayment_amount && <span className="text-blue-600 bg-blue-50 px-2 py-1 rounded-md text-sm">Cuota: {formData.repayment_amount}</span>}
+                      </div>
+                    </div>
+                  ) : (
+                    <>
+                      <label className="text-[11px] font-black uppercase tracking-widest text-blue-400 ml-1">Días de Recurrencia (Ej. 01, 15)</label>
+                      <input disabled={isReadOnly} type="text" className="w-full bg-white border-2 border-blue-100 rounded-xl py-3 px-5 font-bold text-slate-800 text-base" placeholder="Separados por coma" value={formData.recurring_dates.join(', ')} onChange={e => setFormData({...formData, recurring_dates: e.target.value.split(',').map(s => s.trim())})} />
+                    </>
+                  )}
+                  
+                  {(formData.repayment_frequency || formData.recurring_dates.filter(d => parseInt(d) > 0 && parseInt(d) <= 31).length > 0) && (
+                    <div className="mt-4">
+                      <button type="button" onClick={() => setShowSchedule(!showSchedule)} className="text-[12px] font-black text-blue-600 hover:text-blue-800 uppercase tracking-widest flex items-center gap-2">
+                        <Calendar size={14} /> {showSchedule ? 'Ocultar cronograma' : 'Ver cronograma de pagos'}
+                      </button>
+                      
+                      {showSchedule && (
+                        <div className="mt-3 bg-white rounded-xl border border-blue-100 p-4 max-h-[200px] overflow-y-auto relative">
+                          <div className="flex justify-between items-center mb-3">
+                            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">Próximos 12 pagos proyectados</p>
+                            <button type="button" onClick={() => {
+                              const printContent = document.getElementById('payment-schedule-content').innerHTML;
+                              const printWindow = window.open('', '', 'height=600,width=800');
+                              printWindow.document.write('<html><head><title>Cronograma de Pagos</title><style>body{font-family:sans-serif;padding:20px;} .item{display:flex;justify-content:space-between;border-bottom:1px solid #ccc;padding:10px 0;} .title{font-size:18px;font-weight:bold;margin-bottom:20px;}</style></head><body>');
+                              printWindow.document.write('<div class="title">Cronograma de Pagos Proyectados</div>');
+                              printWindow.document.write(printContent);
+                              printWindow.document.write('</body></html>');
+                              printWindow.document.close();
+                              setTimeout(() => { printWindow.print(); }, 500);
+                            }} className="text-slate-400 hover:text-slate-700 transition-colors" title="Imprimir Cronograma">
+                              <Printer size={14} />
+                            </button>
+                          </div>
+                          <div className="space-y-2" id="payment-schedule-content">
+                            {(() => {
+                              // Parsear como fecha LOCAL para evitar desfase de zona horaria
+                              const [pyear, pmonth, pday] = (formData.payment_date || '').split('-').map(Number);
+                              const now = formData.payment_date && pyear
+                                ? new Date(pyear, pmonth - 1, pday, 12, 0, 0)
+                                : new Date();
+                              const dates = [];
+
+                              if (formData.repayment_frequency) {
+                                // Pago #1 = payment_date, los siguientes = +repayment_frequency días
+                                let nextDate = new Date(now.getTime());
+                                for (let i = 0; i < 12; i++) {
+                                  dates.push(new Date(nextDate.getTime()));
+                                  nextDate.setDate(nextDate.getDate() + formData.repayment_frequency);
+                                }
+                              } else {
+                                const days = formData.recurring_dates.map(d => parseInt(d)).filter(d => !isNaN(d) && d > 0 && d <= 31).sort((a,b) => a - b);
+                                if (!days.length) return null;
+                                let currentMonth = now.getMonth();
+                                let currentYear = now.getFullYear();
+                                for (let i = 0; i < 12; i++) {
+                                  for (const day of days) {
+                                    if (i === 0 && day <= now.getDate()) continue;
+                                    const date = new Date(currentYear, currentMonth, day, 12, 0, 0);
+                                    if (date.getMonth() !== currentMonth % 12) { date.setDate(0); }
+                                    dates.push(date);
+                                  }
+                                  currentMonth++;
+                                  if (currentMonth > 11) { currentMonth = 0; currentYear++; }
+                                }
+                              }
+
+                              return dates.slice(0, 12).map((d, i) => (
+                                <div key={i} className="item flex justify-between items-center py-2 border-b border-slate-50 last:border-0">
+                                  <span className="text-sm font-bold text-slate-700">Pago #{i + 1}</span>
+                                  <span className="text-sm font-medium text-slate-500">
+                                    {d.toLocaleDateString('es-MX', { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric' })}
+                                  </span>
+                                </div>
+                              ));
+                            })()}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -1224,7 +1805,7 @@ const PaymentModal = ({ isOpen, onClose, payment, onSave, clients, session }) =>
           <div className="space-y-6">
             <p className="text-[12px] font-black text-emerald-600 uppercase tracking-[0.2em] mb-4">Datos de Cuenta / Tarjeta</p>
             
-            <div className="bg-slate-50 p-8 rounded-[40px] border border-slate-100 space-y-6">
+            <div className="bg-slate-50 p-5 md:p-8 rounded-[40px] border border-slate-100 space-y-6">
               <div className="space-y-1.5">
                 <label className="text-[11px] font-black uppercase tracking-widest text-slate-400 ml-1">Titular de la Cuenta</label>
                 <input disabled={isReadOnly} type="text" className="w-full bg-white border-2 border-slate-100 rounded-xl py-3.5 px-5 font-bold text-slate-800 focus:border-emerald-500 outline-none transition-all text-base" value={formData.card_holder || ''} onChange={e => setFormData({...formData, card_holder: e.target.value})} placeholder="Nombre como aparece en tarjeta" />
@@ -1238,7 +1819,7 @@ const PaymentModal = ({ isOpen, onClose, payment, onSave, clients, session }) =>
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-1.5">
                   <label className="text-[11px] font-black uppercase tracking-widest text-slate-400 ml-1">Vencimiento</label>
                   <input disabled={isReadOnly} type="text" autoComplete="cc-exp" className="w-full bg-white border-2 border-slate-100 rounded-xl py-3.5 px-5 font-bold text-slate-800 text-base" placeholder="MM/YY" />
@@ -1262,7 +1843,7 @@ const PaymentModal = ({ isOpen, onClose, payment, onSave, clients, session }) =>
           </div>
         </div>
 
-        <div className="p-8 bg-slate-50 border-t border-slate-100 flex gap-4">
+        <div className="p-5 md:p-8 bg-slate-50 border-t border-slate-100 flex gap-4">
           <button onClick={onClose} className="px-10 py-4 rounded-2xl font-black uppercase tracking-widest text-[12px] text-slate-400 hover:text-slate-600 transition-all">Cerrar</button>
           <div className="flex-1" />
           {!isReadOnly && (
@@ -1276,17 +1857,390 @@ const PaymentModal = ({ isOpen, onClose, payment, onSave, clients, session }) =>
   );
 };
 
-const ProductsView = ({ products, onEdit, onCreate }) => {
+const SmartExcelImportModal = ({ isOpen, onClose, onImportSuccess, tenantId, user }) => {
+  const [step, setStep] = useState(1);
+  const [file, setFile] = useState(null);
+  const [headers, setHeaders] = useState([]);
+  const [rawRows, setRawRows] = useState([]);
+  const [mapping, setMapping] = useState({});
+  const [loading, setLoading] = useState(false);
+  const [resultStats, setResultStats] = useState(null);
+  const [error, setError] = useState(null);
+
+  const targetFields = [
+    { key: 'name', label: 'Nombre del Producto / Modelo', required: true, keywords: ['nombre', 'producto', 'modelo', 'device', 'description', 'descripción', 'item'] },
+    { key: 'model', label: 'Modelo (agrupador)', required: false, keywords: ['model', 'modelo base', 'familia', 'linea', 'device model'] },
+    { key: 'variant', label: 'Variante (RAM/Color/Almac.)', required: false, keywords: ['variante', 'variant', 'version', 'versión', 'color', 'ram', 'storage', 'almacenamiento', 'capacidad'] },
+    { key: 'reference', label: 'Referencia / Código SKU', required: false, keywords: ['referencia', 'sku', 'código', 'codigo', 'ref', 'part', 'id'] },
+    { key: 'category', label: 'Categoría', required: false, keywords: ['categoría', 'categoria', 'tipo', 'grupo', 'category'] },
+    { key: 'manufacturer', label: 'Marca / Fabricante', required: false, keywords: ['marca', 'fabricante', 'vendor', 'brand', 'make'] },
+    { key: 'base_value', label: 'Precio / Costo Base', required: false, keywords: ['precio', 'costo', 'valor', 'monto', 'price', 'cost'] },
+    { key: 'serial_number', label: 'Número de Serie (S/N)', required: false, keywords: ['serie', 'sn', 'serial', 'numero de serie', 's/n', 'nro serie'] },
+    { key: 'imei1', label: 'IMEI 1 (Dispositivo)', required: false, keywords: ['imei', 'imei1', 'imei 1', 'celular imei'] },
+    { key: 'imei2', label: 'IMEI 2 (Opcional Dual SIM)', required: false, keywords: ['imei2', 'imei 2', 'segundo imei'] },
+  ];
+
+  const handleFileUpload = async (e) => {
+    const uploadedFile = e.target.files[0];
+    if (!uploadedFile) return;
+    setFile(uploadedFile);
+    setError(null);
+    setLoading(true);
+
+    try {
+      const XLSX = await loadXLSXLib();
+      const reader = new FileReader();
+      reader.onload = (evt) => {
+        try {
+          const bstr = evt.target.result;
+          const wb = XLSX.read(bstr, { type: 'binary' });
+          const wsname = wb.SheetNames[0];
+          const ws = wb.Sheets[wsname];
+          const data = XLSX.utils.sheet_to_json(ws, { defval: '' });
+
+          if (data.length === 0) {
+            setError('El archivo Excel está vacío o no tiene un formato válido.');
+            setLoading(false);
+            return;
+          }
+
+          const detectedHeaders = Object.keys(data[0]);
+          setHeaders(detectedHeaders);
+          setRawRows(data);
+
+          // Auto-Matching Algorithm
+          const initialMapping = {};
+          targetFields.forEach(field => {
+            const match = detectedHeaders.find(h => {
+              const normalized = h.toLowerCase().trim();
+              return field.keywords.some(kw => normalized.includes(kw));
+            });
+            initialMapping[field.key] = match || '';
+          });
+
+          setMapping(initialMapping);
+          setStep(2);
+        } catch (err) {
+          console.error(err);
+          setError('Error procesando el archivo Excel: ' + err.message);
+        } finally {
+          setLoading(false);
+        }
+      };
+      reader.readAsBinaryString(uploadedFile);
+    } catch (libErr) {
+      console.error(libErr);
+      setError('Error al cargar el motor de lectura Excel: ' + libErr.message);
+      setLoading(false);
+    }
+  };
+
+  const getMappedItems = () => {
+    return rawRows.map(row => {
+      const item = {};
+      Object.keys(mapping).forEach(targetKey => {
+        const excelCol = mapping[targetKey];
+        if (excelCol && row[excelCol] !== undefined && row[excelCol] !== '') {
+          item[targetKey] = row[excelCol];
+        }
+      });
+      return item;
+    }).filter(item => item.name || item.reference || item.imei1 || item.serial_number);
+  };
+
+  const handleConfirmImport = async () => {
+    const mappedItems = getMappedItems();
+    if (mappedItems.length === 0) {
+      setError('No hay elementos válidos para importar. Asigna al menos la columna Nombre o IMEI/Serie.');
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+
+    try {
+      const res = await axios.post(`${API}/backoffice/products/import-batch`, {
+        username: user?.username,
+        tenantId,
+        items: mappedItems
+      });
+
+      if (res.data.success) {
+        setResultStats(res.data.stats);
+        setStep(4);
+      } else {
+        setError(res.data.message || 'Error durante la importación masiva.');
+      }
+    } catch (err) {
+      console.error(err);
+      setError(err.response?.data?.message || err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const resetState = () => {
+    setStep(1);
+    setFile(null);
+    setHeaders([]);
+    setRawRows([]);
+    setMapping({});
+    setResultStats(null);
+    setError(null);
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-in fade-in duration-200">
+      <div className="bg-white rounded-3xl p-8 max-w-2xl w-full shadow-2xl border border-slate-100 flex flex-col max-h-[90vh]">
+        {/* Header */}
+        <div className="flex justify-between items-center pb-5 border-b border-slate-100 mb-6">
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 bg-emerald-50 rounded-2xl flex items-center justify-center text-emerald-600">
+              <FileSpreadsheet size={24} />
+            </div>
+            <div>
+              <h3 className="text-xl font-black text-slate-900 tracking-tight">Importador Inteligente de Excel</h3>
+              <p className="text-xs font-semibold text-slate-400">Tenant Activo: <span className="text-emerald-600 uppercase font-black">{tenantId}</span></p>
+            </div>
+          </div>
+          <button onClick={() => { resetState(); onClose(); }} className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-xl transition-all"><X size={20} /></button>
+        </div>
+
+        {error && (
+          <div className="mb-6 p-4 bg-red-50 border border-red-100 text-red-600 rounded-2xl text-xs font-bold flex items-center gap-2">
+            <AlertCircle size={16} />
+            <span>{error}</span>
+          </div>
+        )}
+
+        {/* Content Body based on Step */}
+        <div className="flex-1 overflow-y-auto space-y-6 pr-2">
+          {/* STEP 1: Upload File */}
+          {step === 1 && (
+            <div className="flex flex-col items-center justify-center p-10 border-2 border-dashed border-slate-200 rounded-3xl bg-slate-50/50 hover:bg-emerald-50/20 hover:border-emerald-300 transition-all text-center group cursor-pointer relative">
+              <input type="file" accept=".xlsx, .xls, .csv" onChange={handleFileUpload} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
+              <div className="w-16 h-16 bg-white rounded-2xl shadow-sm border border-slate-100 flex items-center justify-center text-emerald-600 mb-4 group-hover:scale-110 transition-all">
+                <Upload size={28} />
+              </div>
+              <h4 className="text-base font-bold text-slate-800 mb-1">Arrastra tu archivo Excel (.xlsx) aquí</h4>
+              <p className="text-xs font-medium text-slate-400 max-w-sm mb-4">Soporta formatos .xlsx, .xls y .csv con catálogo e identificadores IMEI / Número de Serie.</p>
+              <span className="px-6 py-2.5 bg-emerald-600 text-white rounded-xl text-xs font-black uppercase tracking-wider shadow-md shadow-emerald-600/20">Seleccionar Archivo</span>
+            </div>
+          )}
+
+          {/* STEP 2: Column Matcher */}
+          {step === 2 && (
+            <div className="space-y-6">
+              <div className="bg-emerald-50/60 p-4 rounded-2xl border border-emerald-100 text-xs font-semibold text-emerald-900 flex justify-between items-center">
+                <span>Leídas <strong>{rawRows.length} filas</strong> y <strong>{headers.length} columnas</strong> en <em>{file?.name}</em></span>
+                <span className="bg-emerald-600 text-white px-2.5 py-1 rounded-lg text-[10px] font-black uppercase">Auto-Match Activado</span>
+              </div>
+
+              <div className="space-y-4">
+                <h4 className="text-sm font-black uppercase tracking-wider text-slate-400">Mapeo de Columnas (Bantos ↔ Excel)</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {targetFields.map(field => (
+                    <div key={field.key} className="p-4 bg-slate-50 rounded-2xl border border-slate-100 flex flex-col gap-1.5">
+                      <label className="text-xs font-bold text-slate-700 flex items-center justify-between">
+                        <span>{field.label} {field.required && <span className="text-red-500">*</span>}</span>
+                        {mapping[field.key] && <span className="text-[10px] font-bold text-emerald-600 flex items-center gap-1"><Check size={12} /> Detectado</span>}
+                      </label>
+                      <select
+                        value={mapping[field.key] || ''}
+                        onChange={(e) => setMapping({ ...mapping, [field.key]: e.target.value })}
+                        className="bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-800 outline-none focus:border-emerald-500 transition-all"
+                      >
+                        <option value="">-- Ignorar este campo --</option>
+                        {headers.map(h => (
+                          <option key={h} value={h}>{h}</option>
+                        ))}
+                      </select>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* STEP 3: Preview */}
+          {step === 3 && (
+            <div className="space-y-4">
+              <div className="flex justify-between items-center">
+                <h4 className="text-sm font-black uppercase tracking-wider text-slate-400">Vista Previa ({getMappedItems().length} registros válidos)</h4>
+                <span className="text-xs font-bold text-slate-500">Mapeadas {Object.values(mapping).filter(Boolean).length} columnas</span>
+              </div>
+
+              <div className="border border-slate-200 rounded-2xl overflow-x-auto max-h-60">
+                <table className="w-full text-left border-collapse text-xs">
+                  <thead className="bg-slate-100 text-slate-600 font-bold uppercase tracking-wider sticky top-0">
+                    <tr>
+                      <th className="p-3">Nombre</th>
+                      <th className="p-3">Referencia</th>
+                      <th className="p-3">Marca</th>
+                      <th className="p-3">Precio</th>
+                      <th className="p-3">IMEI 1 / Serie</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
+                    {getMappedItems().slice(0, 5).map((item, idx) => (
+                      <tr key={idx} className="hover:bg-slate-50">
+                        <td className="p-3 font-bold text-slate-900">{item.name || '-'}</td>
+                        <td className="p-3 font-mono text-blue-600">{item.reference || '-'}</td>
+                        <td className="p-3">{item.manufacturer || '-'}</td>
+                        <td className="p-3">${item.base_value || 0}</td>
+                        <td className="p-3 font-mono text-emerald-600">{item.imei1 || item.serial_number || '-'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              {getMappedItems().length > 5 && (
+                <p className="text-[11px] font-semibold text-slate-400 text-center">...y {getMappedItems().length - 5} registros más listos para ser procesados.</p>
+              )}
+            </div>
+          )}
+
+          {/* STEP 4: Success Result */}
+          {step === 4 && resultStats && (
+            <div className="flex flex-col items-center justify-center p-8 text-center space-y-4">
+              <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center text-emerald-600 animate-in zoom-in duration-300">
+                <Check size={32} />
+              </div>
+              <h4 className="text-xl font-black text-slate-900">¡Importación Exitosa!</h4>
+              <p className="text-xs font-semibold text-slate-500 max-w-md">Los registros se guardaron exclusivamente para el tenant <span className="text-emerald-600 font-black uppercase">{tenantId}</span>.</p>
+              
+              <div className="grid grid-cols-3 gap-4 w-full pt-4">
+                <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                  <p className="text-2xl font-black text-slate-900">{resultStats.productsCount}</p>
+                  <p className="text-[10px] font-bold text-slate-400 uppercase">Productos</p>
+                </div>
+                <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                  <p className="text-2xl font-black text-emerald-600">{resultStats.devicesCount}</p>
+                  <p className="text-[10px] font-bold text-slate-400 uppercase">IMEIs</p>
+                </div>
+                <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                  <p className="text-2xl font-black text-blue-600">{resultStats.inventoryCount}</p>
+                  <p className="text-[10px] font-bold text-slate-400 uppercase">Series</p>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Footer Actions */}
+        <div className="pt-5 border-t border-slate-100 mt-6 flex justify-between items-center">
+          {step === 2 && (
+            <>
+              <button onClick={() => setStep(1)} className="px-6 py-3 bg-slate-100 text-slate-600 font-bold rounded-xl text-xs uppercase tracking-wider hover:bg-slate-200 transition-all">Atrás</button>
+              <button onClick={() => setStep(3)} className="px-6 py-3 bg-emerald-600 text-white font-bold rounded-xl text-xs uppercase tracking-wider shadow-md hover:bg-emerald-700 transition-all">Ver Vista Previa</button>
+            </>
+          )}
+
+          {step === 3 && (
+            <>
+              <button onClick={() => setStep(2)} className="px-6 py-3 bg-slate-100 text-slate-600 font-bold rounded-xl text-xs uppercase tracking-wider hover:bg-slate-200 transition-all">Atrás</button>
+              <button onClick={handleConfirmImport} disabled={loading} className="px-8 py-3.5 bg-emerald-600 text-white font-black rounded-xl text-xs uppercase tracking-wider shadow-lg shadow-emerald-600/20 hover:scale-105 transition-all flex items-center gap-2">
+                {loading ? <RefreshCw size={16} className="animate-spin" /> : <Check size={16} />} Confirmar e Importar ({getMappedItems().length})
+              </button>
+            </>
+          )}
+
+          {step === 4 && (
+            <button onClick={() => { resetState(); onClose(); onImportSuccess(); }} className="w-full py-3.5 bg-emerald-600 text-white font-black rounded-xl text-xs uppercase tracking-wider shadow-lg shadow-emerald-600/20 hover:bg-emerald-700 transition-all">
+              Finalizar y Cerrar
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const ProductsView = ({ products = [], onEdit, onCreate, onDelete, onImportSuccess, tenantId, user }) => {
   const [filter, setFilter] = useState('all');
-  const filtered = products.filter(p => filter === 'all' || (filter === 'serialized' ? p.is_serialized : !p.is_serialized));
+  const [modelFilter, setModelFilter] = useState('');
+  const [variantFilter, setVariantFilter] = useState('');
+  const [importModalOpen, setImportModalOpen] = useState(false);
+  const safeProducts = Array.isArray(products) ? products : [];
+
+  // Collect unique models and variants for the filter dropdowns
+  const uniqueModels = [...new Set(safeProducts.map(p => p.model).filter(Boolean))].sort();
+  const uniqueVariants = [...new Set(safeProducts.map(p => p.variant).filter(Boolean))].sort();
+
+  const filtered = safeProducts.filter(p => {
+    if (!p) return false;
+    if (filter === 'serialized' && !p.is_serialized) return false;
+    if (filter === 'non-serialized' && p.is_serialized) return false;
+    if (modelFilter && p.model !== modelFilter) return false;
+    if (variantFilter && p.variant !== variantFilter) return false;
+    return true;
+  });
+
   return (
     <div className="space-y-8">
       <div className="flex justify-between items-end">
         <PageHeader title="Productos" subtitle={`${filtered.length} modelos en catálogo`} />
-        <div className="flex gap-2 bg-slate-100 p-1.5 rounded-2xl mb-10">{['all', 'serialized', 'non-serialized'].map(f => (<button key={f} onClick={() => setFilter(f)} className={`px-6 py-2.5 rounded-xl text-[12px] font-black uppercase tracking-widest transition-all ${filter === f ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}>{f === 'all' ? 'Todos' : f === 'serialized' ? 'Serializados' : 'No Ser.'}</button>))}</div>
+        <div className="flex flex-wrap gap-2 items-center mb-10">
+          {/* Serialization filter */}
+          <div className="flex gap-2 bg-slate-100 p-1.5 rounded-2xl">
+            {['all', 'serialized', 'non-serialized'].map(f => (
+              <button key={f} onClick={() => setFilter(f)} className={`px-6 py-2.5 rounded-xl text-[12px] font-black uppercase tracking-widest transition-all ${filter === f ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}>{f === 'all' ? 'Todos' : f === 'serialized' ? 'Serializados' : 'No Ser.'}</button>
+            ))}
+          </div>
+          {/* Model filter */}
+          {uniqueModels.length > 0 && (
+            <select value={modelFilter} onChange={e => setModelFilter(e.target.value)} className="bg-white border-2 border-slate-100 rounded-xl px-4 py-2.5 text-[12px] font-bold text-slate-700 focus:border-blue-600 outline-none transition-all">
+              <option value="">Todos los modelos</option>
+              {uniqueModels.map(m => <option key={m} value={m}>{m}</option>)}
+            </select>
+          )}
+          {/* Variant filter */}
+          {uniqueVariants.length > 0 && (
+            <select value={variantFilter} onChange={e => setVariantFilter(e.target.value)} className="bg-white border-2 border-slate-100 rounded-xl px-4 py-2.5 text-[12px] font-bold text-slate-700 focus:border-blue-600 outline-none transition-all">
+              <option value="">Todas las variantes</option>
+              {uniqueVariants.map(v => <option key={v} value={v}>{v}</option>)}
+            </select>
+          )}
+        </div>
       </div>
-      <div className="flex justify-end mb-4"><button onClick={onCreate} className="flex items-center gap-2 bg-blue-600 text-white px-8 py-4 rounded-2xl font-black uppercase tracking-widest text-[12px] shadow-lg shadow-blue-600/20 hover:scale-105 transition-all"><Plus size={16} /> Nuevo Producto</button></div>
-      <Table cols={['Nombre', 'Referencia', 'Categoría', 'Tipo', 'Acciones']} rows={filtered} render={p => (<><td className="px-8 py-5"><p className="font-bold text-slate-800">{p.name}</p><p className="text-[12px] text-slate-400 font-medium">{p.manufacturer}</p></td><td className="px-8 py-5 font-mono text-blue-600 text-sm">{p.reference || p.productReference}</td><td className="px-8 py-5 text-slate-500">{p.category}</td><td className="px-8 py-5"><span className={`px-2 py-1 rounded-md text-[11px] font-black uppercase tracking-wider ${p.is_serialized ? 'bg-blue-50 text-blue-600' : 'bg-slate-100 text-slate-500'}`}>{p.is_serialized ? 'Serializado' : 'No Ser.'}</span></td><td className="px-8 py-5"><button onClick={() => onEdit(p)} className="p-2 hover:bg-blue-50 text-slate-300 hover:text-blue-600 rounded-lg transition-all"><Settings2 size={16} /></button></td></>)} />
+
+      <div className="flex justify-end gap-3 mb-4">
+        <button onClick={() => setImportModalOpen(true)} className="flex items-center gap-2 bg-emerald-600 text-white px-6 py-4 rounded-2xl font-black uppercase tracking-widest text-[12px] shadow-lg shadow-emerald-600/20 hover:scale-105 transition-all">
+          <FileSpreadsheet size={16} /> Importar Excel
+        </button>
+        <button onClick={onCreate} className="flex items-center gap-2 bg-blue-600 text-white px-8 py-4 rounded-2xl font-black uppercase tracking-widest text-[12px] shadow-lg shadow-blue-600/20 hover:scale-105 transition-all">
+          <Plus size={16} /> Nuevo Producto
+        </button>
+      </div>
+
+      <Table cols={['Nombre', 'Modelo', 'Variante', 'Referencia', 'Categoría', 'Tipo', 'Acciones']} rows={filtered} render={p => (<><td className="px-8 py-5"><p className="font-bold text-slate-800">{p.name}</p><p className="text-[12px] text-slate-400 font-medium">{p.manufacturer}</p></td><td className="px-8 py-5 text-slate-700 font-semibold text-sm">{p.model || <span className="text-slate-300">—</span>}</td><td className="px-8 py-5 text-slate-500 text-sm">{p.variant || <span className="text-slate-300">—</span>}</td><td className="px-8 py-5 font-mono text-blue-600 text-sm">{p.reference || p.productReference}</td><td className="px-8 py-5 text-slate-500">{p.category}</td><td className="px-8 py-5"><span className={`px-2 py-1 rounded-md text-[11px] font-black uppercase tracking-wider ${p.is_serialized ? 'bg-blue-50 text-blue-600' : 'bg-slate-100 text-slate-500'}`}>{p.is_serialized ? 'Serializado' : 'No Ser.'}</span></td><td className="px-8 py-5"><div className="flex items-center gap-2"><button onClick={() => onEdit(p)} className="p-2 hover:bg-blue-50 text-slate-300 hover:text-blue-600 rounded-lg transition-all"><Settings2 size={16} /></button><button onClick={() => onDelete(p)} className="p-2 hover:bg-red-50 text-slate-300 hover:text-red-600 rounded-lg transition-all"><Trash2 size={16} /></button></div></td></>) } renderMobile={p => (
+        <div className="bg-white p-6 rounded-2xl border border-slate-100 flex flex-col gap-4">
+          <div className="flex justify-between items-start">
+            <div className="space-y-1">
+              <p className="font-bold text-slate-800">{p.name}</p>
+              <p className="font-mono text-blue-600 text-xs">{p.reference || p.productReference}</p>
+            </div>
+            <span className={`px-2 py-1 rounded-md text-[11px] font-black uppercase tracking-wider ${p.is_serialized ? 'bg-blue-50 text-blue-600' : 'bg-slate-100 text-slate-500'}`}>{p.is_serialized ? 'Serializado' : 'No Ser.'}</span>
+          </div>
+          <div className="flex justify-between items-center pt-4 border-t border-slate-50">
+            <p className="text-slate-400 text-sm">{p.category}</p>
+            <div className="flex gap-2">
+              <button onClick={() => onEdit(p)} className="p-2 hover:bg-blue-50 text-slate-300 hover:text-blue-600 rounded-lg transition-all"><Settings2 size={16} /></button>
+              <button onClick={() => onDelete(p)} className="p-2 hover:bg-red-50 text-slate-300 hover:text-red-600 rounded-lg transition-all"><Trash2 size={16} /></button>
+            </div>
+          </div>
+        </div>
+      )} />
+
+      <SmartExcelImportModal
+        isOpen={importModalOpen}
+        onClose={() => setImportModalOpen(false)}
+        onImportSuccess={onImportSuccess || (() => {})}
+        tenantId={tenantId}
+        user={user}
+      />
     </div>
   );
 };
@@ -1346,9 +2300,9 @@ const TrustonicDeviceModal = ({ isOpen, onClose, device, onSave }) => {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-6">
-      <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="bg-white w-full max-w-4xl rounded-[40px] shadow-2xl overflow-hidden flex flex-col max-h-[95vh]">
-        <div className="p-8 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+    <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-0 md:p-6">
+      <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="bg-white w-full h-full md:h-auto md:max-w-4xl rounded-none md:rounded-[40px] shadow-2xl overflow-hidden flex flex-col max-h-[100dvh] md:max-h-[95vh]">
+        <div className="p-5 md:p-8 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
           <div className="flex items-center gap-4">
             <div className="w-12 h-12 bg-blue-600 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-blue-600/20"><Smartphone size={24} /></div>
             <div>
@@ -1361,7 +2315,7 @@ const TrustonicDeviceModal = ({ isOpen, onClose, device, onSave }) => {
         
         <div className="p-10 overflow-y-auto flex-1 grid grid-cols-3 gap-10">
           <div className="col-span-2 space-y-8">
-            <div className="grid grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
                 <label className="text-[12px] font-black uppercase tracking-widest text-slate-400 ml-1">IMEI 1 (*)</label>
                 <input type="text" disabled={!!device} className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl py-4 px-6 font-bold text-slate-800 focus:border-blue-600 outline-none transition-all disabled:opacity-50 text-base" value={formData.imei1} onChange={e => setFormData({...formData, imei1: e.target.value})} placeholder="3524..." />
@@ -1372,7 +2326,7 @@ const TrustonicDeviceModal = ({ isOpen, onClose, device, onSave }) => {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
                 <label className="text-[12px] font-black uppercase tracking-widest text-slate-400 ml-1">Servicio</label>
                 <select className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl py-4 px-6 font-bold text-slate-800 focus:border-blue-600 outline-none transition-all text-base" value={formData.service} onChange={e => setFormData({...formData, service: e.target.value})}>
@@ -1404,7 +2358,7 @@ const TrustonicDeviceModal = ({ isOpen, onClose, device, onSave }) => {
           </div>
 
           {/* Información de Control Interno */}
-          <div className="bg-slate-50 rounded-[32px] p-8 space-y-6 border border-slate-100">
+          <div className="bg-slate-50 rounded-[32px] p-5 md:p-8 space-y-6 border border-slate-100">
             <div>
               <p className="text-[11px] font-black text-blue-600 uppercase tracking-[0.2em] mb-4">Control Interno</p>
               <div className="space-y-5">
@@ -1435,7 +2389,7 @@ const TrustonicDeviceModal = ({ isOpen, onClose, device, onSave }) => {
           </div>
         </div>
 
-        <div className="p-8 bg-white border-t border-slate-100 flex justify-end gap-4">
+        <div className="p-5 md:p-8 bg-white border-t border-slate-100 flex justify-end gap-4">
           <button onClick={onClose} className="px-8 py-4 font-black uppercase tracking-widest text-[11px] text-slate-400 hover:text-slate-600 transition-all">Cancelar</button>
           <button onClick={() => onSave(formData)} className="px-10 py-4 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-black uppercase tracking-widest text-[11px] shadow-xl shadow-blue-600/20 transition-all active:scale-95">Guardar Cambios</button>
         </div>
@@ -1559,7 +2513,7 @@ const TrustonicDevicesView = ({ data, onSync, syncing, onEdit, onCreate }) => {
   );
 };
 
-const TermsView = ({ deals }) => (
+const TermsView = ({ deals, onEdit, onCreate, onDelete }) => (
   <div className="space-y-8">
     <PageHeader 
       title="Términos & Condiciones (Deals)" 
@@ -1567,21 +2521,21 @@ const TermsView = ({ deals }) => (
     />
     
     <div className="grid grid-cols-3 gap-6 mb-8">
-      <div className="bg-white p-8 rounded-[32px] border border-slate-100 shadow-sm flex items-center gap-6">
+      <div className="bg-white p-5 md:p-8 rounded-[32px] border border-slate-100 shadow-sm flex items-center gap-6">
         <div className="w-14 h-14 bg-blue-50 rounded-2xl flex items-center justify-center text-blue-600"><ShieldCheck size={28} /></div>
         <div>
           <p className="text-[12px] font-black text-slate-400 uppercase tracking-widest">Planes PAYG</p>
           <p className="text-2xl font-black text-slate-800">{deals.filter(d => d.type === 'PAYG').length}</p>
         </div>
       </div>
-      <div className="bg-white p-8 rounded-[32px] border border-slate-100 shadow-sm flex items-center gap-6">
+      <div className="bg-white p-5 md:p-8 rounded-[32px] border border-slate-100 shadow-sm flex items-center gap-6">
         <div className="w-14 h-14 bg-emerald-50 rounded-2xl flex items-center justify-center text-emerald-600"><CreditCard size={28} /></div>
         <div>
           <p className="text-[12px] font-black text-slate-400 uppercase tracking-widest">Instalments</p>
           <p className="text-2xl font-black text-slate-800">{deals.filter(d => d.type === 'INSTALMENTS').length}</p>
         </div>
       </div>
-      <div className="bg-white p-8 rounded-[32px] border border-slate-100 shadow-sm flex items-center gap-6">
+      <div className="bg-white p-5 md:p-8 rounded-[32px] border border-slate-100 shadow-sm flex items-center gap-6">
         <div className="w-14 h-14 bg-slate-50 rounded-2xl flex items-center justify-center text-slate-600"><Tag size={28} /></div>
         <div>
           <p className="text-[12px] font-black text-slate-400 uppercase tracking-widest">Total Planes</p>
@@ -1591,11 +2545,12 @@ const TermsView = ({ deals }) => (
     </div>
 
     <div className="bg-white rounded-[40px] border border-slate-100 shadow-sm overflow-hidden">
-      <div className="p-8 border-b border-slate-50 bg-slate-50/30 flex justify-between items-center">
+      <div className="p-5 md:p-8 border-b border-slate-50 bg-slate-50/30 flex justify-between items-center">
         <p className="text-[11px] font-black text-slate-500 uppercase tracking-widest">Listado de Términos (Homologado con Upya)</p>
+        <button onClick={onCreate} className="flex items-center gap-2 bg-blue-600 text-white px-6 py-2.5 rounded-2xl font-black uppercase tracking-widest text-[11px] shadow-lg shadow-blue-600/20 hover:scale-105 transition-all"><Plus size={14} /> Nuevo Término</button>
       </div>
       <Table 
-        cols={['Tipo', 'Nombre del Plan', 'Producto Asociado', 'Costo Total', 'Estado']} 
+        cols={['Tipo', 'Nombre del Plan', 'Estado', 'Acciones']} 
         rows={deals} 
         render={d => (
           <>
@@ -1603,16 +2558,40 @@ const TermsView = ({ deals }) => (
               <span className={`px-3 py-1 rounded-full text-[11px] font-black uppercase tracking-wider ${d.type === 'PAYG' ? 'bg-blue-50 text-blue-600' : 'bg-emerald-50 text-emerald-600'}`}>{d.type}</span>
             </td>
             <td className="px-8 py-5 font-bold text-slate-800">{d.name}</td>
-            <td className="px-8 py-5 text-slate-500 text-base">{d.product_name || 'N/A'}</td>
-            <td className="px-8 py-5 font-mono text-sm text-blue-600">{d.total_cost || 'Open'}</td>
             <td className="px-8 py-5">
               <div className="flex items-center gap-2 font-black text-[12px] uppercase tracking-wider text-emerald-600">
                 <div className="w-2 h-2 rounded-full bg-emerald-500" />
                 {d.status || 'Active'}
               </div>
             </td>
+            <td className="px-8 py-5">
+              <div className="flex items-center gap-2">
+                <button onClick={() => onEdit(d)} className="p-2 hover:bg-blue-50 text-slate-300 hover:text-blue-600 rounded-lg transition-all"><Settings2 size={16} /></button>
+                <button onClick={() => onDelete(d)} className="p-2 hover:bg-red-50 text-slate-300 hover:text-red-600 rounded-lg transition-all"><Trash2 size={16} /></button>
+              </div>
+            </td>
           </>
         )} 
+        renderMobile={d => (
+          <div className="bg-white p-6 rounded-2xl border border-slate-100 flex flex-col gap-4">
+            <div className="flex justify-between items-start">
+              <div className="space-y-1">
+                <p className="font-bold text-slate-800">{d.name}</p>
+              </div>
+              <span className={`px-3 py-1 rounded-full text-[11px] font-black uppercase tracking-wider ${d.type === 'PAYG' ? 'bg-blue-50 text-blue-600' : 'bg-emerald-50 text-emerald-600'}`}>{d.type}</span>
+            </div>
+            <div className="flex justify-between items-center pt-4 border-t border-slate-50">
+              <div className="flex items-center gap-2 font-black text-[11px] uppercase tracking-wider text-emerald-600">
+                <div className="w-2 h-2 rounded-full bg-emerald-500" />
+                {d.status || 'Active'}
+              </div>
+              <div className="flex gap-2">
+                <button onClick={() => onEdit(d)} className="p-2 hover:bg-blue-50 text-slate-300 hover:text-blue-600 rounded-lg transition-all"><Settings2 size={16} /></button>
+                <button onClick={() => onDelete(d)} className="p-2 hover:bg-red-50 text-slate-300 hover:text-red-600 rounded-lg transition-all"><Trash2 size={16} /></button>
+              </div>
+            </div>
+          </div>
+        )}
       />
     </div>
   </div>
@@ -1653,7 +2632,7 @@ const TrustonicLogsView = ({ data, onSync, syncing }) => {
   });
 
   return (
-    <div className="flex flex-col gap-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
+    <div className="flex flex-col gap-3 md:gap-5 md:p-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
       <PageHeader 
         title="Auditoría de Dispositivos" 
         subtitle="Movimientos y operaciones registradas en Trustonic" 
@@ -1817,65 +2796,75 @@ const UsersView = ({ users, structure, session, refreshData }) => {
         }
       />
 
-      <div className="bg-white rounded-[40px] shadow-sm border border-slate-100 overflow-hidden">
-        <table className="w-full text-left border-collapse">
-          <thead>
-            <tr className="bg-slate-50/80 border-b border-slate-100">
-              <th className="py-5 px-6 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Contacto</th>
-              <th className="py-5 px-6 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Usuario</th>
-              <th className="py-5 px-6 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Nodo Asignado</th>
-              <th className="py-5 px-6 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Rol de Nodo</th>
-              <th className="py-5 px-6 text-right"></th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-50">
-            {users.map(u => (
-              <tr key={u.id} className="hover:bg-slate-50/50 transition-colors">
-                <td className="py-5 px-6">
-                  <p className="font-bold text-slate-700 text-sm">{u.contact_name}</p>
-                  <p className="text-xs text-slate-400 font-medium">{u.email}</p>
-                </td>
-                <td className="py-5 px-6">
-                  <p className="font-mono text-blue-600 font-bold text-xs">{u.username || 'N/A'}</p>
-                </td>
-                <td className="py-5 px-6">
-                  {u.org_name ? (
-                    <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-blue-50 text-blue-700 font-bold text-xs">
-                      <Store size={14} /> {u.org_name}
-                    </div>
-                  ) : <span className="text-slate-300 font-bold text-xs italic">Sin Asignar</span>}
-                </td>
-                <td className="py-5 px-6">
-                  <span className={`text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded-lg ${u.scope_role === 'MANAGER' ? 'bg-indigo-100 text-indigo-700' : 'bg-slate-100 text-slate-600'}`}>
-                    {u.scope_role || 'N/A'}
-                  </span>
-                </td>
-                <td className="py-5 px-6 text-right space-x-2">
-                  <button onClick={() => { setEditingUser(u); setModalOpen(true); }} className="p-2 hover:bg-blue-50 hover:text-blue-600 rounded-xl text-slate-400 transition-all"><Edit size={16}/></button>
-                </td>
-              </tr>
-            ))}
-            {users.length === 0 && (
-              <tr><td colSpan="5" className="py-12 text-center text-slate-400 font-bold text-sm">No hay usuarios registrados</td></tr>
-            )}
-          </tbody>
-        </table>
-      </div>
+      <Table
+        cols={['Contacto', 'Usuario', 'Nodo Asignado', 'Rol de Nodo', 'Acciones']}
+        rows={users}
+        render={u => (
+          <>
+            <td className="px-8 py-5">
+              <p className="font-bold text-slate-700 text-sm">{u.contact_name}</p>
+              <p className="text-xs text-slate-400 font-medium">{u.email}</p>
+            </td>
+            <td className="px-8 py-5">
+              <p className="font-mono text-blue-600 font-bold text-xs">{u.username || 'N/A'}</p>
+            </td>
+            <td className="px-8 py-5">
+              {u.org_name ? (
+                <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-blue-50 text-blue-700 font-bold text-xs">
+                  <Store size={14} /> {u.org_name}
+                </div>
+              ) : <span className="text-slate-300 font-bold text-xs italic">Sin Asignar</span>}
+            </td>
+            <td className="px-8 py-5">
+              <span className={`text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded-lg ${u.scope_role === 'MANAGER' ? 'bg-indigo-100 text-indigo-700' : 'bg-slate-100 text-slate-600'}`}>
+                {u.scope_role || 'N/A'}
+              </span>
+            </td>
+            <td className="px-8 py-5 text-right">
+              <button onClick={() => { setEditingUser(u); setModalOpen(true); }} className="p-2 hover:bg-blue-50 hover:text-blue-600 rounded-xl text-slate-400 transition-all"><Edit size={16}/></button>
+            </td>
+          </>
+        )}
+        renderMobile={u => (
+          <div className="bg-white p-6 rounded-2xl border border-slate-100 space-y-4">
+            <div className="flex justify-between items-start">
+              <div>
+                <p className="font-bold text-slate-700 text-base">{u.contact_name}</p>
+                <p className="font-mono text-blue-600 font-bold text-xs mt-0.5">{u.username || 'N/A'}</p>
+              </div>
+              <span className={`text-[9px] font-black uppercase tracking-widest px-2 py-1 rounded-lg ${u.scope_role === 'MANAGER' ? 'bg-indigo-100 text-indigo-700' : 'bg-slate-100 text-slate-600'}`}>
+                {u.scope_role || 'N/A'}
+              </span>
+            </div>
+            <div className="pt-4 border-t border-slate-50 flex justify-between items-center">
+              <div className="flex flex-col gap-1">
+                <span className="text-xs text-slate-400 font-medium">{u.email}</span>
+                {u.org_name ? (
+                  <div className="inline-flex items-center gap-1.5 text-slate-500 font-bold text-xs">
+                    <Store size={12} /> {u.org_name}
+                  </div>
+                ) : <span className="text-slate-300 font-bold text-xs italic">Sin Asignar</span>}
+              </div>
+              <button onClick={() => { setEditingUser(u); setModalOpen(true); }} className="p-2.5 bg-slate-50 hover:bg-blue-50 hover:text-blue-600 rounded-xl text-slate-400 transition-all"><Edit size={16}/></button>
+            </div>
+          </div>
+        )}
+      />
 
       <AnimatePresence>
         {modalOpen && (
-          <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-0 md:p-4">
             <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className="bg-white rounded-[40px] w-full max-w-lg shadow-2xl overflow-hidden max-h-[90vh] flex flex-col">
-              <div className="p-8 border-b border-slate-100 flex items-center justify-between shrink-0">
+              <div className="p-5 md:p-8 border-b border-slate-100 flex items-center justify-between shrink-0">
                 <div>
                   <h3 className="text-2xl font-black tracking-tight text-slate-900">Asignar Rol de Usuario</h3>
                   <p className="text-slate-400 font-bold text-xs mt-1">Configura el acceso de {editingUser?.contact_name || 'este usuario'}</p>
                 </div>
                 <button onClick={() => setModalOpen(false)} className="w-10 h-10 bg-slate-50 text-slate-400 rounded-2xl flex items-center justify-center hover:bg-slate-100 hover:text-slate-700 transition-colors"><X size={20} /></button>
               </div>
-              <form onSubmit={handleSave} className="p-8 space-y-6 overflow-y-auto">
+              <form onSubmit={handleSave} className="p-5 md:p-8 space-y-6 overflow-y-auto">
                 <div className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-2">Nombre Completo</label>
                       <input name="contact_name" required defaultValue={editingUser?.contact_name || ''} className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl py-3 px-5 mt-1 font-bold outline-none focus:border-blue-600 transition-all" />
@@ -1888,11 +2877,17 @@ const UsersView = ({ users, structure, session, refreshData }) => {
                       <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-2">Usuario</label>
                       <input name="username" required defaultValue={editingUser?.username || ''} className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl py-3 px-5 mt-1 font-bold outline-none focus:border-blue-600 transition-all" />
                     </div>
+                    <div className="col-span-2">
+                      <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-2">
+                        Contraseña {editingUser?.id ? '(Dejar en blanco para no cambiar)' : ''}
+                      </label>
+                      <input name="password" type="password" placeholder={editingUser?.id ? "••••••••" : "Ingresa contraseña..."} required={!editingUser?.id} className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl py-3 px-5 mt-1 font-bold outline-none focus:border-blue-600 transition-all" />
+                    </div>
                   </div>
                   
                   <div className="pt-4 border-t border-slate-100 space-y-4">
                     <h4 className="text-xs font-black uppercase tracking-widest text-slate-800">Asignación de Rol Organizacional</h4>
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
                         <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-2">Nodo Asignado (Tienda/Sucursal)</label>
                         <select name="org_id" defaultValue={editingUser?.org_id || ''} className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl py-3 px-5 mt-1 font-bold outline-none focus:border-blue-600 transition-all">
@@ -1941,6 +2936,15 @@ const OrgTreeNode = ({ node, items, level = 0, onEdit, onDelete }) => {
   };
   const color = colors[node.type] || 'text-slate-400';
 
+  const childLabels = {
+    COUNTRY: 'Regiones',
+    REGION: 'Sucursales',
+    BRANCH: 'Tiendas',
+    SHOP: 'Agentes',
+    UNIT: 'Hijos'
+  };
+  const childLabel = childLabels[node.type] || 'Hijos';
+
   return (
     <div className="space-y-2">
       <div 
@@ -1972,7 +2976,7 @@ const OrgTreeNode = ({ node, items, level = 0, onEdit, onDelete }) => {
 
         <div className="flex items-center gap-4 pr-2">
           <div className="text-right shrink-0">
-            <p className="text-[8px] font-black uppercase tracking-widest text-slate-300">Hijos</p>
+            <p className="text-[8px] font-black uppercase tracking-widest text-slate-300">{childLabel}</p>
             <p className="text-[11px] font-black text-slate-700 leading-none mt-0.5">{children.length}</p>
           </div>
           <button onClick={() => onEdit(node)} className="p-2 hover:bg-blue-50 hover:text-blue-600 rounded-xl text-slate-400 transition-all"><Edit size={14} /></button>
@@ -2050,7 +3054,7 @@ const OrganizationView = ({ structure, session, refreshData }) => {
         }
       />
 
-      <div className="bg-slate-100/50 rounded-[48px] p-8 border border-slate-200/30 space-y-3">
+      <div className="bg-slate-100/50 rounded-[48px] p-5 md:p-8 border border-slate-200/30 space-y-3">
         {rootNodes.length === 0 ? (
           <div className="py-20 text-center space-y-4">
             <div className="w-16 h-16 bg-slate-50 rounded-[28px] flex items-center justify-center mx-auto text-slate-200">
@@ -2070,22 +3074,22 @@ const OrganizationView = ({ structure, session, refreshData }) => {
 
       <AnimatePresence>
         {modalOpen && (
-          <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-0 md:p-4">
             <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className="bg-white rounded-[40px] w-full max-w-lg shadow-2xl overflow-hidden max-h-[90vh] flex flex-col">
-              <div className="p-8 border-b border-slate-100 flex items-center justify-between shrink-0">
+              <div className="p-5 md:p-8 border-b border-slate-100 flex items-center justify-between shrink-0">
                 <div>
                   <h3 className="text-2xl font-black tracking-tight text-slate-900">{editingNode ? 'Editar Nodo' : 'Nuevo Nodo'}</h3>
                   <p className="text-slate-400 font-bold text-xs mt-1">Configuración de jerarquía y propiedades</p>
                 </div>
                 <button onClick={() => setModalOpen(false)} className="w-10 h-10 bg-slate-50 text-slate-400 rounded-2xl flex items-center justify-center hover:bg-slate-100 hover:text-slate-700 transition-colors"><X size={20} /></button>
               </div>
-              <form onSubmit={handleSave} className="p-8 space-y-6 overflow-y-auto">
+              <form onSubmit={handleSave} className="p-5 md:p-8 space-y-6 overflow-y-auto">
                 <div className="space-y-4">
                   <div>
                     <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-2">Nombre del Nodo</label>
                     <input name="name" defaultValue={editingNode?.name || ''} className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl py-3 px-5 mt-1 font-bold outline-none focus:border-blue-600 transition-all" />
                   </div>
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-2">Tipo</label>
                       <select name="type" required defaultValue={editingNode?.type || 'BRANCH'} className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl py-3 px-5 mt-1 font-bold outline-none focus:border-blue-600 transition-all">
@@ -2123,73 +3127,84 @@ const OrganizationView = ({ structure, session, refreshData }) => {
   );
 };
 
-const ActionsView = ({ onNavigate }) => {
-  // Replicando los datos de la imagen
-  const incompleteActions = [
-    { id: '1776283487910', date: 'Apr 15, 2026, 02:04 PM', action: 'Nuevo Cliente', clientName: 'Juan lora', reportNumber: '1776283487910' },
-    { id: '1774625055001', date: 'Mar 27, 2026, 09:24 AM', action: 'Nuevo Cliente', clientName: 'Adriano Melo', reportNumber: '1774625055001' },
-    { id: '1774624488645', date: 'Mar 27, 2026, 09:14 AM', action: 'Nuevo Cliente', clientName: 'Adriano Melo', reportNumber: '1774624488645' },
-    { id: '1774548847669', date: 'Mar 26, 2026, 12:14 PM', action: 'Nuevo Cliente', clientName: 'ecec edcec', reportNumber: '1774548847669' }
-  ];
+const ActionsView = ({ onNavigate, incompleteActions }) => {
+  const [searchQuery, setSearchQuery] = useState('');
+  
+  const filteredActions = incompleteActions.filter(item => 
+    item.clientName.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
   return (
     <div className="space-y-10 max-w-6xl mx-auto">
       {/* New action Section */}
       <div>
         <div className="flex items-center gap-3 mb-6">
-          <h2 className="text-2xl font-black text-slate-800 tracking-tight">Nueva acción</h2>
+          <h2 className="text-2xl font-black text-slate-800 tracking-tight">Opciones de Registro</h2>
           <button className="p-2 border border-slate-200 rounded-xl hover:bg-slate-50 hover:border-slate-300 text-slate-400 transition-colors bg-white shadow-sm">
             <RefreshCw size={16} />
           </button>
         </div>
-        <div className="grid grid-cols-2 gap-6 max-w-2xl">
-          <button onClick={() => onNavigate('Nuevo Cliente')} className="bg-white hover:bg-slate-50 hover:border-blue-200 hover:shadow-md transition-all p-6 rounded-[24px] flex items-center gap-5 text-slate-800 text-left border border-slate-100 shadow-sm group">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-2xl">
+          <button onClick={() => onNavigate('Nuevo Cliente')} className="bg-white hover:bg-slate-50 hover:border-blue-200 hover:shadow-md transition-all p-6 rounded-[24px] flex items-center gap-3 md:gap-5 text-slate-800 text-left border border-slate-100 shadow-sm group">
             <div className="w-14 h-14 rounded-xl bg-blue-50 flex items-center justify-center text-blue-600 group-hover:bg-blue-600 group-hover:text-white transition-colors">
               <Users size={24} />
             </div>
-            <span className="font-bold text-lg">Nuevo Cliente</span>
-          </button>
-          <button onClick={() => onNavigate('Detalles del plan')} className="bg-white hover:bg-slate-50 hover:border-blue-200 hover:shadow-md transition-all p-6 rounded-[24px] flex items-center gap-5 text-slate-800 text-left border border-slate-100 shadow-sm group">
-            <div className="w-14 h-14 rounded-xl bg-indigo-50 flex items-center justify-center text-indigo-600 group-hover:bg-indigo-600 group-hover:text-white transition-colors">
-              <FileText size={24} />
-            </div>
-            <span className="font-bold text-lg">Detalles del plan</span>
+            <span className="font-bold text-lg">Nuevo Registro de Venta</span>
           </button>
         </div>
       </div>
 
       {/* Incomplete actions Section */}
       <div>
-        <h2 className="text-2xl font-black text-slate-800 tracking-tight mb-6 pb-4 border-b border-slate-100">Acciones incompletas</h2>
+        <div className="flex flex-col md:flex-row md:items-center justify-between mb-6 pb-4 border-b border-slate-100 gap-4">
+          <h2 className="text-2xl font-black text-slate-800 tracking-tight">Registros de Ventas</h2>
+          <div className="relative">
+            <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+            <input 
+              type="text" 
+              placeholder="Buscar por cliente..." 
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-11 pr-5 py-3 w-full md:w-80 bg-slate-50 border-2 border-slate-100 rounded-xl font-bold text-slate-800 focus:border-blue-600 outline-none transition-all text-sm"
+            />
+          </div>
+        </div>
         
         <div className="bg-white rounded-[32px] border border-slate-100 shadow-sm overflow-hidden">
           <table className="w-full text-left border-collapse">
             <thead className="bg-slate-50/50">
               <tr>
-                <th className="px-8 py-5 text-[12px] font-black text-slate-400 uppercase tracking-widest">Date</th>
-                <th className="px-8 py-5 text-[12px] font-black text-slate-400 uppercase tracking-widest">Action</th>
-                <th className="px-8 py-5 text-[12px] font-black text-slate-400 uppercase tracking-widest">Client name</th>
-                <th className="px-8 py-5 text-[12px] font-black text-slate-400 uppercase tracking-widest">Report number</th>
+                <th className="px-8 py-5 text-[12px] font-black text-slate-400 uppercase tracking-widest">Fecha</th>
+                <th className="px-8 py-5 text-[12px] font-black text-slate-400 uppercase tracking-widest">Nombre de Cliente</th>
+                <th className="px-8 py-5 text-[12px] font-black text-slate-400 uppercase tracking-widest">Dispositivo</th>
+                <th className="px-8 py-5 text-[12px] font-black text-slate-400 uppercase tracking-widest">Estatus</th>
                 <th className="px-8 py-5 text-right"></th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {incompleteActions.map((item, i) => (
+              {filteredActions.map((item) => (
                 <tr key={item.id} className="hover:bg-slate-50/50 transition-colors group">
                   <td className="px-8 py-5 text-base font-medium text-slate-500">{item.date}</td>
-                  <td className="px-8 py-5 text-base font-bold text-slate-800">{item.action}</td>
-                  <td className="px-8 py-5 text-base font-medium text-slate-600">{item.clientName}</td>
-                  <td className="px-8 py-5 text-base font-mono text-slate-400">{item.reportNumber}</td>
-                  <td className="px-8 py-5 flex items-center justify-end gap-3">
-                    <button onClick={() => onNavigate(item.action, item)} className="flex items-center gap-2 bg-slate-100 hover:bg-blue-600 hover:text-white hover:shadow-md text-blue-600 font-bold px-5 py-2.5 rounded-xl transition-all text-sm">
-                      <ClipboardCheck size={16} /> Completar ahora
-                    </button>
-                    <button className="p-2.5 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-xl transition-colors">
-                      <Trash2 size={18} />
-                    </button>
+                  <td className="px-8 py-5 text-base font-bold text-slate-800">{item.clientName}</td>
+                  <td className="px-8 py-5 text-base font-medium text-slate-600">{item.device}</td>
+                  <td className="px-8 py-5 text-sm font-mono text-orange-500 bg-orange-50/50 rounded-lg inline-block my-3 ml-8 px-3 py-1 font-bold">{item.status}</td>
+                  <td className="px-8 py-5">
+                    <div className="flex items-center justify-end gap-3">
+                      <button onClick={() => onNavigate('Nuevo Cliente', item)} className="flex items-center gap-2 bg-slate-100 hover:bg-blue-600 hover:text-white hover:shadow-md text-blue-600 font-bold px-5 py-2.5 rounded-xl transition-all text-sm">
+                        <ClipboardCheck size={16} /> Completar ahora
+                      </button>
+                      <button className="p-2.5 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-xl transition-colors">
+                        <Trash2 size={18} />
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}
+              {filteredActions.length === 0 && (
+                <tr>
+                  <td colSpan={5} className="px-8 py-10 text-center text-slate-400 font-bold">No se encontraron registros para la búsqueda.</td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>
@@ -2198,9 +3213,35 @@ const ActionsView = ({ onNavigate }) => {
   );
 };
 
-const ActionFormView = ({ actionType, prefillData, onBack, deals, products }) => {
-  const [selectedDeal, setSelectedDeal] = useState(deals && deals.length > 0 ? deals[0].upya_id : '');
-  const [currentStep, setCurrentStep] = useState(1);
+const ActionFormView = ({ actionType, prefillData, onBack, onSaveDraft, deals, products, inventory }) => {
+  const [selectedDeal, setSelectedDeal] = useState(prefillData?.dealId || '');
+  const [selectedProductId, setSelectedProductId] = useState(() => {
+    if (prefillData?.selectedProductId) return prefillData.selectedProductId;
+    if (prefillData?.device && products) {
+      const match = products.find(p => matchesProduct(prefillData.device, p.name));
+      return match ? match.upya_id : '';
+    }
+    return '';
+  });
+  const [productSearch, setProductSearch] = useState('');
+  const initialStep = prefillData?.status ? (parseInt(prefillData.status.match(/\d+/)?.[0]) || 1) : 1;
+  const [currentStep, setCurrentStep] = useState(initialStep);
+  const [firstName, setFirstName] = useState(prefillData?.clientName?.split(' ')[0] || '');
+  const [lastName, setLastName] = useState(prefillData?.clientName?.split(' ').slice(1).join(' ') || '');
+  
+  const [formData, setFormData] = useState({
+    serialNumber: prefillData?.serialNumber || '',
+    birthDate: prefillData?.birthDate || '',
+    gender: prefillData?.gender || 'Femenino',
+    phoneMain: prefillData?.phoneMain || '',
+    phoneEmergency: prefillData?.phoneEmergency || '',
+    address: prefillData?.address || '',
+    idType: prefillData?.idType || 'INE / IFE',
+    idNumber: prefillData?.idNumber || '',
+    signatureName: prefillData?.signatureName || ''
+  });
+  
+  const selectedProduct = products?.find(p => p.upya_id === selectedProductId);
   
   const steps = actionType === 'Detalles del plan' 
     ? ['Selección de Plan', 'Resumen Financiero'] 
@@ -2214,9 +3255,9 @@ const ActionFormView = ({ actionType, prefillData, onBack, deals, products }) =>
             <ChevronDown size={20} className="rotate-90" />
           </button>
           <div>
-            <h2 className="text-3xl font-black text-slate-800 tracking-tight">Completar: {actionType}</h2>
+            <h2 className="text-3xl font-black text-slate-800 tracking-tight">Registro de Ventas</h2>
             <p className="text-base font-medium text-slate-500 mt-1">
-              {prefillData ? `Reporte #${prefillData.reportNumber} - Cliente: ${prefillData.clientName}` : 'Iniciando nueva recolección'}
+              {prefillData ? `Cliente: ${prefillData.clientName || 'Sin Nombre'}` : 'Iniciando nueva recolección'}
             </p>
           </div>
         </div>
@@ -2227,9 +3268,9 @@ const ActionFormView = ({ actionType, prefillData, onBack, deals, products }) =>
         )}
       </div>
 
-      <div className="flex gap-8">
+      <div className="flex gap-3 md:gap-5 md:p-8">
         {/* Sidebar: Progress Stepper */}
-        <div className="w-1/4 bg-white rounded-[32px] border border-slate-100 shadow-sm p-6 self-start sticky top-8">
+        <div className="w-1/4 bg-white rounded-[32px] border border-slate-100 shadow-sm p-6 self-start sticky top-5 md:p-8">
           <h3 className="text-sm font-black text-slate-400 uppercase tracking-widest mb-6">Progreso del Formulario</h3>
           <div className="space-y-6">
             {steps.map((step, idx) => (
@@ -2254,7 +3295,7 @@ const ActionFormView = ({ actionType, prefillData, onBack, deals, products }) =>
             <h3 className="text-xl font-black text-slate-800 border-b border-slate-100 pb-4">{steps[currentStep - 1]}</h3>
             
             {actionType === 'Detalles del plan' ? (
-              <div className="grid grid-cols-2 gap-8">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-5 md:p-8">
                 {currentStep === 1 && (
                   <div className="col-span-2">
                     <label className="block text-sm font-black text-slate-400 uppercase tracking-widest mb-3">Términos y Condiciones (Deal)</label>
@@ -2291,27 +3332,52 @@ const ActionFormView = ({ actionType, prefillData, onBack, deals, products }) =>
               </div>
             ) : (
               /* Flujo General: 6 Secciones */
-              <div className="grid grid-cols-2 gap-8">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-5 md:p-8">
                 {currentStep === 1 && ( /* Dispositivos */
                   <>
-                    <div className="col-span-2 md:col-span-1">
-                      <label className="block text-sm font-black text-slate-400 uppercase tracking-widest mb-3">Modelo del Dispositivo / Producto</label>
-                      <select className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-blue-500/20 font-bold text-slate-800">
-                        {products && products.length > 0 ? (
-                          products.map(p => <option key={p.upya_id} value={p.name}>{p.name}</option>)
-                        ) : (
-                          <>
-                            <option>Kit Solar Básico 50W</option>
-                            <option>Kit Solar Plus 100W</option>
-                            <option>Refrigerador Solar 12V</option>
-                          </>
-                        )}
+                    <div className="col-span-2">
+                      <label className="block text-sm font-black text-slate-400 uppercase tracking-widest mb-3">Buscar Dispositivo (Marca / Modelo)</label>
+                      <input type="text" className="w-full px-5 py-4 mb-4 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-blue-500/20 font-bold text-slate-800" placeholder="Filtrar por nombre o marca..." value={productSearch} onChange={e => setProductSearch(e.target.value)} />
+                      
+                      <select className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-blue-500/20 font-bold text-slate-800" value={selectedProductId} onChange={e => setSelectedProductId(e.target.value)}>
+                        <option value="">-- Selecciona un dispositivo --</option>
+                        {products && products.filter(p => p.name.toLowerCase().includes(productSearch.toLowerCase()) || p.manufacturer?.toLowerCase().includes(productSearch.toLowerCase())).map(p => (
+                          <option key={p.upya_id} value={p.upya_id}>{p.manufacturer ? `${p.manufacturer} ` : ''}{p.name}</option>
+                        ))}
                       </select>
                     </div>
-                    <div className="col-span-2 md:col-span-1">
-                      <label className="block text-sm font-black text-slate-400 uppercase tracking-widest mb-3">Número de Serie o Token PayG</label>
-                      <input type="text" className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-blue-500/20 font-bold text-slate-800" placeholder="Ej. A1B2C3D4E5" />
-                    </div>
+
+                    {selectedProduct && (
+                      <div className="col-span-2 bg-emerald-50 p-6 rounded-2xl border border-emerald-100 flex items-center justify-between">
+                        <div>
+                          <p className="text-[12px] font-black text-emerald-500 uppercase tracking-widest mb-1">Costo Total del Dispositivo</p>
+                          <p className="text-3xl font-black text-emerald-900">${parseFloat(selectedProduct.base_value || 0).toFixed(2)}</p>
+                        </div>
+                        <Tag size={40} className="text-emerald-200" />
+                      </div>
+                    )}
+                    
+                    {selectedProduct?.is_serialized ? (() => {
+                      const availableInventory = inventory ? inventory.filter(i => matchesProduct(i.model, selectedProduct.name) && i.status === 'UNASSIGNED') : [];
+                      return (
+                        <div className="col-span-2 md:col-span-1">
+                          <label className="block text-sm font-black text-slate-400 uppercase tracking-widest mb-3 flex justify-between items-center">
+                            Número de Serie en Stock
+                            {availableInventory.length === 0 && <span className="text-red-500 text-xs">Sin stock disponible</span>}
+                          </label>
+                          <select className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-blue-500/20 font-bold text-slate-800" value={formData.serialNumber} onChange={e => setFormData({...formData, serialNumber: e.target.value})}>
+                            <option value="">-- Selecciona un serial ({availableInventory.length} disponibles) --</option>
+                            {availableInventory.map(i => <option key={i.serial_number} value={i.serial_number}>{i.serial_number}</option>)}
+                          </select>
+                        </div>
+                      );
+                    })() : (
+                      <div className="col-span-2 md:col-span-1">
+                        <label className="block text-sm font-black text-slate-400 uppercase tracking-widest mb-3">Número de Serie o Token PayG</label>
+                        <input type="text" className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-blue-500/20 font-bold text-slate-800" placeholder="Ej. A1B2C3D4E5" value={formData.serialNumber} onChange={e => setFormData({...formData, serialNumber: e.target.value})} />
+                      </div>
+                    )}
+                    
                     <div className="col-span-2">
                       <div className="px-6 py-4 bg-blue-50 border border-blue-100 rounded-2xl flex items-center gap-4 text-blue-800">
                         <Smartphone size={24} />
@@ -2324,19 +3390,19 @@ const ActionFormView = ({ actionType, prefillData, onBack, deals, products }) =>
                   <>
                     <div className="col-span-2 md:col-span-1">
                       <label className="block text-sm font-black text-slate-400 uppercase tracking-widest mb-3">Nombre(s)</label>
-                      <input type="text" className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-blue-500/20 font-bold text-slate-800" defaultValue={prefillData?.clientName?.split(' ')[0] || ''} placeholder="Ej. Juan" />
+                      <input type="text" className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-blue-500/20 font-bold text-slate-800" value={firstName} onChange={e => setFirstName(e.target.value)} placeholder="Ej. Juan" />
                     </div>
                     <div className="col-span-2 md:col-span-1">
                       <label className="block text-sm font-black text-slate-400 uppercase tracking-widest mb-3">Apellidos</label>
-                      <input type="text" className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-blue-500/20 font-bold text-slate-800" defaultValue={prefillData?.clientName?.split(' ').slice(1).join(' ') || ''} placeholder="Ej. Lora" />
+                      <input type="text" className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-blue-500/20 font-bold text-slate-800" value={lastName} onChange={e => setLastName(e.target.value)} placeholder="Ej. Lora" />
                     </div>
                     <div className="col-span-2 md:col-span-1">
                       <label className="block text-sm font-black text-slate-400 uppercase tracking-widest mb-3">Fecha de Nacimiento</label>
-                      <input type="date" className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-blue-500/20 font-bold text-slate-800" />
+                      <input type="date" className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-blue-500/20 font-bold text-slate-800" value={formData.birthDate} onChange={e => setFormData({...formData, birthDate: e.target.value})} />
                     </div>
                     <div className="col-span-2 md:col-span-1">
                       <label className="block text-sm font-black text-slate-400 uppercase tracking-widest mb-3">Género</label>
-                      <select className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-blue-500/20 font-bold text-slate-800">
+                      <select className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-blue-500/20 font-bold text-slate-800" value={formData.gender} onChange={e => setFormData({...formData, gender: e.target.value})}>
                         <option>Femenino</option><option>Masculino</option><option>Otro</option>
                       </select>
                     </div>
@@ -2346,15 +3412,15 @@ const ActionFormView = ({ actionType, prefillData, onBack, deals, products }) =>
                   <>
                     <div className="col-span-2 md:col-span-1">
                       <label className="block text-sm font-black text-slate-400 uppercase tracking-widest mb-3">Teléfono Principal (Móvil)</label>
-                      <input type="tel" className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-blue-500/20 font-bold text-slate-800" placeholder="+52 ..." />
+                      <input type="tel" className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-blue-500/20 font-bold text-slate-800" placeholder="+52 ..." value={formData.phoneMain} onChange={e => setFormData({...formData, phoneMain: e.target.value})} />
                     </div>
                     <div className="col-span-2 md:col-span-1">
                       <label className="block text-sm font-black text-slate-400 uppercase tracking-widest mb-3">Teléfono de Emergencia/Referencia</label>
-                      <input type="tel" className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-blue-500/20 font-bold text-slate-800" placeholder="+52 ..." />
+                      <input type="tel" className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-blue-500/20 font-bold text-slate-800" placeholder="+52 ..." value={formData.phoneEmergency} onChange={e => setFormData({...formData, phoneEmergency: e.target.value})} />
                     </div>
                     <div className="col-span-2">
                       <label className="block text-sm font-black text-slate-400 uppercase tracking-widest mb-3">Dirección de Residencia</label>
-                      <textarea className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-blue-500/20 font-bold text-slate-800 min-h-[100px]" placeholder="Calle, Número, Colonia, Ciudad, Estado, C.P."></textarea>
+                      <textarea className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-blue-500/20 font-bold text-slate-800 min-h-[100px]" placeholder="Calle, Número, Colonia, Ciudad, Estado, C.P." value={formData.address} onChange={e => setFormData({...formData, address: e.target.value})}></textarea>
                     </div>
                   </>
                 )}
@@ -2362,13 +3428,13 @@ const ActionFormView = ({ actionType, prefillData, onBack, deals, products }) =>
                   <>
                     <div className="col-span-2 md:col-span-1">
                       <label className="block text-sm font-black text-slate-400 uppercase tracking-widest mb-3">Tipo de Identificación</label>
-                      <select className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-blue-500/20 font-bold text-slate-800">
+                      <select className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-blue-500/20 font-bold text-slate-800" value={formData.idType} onChange={e => setFormData({...formData, idType: e.target.value})}>
                         <option>INE / IFE</option><option>Pasaporte</option><option>Cédula Profesional</option>
                       </select>
                     </div>
                     <div className="col-span-2 md:col-span-1">
                       <label className="block text-sm font-black text-slate-400 uppercase tracking-widest mb-3">Número de Documento</label>
-                      <input type="text" className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-blue-500/20 font-bold text-slate-800" placeholder="Ej. 0000111122223" />
+                      <input type="text" className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-blue-500/20 font-bold text-slate-800" placeholder="Ej. 0000111122223" value={formData.idNumber} onChange={e => setFormData({...formData, idNumber: e.target.value})} />
                     </div>
                     <div className="col-span-2 md:col-span-1">
                       <label className="block text-sm font-black text-slate-400 uppercase tracking-widest mb-3">Captura Identificación (Frente)</label>
@@ -2388,10 +3454,56 @@ const ActionFormView = ({ actionType, prefillData, onBack, deals, products }) =>
                   <>
                     <div className="col-span-2">
                       <label className="block text-sm font-black text-slate-400 uppercase tracking-widest mb-3">Términos de Pago Asociados</label>
-                      <select className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-blue-500/20 font-bold text-slate-800">
-                        {deals && deals.length > 0 ? deals.map(d => <option key={d.upya_id} value={d.upya_id}>{d.name}</option>) : <option>Sin planes</option>}
+                      <select className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-blue-500/20 font-bold text-slate-800" value={selectedDeal} onChange={(e) => setSelectedDeal(e.target.value)}>
+                        <option value="">-- Selecciona un plan --</option>
+                        {deals && deals.length > 0 ? deals.map(d => <option key={d.upya_id} value={d.upya_id}>{d.name} ({d.type})</option>) : <option>Sin planes</option>}
                       </select>
                     </div>
+
+                    {selectedDeal && selectedProduct && (() => {
+                      const deal = deals.find(d => d.upya_id === selectedDeal);
+                      if (!deal) return null;
+                      const totalCost = parseFloat(selectedProduct.base_value) || 0;
+                      
+                      if (deal.type === 'INSTALMENTS') {
+                        const upfront = (totalCost * (parseFloat(deal.upfront_percentage) || 0)) / 100;
+                        const balance = totalCost - upfront;
+                        const installments = parseInt(deal.installments_count) || 1;
+                        const perPayment = balance / installments;
+                        
+                        return (
+                          <div className="col-span-2 bg-blue-50 p-6 rounded-2xl border border-blue-100 space-y-4">
+                            <h4 className="font-black text-blue-900 text-lg flex items-center gap-2"><CreditCard size={20} /> Resumen Financiero</h4>
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                              <div>
+                                <p className="text-[11px] font-black uppercase tracking-widest text-blue-400 mb-1">Enganche ({deal.upfront_percentage || 0}%)</p>
+                                <p className="text-2xl font-black text-blue-700">${upfront.toFixed(2)}</p>
+                              </div>
+                              <div>
+                                <p className="text-[11px] font-black uppercase tracking-widest text-blue-400 mb-1">Saldo a Financiar</p>
+                                <p className="text-2xl font-black text-blue-700">${balance.toFixed(2)}</p>
+                              </div>
+                              <div>
+                                <p className="text-[11px] font-black uppercase tracking-widest text-blue-400 mb-1">Pago cada {deal.frequency_days || 7} días</p>
+                                <p className="text-2xl font-black text-blue-700">${perPayment.toFixed(2)}</p>
+                                <p className="text-xs font-bold text-blue-500 mt-1">({installments} pagos)</p>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      } else {
+                        return (
+                          <div className="col-span-2 bg-emerald-50 p-6 rounded-2xl border border-emerald-100 flex items-center justify-between">
+                            <div>
+                              <p className="text-[11px] font-black uppercase tracking-widest text-emerald-500 mb-1">Venta de Contado (PAYG)</p>
+                              <p className="text-3xl font-black text-emerald-800">${totalCost.toFixed(2)}</p>
+                            </div>
+                            <CheckSquare size={40} className="text-emerald-200" />
+                          </div>
+                        );
+                      }
+                    })()}
+
                     <div className="col-span-2 p-6 bg-slate-50 border border-slate-200 rounded-2xl flex items-start gap-4">
                       <input type="checkbox" className="mt-1 w-5 h-5 rounded text-blue-600 focus:ring-blue-500 border-slate-300" defaultChecked />
                       <div>
@@ -2410,7 +3522,7 @@ const ActionFormView = ({ actionType, prefillData, onBack, deals, products }) =>
                       <button className="absolute bottom-4 right-4 text-sm font-bold text-slate-500 hover:text-slate-800">Limpiar Firma</button>
                     </div>
                     <div>
-                      <input type="text" className="w-64 mx-auto px-5 py-4 bg-white border border-slate-200 rounded-2xl focus:ring-4 focus:ring-blue-500/20 font-bold text-slate-800 text-center" placeholder="Aclaración de firma" defaultValue={prefillData?.clientName || ''} />
+                      <input type="text" className="w-64 mx-auto px-5 py-4 bg-white border border-slate-200 rounded-2xl focus:ring-4 focus:ring-blue-500/20 font-bold text-slate-800 text-center" placeholder="Aclaración de firma" value={formData.signatureName || `${firstName} ${lastName}`.trim()} onChange={e => setFormData({...formData, signatureName: e.target.value})} />
                     </div>
                   </div>
                 )}
@@ -2419,7 +3531,15 @@ const ActionFormView = ({ actionType, prefillData, onBack, deals, products }) =>
           </div>
 
           <div className="pt-8 mt-8 border-t border-slate-100 flex justify-between items-center">
-            <button onClick={onBack} className="px-6 py-3 text-slate-400 hover:text-slate-600 font-bold transition-colors">Guardar Borrador y Salir</button>
+            <button onClick={() => onSaveDraft({ 
+              id: prefillData?.id || Date.now().toString(), 
+              clientName: `${firstName} ${lastName}`.trim(), 
+              device: selectedProduct?.name || '', 
+              status: `Paso ${currentStep}: ${steps[currentStep-1]}`,
+              selectedProductId,
+              dealId: selectedDeal,
+              ...formData
+            })} className="px-6 py-3 text-slate-400 hover:text-slate-600 font-bold transition-colors">Guardar Borrador y Salir</button>
             <div className="flex gap-4">
               {currentStep > 1 && (
                 <button onClick={() => setCurrentStep(currentStep - 1)} className="px-8 py-4 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold rounded-2xl transition-colors">Atrás</button>
@@ -2469,7 +3589,7 @@ const ActionModal = ({ open, onClose, onSave, action = null }) => {
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-0 md:p-4">
       <div className="bg-white rounded-[32px] shadow-2xl w-full max-w-2xl overflow-hidden border border-slate-100 flex flex-col max-h-[90vh]">
         <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
           <div className="flex items-center gap-3">
@@ -2478,12 +3598,12 @@ const ActionModal = ({ open, onClose, onSave, action = null }) => {
           </div>
           <button onClick={onClose} className="p-2 text-slate-400 hover:bg-slate-100 rounded-full transition-colors"><X size={20} /></button>
         </div>
-        <div className="p-8 overflow-y-auto flex-1 space-y-6">
+        <div className="p-5 md:p-8 overflow-y-auto flex-1 space-y-6">
           <div>
             <label className="block text-sm font-black text-slate-500 uppercase tracking-widest mb-2">Descripción / Asunto</label>
             <input type="text" className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all font-medium text-slate-800" value={formData.description} onChange={(e) => setFormData({...formData, description: e.target.value})} placeholder="Ej. Revisar instalación..." />
           </div>
-          <div className="grid grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
               <label className="block text-sm font-black text-slate-500 uppercase tracking-widest mb-2">Tipo</label>
               <select className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 font-medium text-slate-800" value={formData.type} onChange={(e) => setFormData({...formData, type: e.target.value})}>
@@ -2497,7 +3617,7 @@ const ActionModal = ({ open, onClose, onSave, action = null }) => {
               </select>
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
               <label className="block text-sm font-black text-slate-500 uppercase tracking-widest mb-2">Asignado a</label>
               <input type="text" className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 font-medium text-slate-800" value={formData.assigned_to} onChange={(e) => setFormData({...formData, assigned_to: e.target.value})} placeholder="Nombre del agente" />
@@ -2547,7 +3667,21 @@ const App = () => {
   const [syncingTrustonicLogs, setSyncingTrustonicLogs] = useState(false);
   const [modalState, setModalState] = useState({ type: null, open: false, item: null });
   const [actionFormState, setActionFormState] = useState({ open: false, actionType: null, prefillData: null });
+  const [incompleteActions, setIncompleteActions] = useState([
+    { id: '1776283487910', date: 'Apr 15, 2026, 02:04 PM', clientName: 'Juan Lora', device: 'Galaxy A04', status: 'Paso 2: Datos del Plan' },
+    { id: '1774625055001', date: 'Mar 27, 2026, 09:24 AM', clientName: 'Adriano Melo', device: 'Moto E22', status: 'Paso 1: Información Básica' },
+    { id: '1774624488645', date: 'Mar 27, 2026, 09:14 AM', clientName: 'Adriano Melo', device: 'Nokia C21', status: 'Paso 3: Validación' },
+    { id: '1774548847669', date: 'Mar 26, 2026, 12:14 PM', clientName: 'ecec edcec', device: 'ZTE Blade', status: 'Paso 1: Información Básica' }
+  ]);
   const [isRegistering, setIsRegistering] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  // Estado para flujo de selección de tenant SuperAdmin
+  const [loginStep, setLoginStep] = useState('credentials'); // 'credentials' | 'tenant-select'
+  const [loginCredentials, setLoginCredentials] = useState({ username: '', password: '' });
+  const [availableTenants, setAvailableTenants] = useState([]);
+  const [selectedTenantId, setSelectedTenantId] = useState('');
+  const [loginLoading, setLoginLoading] = useState(false);
+  const [loginError, setLoginError] = useState('');
 
   const refreshData = useCallback(async () => {
     const tenantId = session?.tenantId;
@@ -2599,16 +3733,25 @@ const App = () => {
 
   useEffect(() => { refreshData(); }, [view, refreshData]);
 
+  const handleAddInventory = async (productName) => {
+    const sn = window.prompt(`Ingrese el nuevo número de serie para ${productName}:`);
+    if (!sn) return;
+    try {
+      await axios.post(`${API}/backoffice/inventory`, { tenantId: session.tenantId, serialNumber: sn, model: productName, status: 'UNASSIGNED' });
+      await refreshData();
+    } catch (e) {
+      alert('Error agregando inventario: ' + (e.response?.data?.error || e.message));
+    }
+  };
+
   const handleSync = async () => {
     setSyncing(true);
     try {
       const res = await axios.post(`${API}/sync/bootstrap`, { 
-        username: session.username, 
-        password: session.password,
         tenantId: session.tenantId
       });
       await refreshData();
-      alert(`✅ Sincronización exitosa\n• Clientes: ${res.data.clients}\n• Contratos: ${res.data.contracts}\n• Productos: ${res.data.products}\n• Colecciones: ${res.data.dataCollections}\n• Pagos: ${res.data.payments}`);
+      alert(`✅ ${res.data.message || 'Sincronización masiva iniciada en segundo plano.'}\n\nPuedes continuar usando el panel mientras los datos se actualizan internamente.`);
     } catch (e) { 
       console.error('Sync error:', e);
       alert('Error de sincronización: ' + (e.response?.data?.error || e.message)); 
@@ -2723,6 +3866,32 @@ const App = () => {
     } catch (e) { alert(e.message); }
   };
 
+  const handleDeleteProduct = async (product) => {
+    if (!window.confirm(`¿Estás seguro de que deseas eliminar el producto ${product.name}?`)) return;
+    try {
+      await axios.delete(`${API}/backoffice/products/${product.upya_id}?tenantId=${session.tenantId}`);
+      refreshData();
+    } catch (e) { alert(e.response?.data?.error || e.message); }
+  };
+
+  const handleSaveTerm = async (planData) => {
+    try {
+      const payload = { planData, tenantId: session.tenantId };
+      if (modalState.item) await axios.put(`${API}/backoffice/payment-plans/${modalState.item.upya_id}`, payload);
+      else await axios.post(`${API}/backoffice/payment-plans`, payload);
+      setModalState({ type: null, open: false, item: null });
+      refreshData();
+    } catch (e) { alert(e.message); }
+  };
+
+  const handleDeleteTerm = async (term) => {
+    if (!window.confirm(`¿Estás seguro de que deseas eliminar el término ${term.name}?`)) return;
+    try {
+      await axios.delete(`${API}/backoffice/payment-plans/${term.upya_id}?tenantId=${session.tenantId}`);
+      refreshData();
+    } catch (e) { alert(e.response?.data?.error || e.message); }
+  };
+
   const handleSaveCollection = async (collectionData) => {
     try {
       const payload = { username: session.username, password: session.password, collectionData, tenantId: session.tenantId };
@@ -2789,58 +3958,156 @@ const App = () => {
     const today = new Date();
     const day = today.getDate().toString().padStart(2, '0');
     
-    // Si el nombre del deal tiene "mes", habilitamos recurrencia
-    const isRecurring = (contract.deal_name || '').toLowerCase().includes('mes');
+    // Buscar el plan de pago asociado para calcular el enganche y pagos recurrentes
+    const plan = (data.paymentPlans || []).find(p => p.name === contract.deal_name);
+    let initialAmount = contract.upfront_payment || 0;
+    let isRecurring = (contract.deal_name || '').toLowerCase().includes('mes');
+    let repaymentFreq = null;
+    let repaymentAmt = null;
+    
+    if (plan && plan.type === 'INSTALMENTS') {
+      isRecurring = true;
+      const totalValue = parseFloat(contract.total_value) || 0;
+      
+      const upfrontPct = parseFloat(plan.upfront_percentage) || 0;
+      const calculatedInitial = (totalValue * (upfrontPct / 100));
+      
+      const interestPct = parseFloat(plan.interest_percentage) || 0;
+      const remainingBalance = totalValue - calculatedInitial;
+      const totalWithInterest = remainingBalance * (1 + (interestPct / 100));
+      
+      const iters = parseInt(plan.installments_count) || 1;
+      repaymentAmt = (totalWithInterest / iters).toFixed(2);
+      
+      initialAmount = calculatedInitial.toFixed(2);
+      repaymentFreq = plan.frequency_days;
+    }
     
     const prefillPayment = {
-      amount: contract.upfront_payment || 0,
+      amount: initialAmount,
       method: 'Transferencia',
       status: 'Pending',
       contract_id: contract.contract_number || '',
       client_id: contract.client_id || '',
       payment_date: new Date().toISOString().split('T')[0],
       is_recurring: isRecurring,
-      recurring_dates: isRecurring ? [day] : []
+      recurring_dates: isRecurring ? [day] : [],
+      repayment_frequency: repaymentFreq,
+      repayment_amount: repaymentAmt
     };
 
     setModalState({ type: 'payment', open: true, item: prefillPayment });
   };
 
   if (!session) return (
-    <div className="min-h-screen bg-slate-950 flex items-center justify-center p-8">
+    <div className="min-h-dvh bg-slate-950 flex items-center justify-center p-5 md:p-8">
       <div className="w-full max-w-[440px] bg-white rounded-[48px] p-10 shadow-2xl text-center">
         <div className="w-16 h-16 bg-blue-600 rounded-[22px] flex items-center justify-center text-white mx-auto mb-8 shadow-xl shadow-blue-600/40"><ShieldCheck size={32} /></div>
         <h1 className="text-3xl font-black text-slate-900 tracking-tighter mb-2">Bantos</h1>
         <p className="text-blue-600 font-black text-[11px] uppercase tracking-widest mb-8">Data Center</p>
-        
+
         {!isRegistering ? (
           <div className="space-y-4">
-            <input id="u" type="text" placeholder="Usuario" defaultValue="armando.afa" className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl py-4 px-6 font-bold text-slate-800 outline-none focus:border-blue-600 transition-all" />
-            <input id="p" type="password" placeholder="Contraseña" defaultValue="123456!" className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl py-4 px-6 font-bold text-slate-800 outline-none focus:border-blue-600 transition-all" />
-            <input id="tid" type="text" placeholder="Tenant ID (ej. c-romel)" defaultValue="c-romel" className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl py-4 px-6 font-bold text-slate-800 outline-none focus:border-blue-600 transition-all" />
-            <button onClick={async (e) => { 
-              e.preventDefault();
-              const u = document.getElementById('u').value; 
-              const tid = document.getElementById('tid').value;
-              const p = document.getElementById('p').value; 
-              if (!u || !tid || !p) return alert('Usuario, Tenant ID y Contraseña son requeridos');
-              const btn = e.currentTarget;
-              try {
-                const originalText = btn.innerText;
-                btn.innerText = 'Autenticando...';
-                btn.disabled = true;
-                const res = await axios.post(`${API}/backoffice/auth`, { username: u, password: p, tenantId: tid });
-                if (res.data.success) {
-                  const s = { ...res.data.user, password: p, tenantId: tid }; // Store user data with password and tenantId
-                  localStorage.setItem('bantos_session', JSON.stringify(s)); 
-                  setSession(s); 
-                }
-              } catch (err) {
-                alert(err.response?.data?.message || 'Credenciales incorrectas o denegadas.');
-                btn.innerText = 'Acceder';
-                btn.disabled = false;
-              }
-            }} className="w-full bg-blue-600 hover:bg-blue-700 text-white py-5 rounded-2xl font-black uppercase tracking-widest text-xs shadow-xl shadow-blue-600/30 transition-all">Acceder</button>
+            {loginError && (
+              <div className="bg-red-50 border border-red-100 rounded-2xl px-5 py-3 text-red-600 text-xs font-bold text-left flex items-center gap-2">
+                <AlertCircle size={14} />{loginError}
+              </div>
+            )}
+
+            {/* PASO 1: Credenciales */}
+            {loginStep === 'credentials' && (
+              <>
+                <input id="u" type="text" placeholder="Usuario" className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl py-4 px-6 font-bold text-slate-800 outline-none focus:border-blue-600 transition-all" />
+                <input id="p" type="password" placeholder="Contraseña" className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl py-4 px-6 font-bold text-slate-800 outline-none focus:border-blue-600 transition-all" />
+                <input id="tid" type="text" placeholder="Tenant ID (ej. c-romel)" className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl py-4 px-6 font-bold text-slate-800 outline-none focus:border-blue-600 transition-all" />
+                <button
+                  disabled={loginLoading}
+                  onClick={async () => {
+                    const u = document.getElementById('u').value.trim();
+                    const p = document.getElementById('p').value;
+                    const tid = document.getElementById('tid').value.trim();
+                    if (!u || !p || !tid) { setLoginError('Usuario, Tenant ID y Contraseña son requeridos'); return; }
+                    setLoginError('');
+                    setLoginLoading(true);
+                    try {
+                      const res = await axios.post(`${API}/backoffice/auth`, { username: u, password: p, tenantId: tid });
+                      if (res.data.success) {
+                        if (res.data.user?.role === 'superadmin') {
+                          // SuperAdmin: cargar lista de tenants y avanzar al selector
+                          setLoginCredentials({ username: u, password: p });
+                          const tenantsRes = await axios.get(`${API}/backoffice/tenant-list`);
+                          setAvailableTenants(tenantsRes.data || []);
+                          setSelectedTenantId(tid); // Pre-seleccionar el tenant escrito
+                          setLoginStep('tenant-select');
+                        } else {
+                          // Usuario normal: sesión directa
+                          const s = { ...res.data.user, password: p };
+                          localStorage.setItem('bantos_session', JSON.stringify(s));
+                          setSession(s);
+                        }
+                      }
+                    } catch (err) {
+                      setLoginError(err.response?.data?.message || 'Credenciales incorrectas o denegadas.');
+                    } finally {
+                      setLoginLoading(false);
+                    }
+                  }}
+                  className="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white py-5 rounded-2xl font-black uppercase tracking-widest text-xs shadow-xl shadow-blue-600/30 transition-all"
+                >{loginLoading ? 'Autenticando...' : 'Acceder'}</button>
+              </>
+            )}
+
+
+            {/* PASO 2: Selector de Tenant (solo SuperAdmin) */}
+            {loginStep === 'tenant-select' && (
+              <>
+                <div className="bg-blue-50 border border-blue-100 rounded-2xl px-5 py-3 text-blue-700 text-xs font-bold text-left flex items-center gap-2 mb-2">
+                  <ShieldCheck size={14} /> SuperAdmin — Selecciona el tenant a gestionar
+                </div>
+                <select
+                  value={selectedTenantId}
+                  onChange={e => setSelectedTenantId(e.target.value)}
+                  className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl py-4 px-6 font-bold text-slate-800 outline-none focus:border-blue-600 transition-all"
+                >
+                  <option value="">-- Selecciona un tenant --</option>
+                  {availableTenants.map(t => (
+                    <option key={t.tenant_id} value={t.tenant_id}>
+                      {t.company_name || t.tenant_id}
+                    </option>
+                  ))}
+                </select>
+                <button
+                  disabled={!selectedTenantId || loginLoading}
+                  onClick={async () => {
+                    if (!selectedTenantId) return;
+                    setLoginLoading(true);
+                    setLoginError('');
+                    try {
+                      const res = await axios.post(`${API}/backoffice/auth`, {
+                        username: loginCredentials.username,
+                        password: loginCredentials.password,
+                        tenantId: selectedTenantId
+                      });
+                      if (res.data.success) {
+                        const s = { ...res.data.user, password: loginCredentials.password };
+                        localStorage.setItem('bantos_session', JSON.stringify(s));
+                        setSession(s);
+                      }
+                    } catch (err) {
+                      setLoginError(err.response?.data?.message || 'Error al acceder al tenant.');
+                    } finally {
+                      setLoginLoading(false);
+                    }
+                  }}
+                  className="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white py-5 rounded-2xl font-black uppercase tracking-widest text-xs shadow-xl shadow-blue-600/30 transition-all"
+                >{loginLoading ? 'Accediendo...' : 'Entrar al Tenant'}</button>
+                <button
+                  onClick={() => { setLoginStep('credentials'); setLoginError(''); }}
+                  className="w-full text-slate-400 font-bold text-xs py-2 hover:text-slate-600 transition-all"
+                >← Volver</button>
+              </>
+            )}
+
             <p className="text-sm font-bold text-slate-400 mt-4">¿No tienes cuenta? <button onClick={() => setIsRegistering(true)} className="text-blue-600">Regístrate</button></p>
           </div>
         ) : (
@@ -2879,21 +4146,18 @@ const App = () => {
       { id: 'manage-dashboard', label: 'Dashboard', icon: LayoutDashboard },
       { id: 'setup', label: 'Setup', icon: Settings2, children: [
         { id: 'setup-products', label: 'Productos', icon: Tag },
-        { id: 'setup-data-collection', label: 'Colección de datos', icon: Database },
         { id: 'setup-terms', label: 'Términos & Condiciones', icon: ShieldCheck },
-        { id: 'setup-templates', label: 'Plantillas', icon: FileText },
         { id: 'setup-org', label: 'Organización', icon: Building2 },
         { id: 'setup-users', label: 'Usuarios', icon: Users },
       ]},
       { id: 'records', label: 'Registro', icon: BookOpen, children: [
-        { id: 'record-actions', label: 'Acciones', icon: Zap },
-        { id: 'record-todos', label: 'To-Dos', icon: CheckSquare },
+        { id: 'record-actions', label: 'Ventas', icon: Zap },
         { id: 'manage-clients', label: 'Clientes', icon: Users },
         { id: 'manage-contracts', label: 'Contratos', icon: FileText },
-        { id: 'manage-inventory', label: 'Dispositivos', icon: Smartphone },
+        // { id: 'manage-inventory', label: 'Dispositivos', icon: Smartphone },
         // { id: 'manage-trustonic', label: 'Trustonic (Deprecado)', icon: Smartphone },
         // { id: 'manage-trustonic-logs', label: 'Movimientos', icon: Activity },
-        { id: 'record-comms', label: 'Comunicaciones', icon: MessageSquare },
+        // { id: 'record-comms', label: 'Comunicaciones', icon: MessageSquare },
         { id: 'manage-payments', label: 'Pagos', icon: CreditCard },
       ]},
       { id: 'manage-audit', label: 'Auditoría', icon: Clock },
@@ -2917,8 +4181,9 @@ const App = () => {
     : navItems;
 
   return (
-    <div className="flex min-h-screen bg-slate-50 font-sans text-slate-800">
-      <aside className="w-72 bg-white border-r border-slate-100 flex flex-col p-8 shrink-0">
+    <div className="flex min-h-dvh bg-slate-50 font-sans text-slate-800">
+      {isMobileMenuOpen && <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-40 md:hidden" onClick={() => setIsMobileMenuOpen(false)} />}
+      <aside className={`fixed inset-y-0 left-0 z-50 w-72 bg-white border-r border-slate-100 flex flex-col p-8 shrink-0 transform transition-transform duration-300 md:relative md:translate-x-0 ${isMobileMenuOpen ? 'translate-x-0 shadow-2xl' : '-translate-x-full'}`}>
         <div className="flex items-center gap-3 mb-10"><div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center text-white shadow-lg shadow-blue-600/30"><ShieldCheck size={22} /></div><div className="leading-none"><p className="font-black text-slate-900 text-base tracking-tight">Bantos</p><p className="text-blue-600 font-black text-[12px] uppercase tracking-widest">Data Center</p></div></div>
         
         {/* Context Selector for Hierarchy */}
@@ -2961,11 +4226,11 @@ const App = () => {
               <p className="text-[12px] font-black uppercase tracking-[0.18em] text-slate-300 px-4 mb-3">{section}</p>
               <div className="space-y-0.5">{items.map(({ id, label, icon: Icon, children }) => (
                 <div key={id} className="space-y-1">
-                  <button onClick={() => { if (children) { setExpandedMenus(prev => prev.includes(id) ? prev.filter(m => m !== id) : [...prev, id]); } else { setView(id); } }} className={`w-full flex items-center justify-between gap-3 px-4 py-3 rounded-xl font-bold text-base transition-all ${view === id || (children && children.some(c => c.id === view)) ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/25' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-800'}`}>
+                  <button onClick={() => { if (children) { setExpandedMenus(prev => prev.includes(id) ? prev.filter(m => m !== id) : [...prev, id]); } else { setView(id); setIsMobileMenuOpen(false); } }} className={`w-full flex items-center justify-between gap-3 px-4 py-3 rounded-xl font-bold text-base transition-all ${view === id || (children && children.some(c => c.id === view)) ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/25' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-800'}`}>
                     <div className="flex items-center gap-3"><Icon size={20} /> {label}</div>
                     {children && (expandedMenus.includes(id) ? <ChevronDown size={16} className="opacity-50" /> : <ChevronRight size={16} className="opacity-50" />)}
                   </button>
-                  {children && expandedMenus.includes(id) && (<div className="ml-4 pl-4 border-l border-slate-100 space-y-1 mt-1">{children.map(child => (<button key={child.id} onClick={() => setView(child.id)} className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-lg font-bold text-sm transition-all ${view === child.id ? 'text-blue-600 bg-blue-50' : 'text-slate-400 hover:text-slate-700 hover:bg-slate-50'}`}><child.icon size={16} /> {child.label}</button>))}</div>)}
+                  {children && expandedMenus.includes(id) && (<div className="ml-4 pl-4 border-l border-slate-100 space-y-1 mt-1">{children.map(child => (<button key={child.id} onClick={() => { setView(child.id); setIsMobileMenuOpen(false); }} className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-lg font-bold text-sm transition-all ${view === child.id ? 'text-blue-600 bg-blue-50' : 'text-slate-400 hover:text-slate-700 hover:bg-slate-50'}`}><child.icon size={16} /> {child.label}</button>))}</div>)}
                 </div>
               ))}</div>
             </div>
@@ -2979,8 +4244,11 @@ const App = () => {
         </nav>
       </aside>
 
-      <main className="flex-1 flex flex-col h-screen overflow-hidden bg-slate-50">
-        <header className="flex justify-end items-center px-12 py-4 shrink-0 bg-white border-b border-slate-100 z-10">
+      <main className="flex-1 flex flex-col h-dvh overflow-hidden bg-slate-50 w-full">
+        <header className="flex justify-between md:justify-end items-center px-6 md:px-12 py-4 shrink-0 bg-white border-b border-slate-100 z-10 w-full">
+          <button className="md:hidden p-2 -ml-2 text-slate-600 rounded-lg hover:bg-slate-100" onClick={() => setIsMobileMenuOpen(true)}>
+            <Menu size={24} />
+          </button>
           <div className="bg-blue-50 px-6 py-3 rounded-2xl border border-blue-100 flex items-center gap-3">
             <ShieldCheck size={20} className="text-blue-600" />
             <div>
@@ -2999,6 +4267,7 @@ const App = () => {
                   onNew={handleNewContract}
                   onEdit={(c) => setModalState({ type: 'contract', open: true, item: c })} 
                   onSign={(c) => setModalState({ type: 'signature', open: true, item: c })}
+                  onSettle={(c) => setModalState({ type: 'settlement', open: true, item: c })}
                   session={session}
                 />
               ) : (
@@ -3012,10 +4281,11 @@ const App = () => {
                 onNew={handleNewContract}
                 onEdit={(c) => setModalState({ type: 'contract', open: true, item: c })} 
                 onSign={(c) => setModalState({ type: 'signature', open: true, item: c })}
+                onSettle={(c) => setModalState({ type: 'settlement', open: true, item: c })}
                 session={session}
               />
             )}
-            {view === 'manage-inventory' && <InventoryView inventory={data.inventory} />}
+
             {view === 'manage-trustonic' && (
               <TrustonicDevicesView 
                 data={data.trustonic} 
@@ -3034,18 +4304,51 @@ const App = () => {
             )}
             {view === 'manage-audit' && <AuditView audit={data.audit} />}
             {view === 'setup-system' && <SyncView onSync={handleSync} loading={syncing} />}
-            {view === 'setup-products' && <ProductsView products={data.products} onEdit={(p) => setModalState({ type: 'product', open: true, item: p })} onCreate={() => setModalState({ type: 'product', open: true, item: null })} />}
+            {view === 'setup-messaging' && <MessagingSetup session={session} />}
+            {view === 'setup-config' && <ConfigSetup session={session} />}
+            {view === 'setup-products' && (
+              <ViewErrorBoundary>
+                <ProductsView 
+                  products={Array.isArray(data?.products) ? data.products : []} 
+                  onEdit={(p) => setModalState({ type: 'product', open: true, item: p })} 
+                  onCreate={() => setModalState({ type: 'product', open: true, item: null })} 
+                  onDelete={handleDeleteProduct} 
+                  onImportSuccess={refreshData} 
+                  tenantId={session?.tenantId} 
+                  user={session} 
+                />
+              </ViewErrorBoundary>
+            )}
             {view === 'setup-data-collection' && <DataCollectionView collections={data.dataCollections} onEdit={(c) => setModalState({ type: 'collection', open: true, item: c })} onCreate={() => setModalState({ type: 'collection', open: true, item: null })} />}
-            {view === 'setup-terms' && <TermsView deals={data.paymentPlans} />}
+            {view === 'setup-terms' && <TermsView deals={data.paymentPlans} onEdit={(d) => setModalState({ type: 'term', open: true, item: d })} onCreate={() => setModalState({ type: 'term', open: true, item: null })} onDelete={handleDeleteTerm} />}
             {view === 'setup-org' && <OrganizationView structure={data.orgStructure} session={session} refreshData={refreshData} />}
             {view === 'setup-users' && <UsersView users={data.users} structure={data.orgStructure} session={session} refreshData={refreshData} />}
             
             {/* Navigational state for Actions Form vs List */}
             {view === 'record-actions' && !actionFormState.open && (
-              <ActionsView onNavigate={(actionType, prefillData = null) => setActionFormState({ open: true, actionType, prefillData })} />
+              <ActionsView incompleteActions={incompleteActions} onNavigate={(actionType, prefillData = null) => setActionFormState({ open: true, actionType, prefillData })} />
             )}
               {view === 'record-actions' && actionFormState.open && (
-                <ActionFormView actionType={actionFormState.actionType} prefillData={actionFormState.prefillData} deals={data.paymentPlans} products={data.products} onBack={() => setActionFormState({ open: false, actionType: null, prefillData: null })} />
+                <ActionFormView 
+                  actionType={actionFormState.actionType} 
+                  prefillData={actionFormState.prefillData} 
+                  deals={data.paymentPlans} 
+                  products={data.products} 
+                  inventory={data.inventory}
+                  onSaveDraft={(updatedData) => {
+                    setIncompleteActions(prev => {
+                      const idx = prev.findIndex(a => a.id === updatedData.id);
+                      if (idx >= 0) {
+                        const newActions = [...prev];
+                        newActions[idx] = { ...newActions[idx], ...updatedData };
+                        return newActions;
+                      }
+                      return [{ ...updatedData, date: new Date().toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true }) }, ...prev];
+                    });
+                    setActionFormState({ open: false, actionType: null, prefillData: null });
+                  }}
+                  onBack={() => setActionFormState({ open: false, actionType: null, prefillData: null })} 
+                />
               )}
 
             {view === 'manage-payments' && <PaymentsView payments={data.payments} onEdit={(p) => setModalState({ type: 'payment', open: true, item: p })} onCreate={() => setModalState({ type: 'payment', open: true, item: null })} session={session} />}
@@ -3061,14 +4364,16 @@ const App = () => {
         </AnimatePresence>
         </div>
 
-        <ProductModal open={modalState.open && modalState.type === 'product'} onClose={() => setModalState({ type: null, open: false, item: null })} onSave={handleSaveProduct} product={modalState.item} />
-        <DataCollectionModal open={modalState.open && modalState.type === 'collection'} onClose={() => setModalState({ type: null, open: false, item: null })} onSave={handleSaveCollection} collection={modalState.item} />
-        <ActionModal open={modalState.open && modalState.type === 'action'} onClose={() => setModalState({ type: null, open: false, item: null })} onSave={handleSaveAction} action={modalState.item} />
-        <PaymentModal isOpen={modalState.open && modalState.type === 'payment'} onClose={() => setModalState({ type: null, open: false, item: null })} onSave={handleSavePayment} payment={modalState.item} clients={data.clients} session={session} />
-        <ContractModal isOpen={modalState.open && modalState.type === 'contract'} onClose={() => setModalState({ type: null, open: false, item: null })} onSave={handleSaveContract} contract={modalState.item} clients={data.clients} inventory={data.inventory} tenantId={session?.tenantId} onOpenPayment={handleOpenPaymentForContract} />
+        <ProductModal isOpen={modalState.open && modalState.type === 'product'} onClose={() => setModalState({ type: null, open: false, item: null })} onSave={handleSaveProduct} product={modalState.item} inventory={data.inventory} onAddInventory={handleAddInventory} />
+        <TermModal isOpen={modalState.open && modalState.type === 'term'} onClose={() => setModalState({ type: null, open: false, item: null })} onSave={handleSaveTerm} term={modalState.item} />
+        <DataCollectionModal isOpen={modalState.open && modalState.type === 'collection'} onClose={() => setModalState({ type: null, open: false, item: null })} onSave={handleSaveCollection} collection={modalState.item} />
+        <ActionModal isOpen={modalState.open && modalState.type === 'action'} onClose={() => setModalState({ type: null, open: false, item: null })} onSave={handleSaveAction} action={modalState.item} />
+        <PaymentModal isOpen={modalState.open && modalState.type === 'payment'} onClose={() => setModalState({ type: null, open: false, item: null })} onSave={handleSavePayment} payment={modalState.item} clients={data.clients} contracts={data.contracts} session={session} />
+        <ContractModal isOpen={modalState.open && modalState.type === 'contract'} onClose={() => setModalState({ type: null, open: false, item: null })} onSave={handleSaveContract} contract={modalState.item} clients={data.clients} inventory={data.inventory} paymentPlans={data.paymentPlans} tenantId={session?.tenantId} onOpenPayment={handleOpenPaymentForContract} />
         <SignatureModal isOpen={modalState.open && modalState.type === 'signature'} onClose={() => setModalState({ type: null, open: false, item: null })} onSave={handleSaveSignature} contract={modalState.item} />
         <TrustonicDeviceModal isOpen={modalState.open && modalState.type === 'trustonic-device'} onClose={() => setModalState({ type: null, open: false, item: null })} onSave={handleSaveDevice} device={modalState.item} />
         <ClientModal isOpen={modalState.open && modalState.type === 'client'} onClose={() => setModalState({ type: null, open: false, item: null })} client={modalState.item} onGenerateWallet={handleGenerateWallet} />
+        <SettlementModal isOpen={modalState.open && modalState.type === 'settlement'} onClose={() => setModalState({ type: null, open: false, item: null })} contract={modalState.item} session={session} onSettled={loadData} />
       </main>
       <SupportAgent />
     </div>

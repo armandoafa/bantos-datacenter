@@ -73,6 +73,8 @@ CREATE TABLE IF NOT EXISTS products (
     upya_id VARCHAR(255),
     tenant_id VARCHAR(100),
     name VARCHAR(255) NOT NULL,
+    model VARCHAR(255),
+    variant VARCHAR(255),
     category VARCHAR(255),
     reference VARCHAR(100),
     is_lockable BOOLEAN DEFAULT FALSE,
@@ -123,6 +125,8 @@ CREATE TABLE IF NOT EXISTS payments (
     card_holder VARCHAR(255),
     is_recurring BOOLEAN DEFAULT FALSE,
     recurring_dates JSON,
+    is_settlement BOOLEAN DEFAULT FALSE,
+    discount_amount DECIMAL(15, 2) DEFAULT 0.00,
     synced_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     UNIQUE KEY (upya_id, tenant_id)
 );
