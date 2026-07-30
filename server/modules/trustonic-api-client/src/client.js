@@ -7,7 +7,7 @@ export class TrustonicClient {
   constructor(apiKey, tenantId = null) {
     this.apiKey = apiKey;
     this.tenantId = tenantId;
-    this.baseURL = 'https://api.cloud.trustonic.com/api/v1';
+    this.baseURL = 'https://api.cloud.trustonic.com/api/v2';
     this.token = null;
 
     // Inicializar axios default
@@ -27,15 +27,20 @@ export class TrustonicClient {
   async authorize() {
     if (!this.apiKey) throw new Error('Trustonic API Key is required');
     try {
-      const response = await axios.post(`${this.baseURL}/authorization/token`, {}, {
-        headers: {
-          'Content-Type': 'application/json',
-          'apikey': this.apiKey
-        }
-      });
+      const headers = {
+        'Content-Type': 'application/json',
+        'apikey': this.apiKey
+      };
+      if (this.tenantId) {
+        headers['tenantId'] = this.tenantId;
+      }
+      const response = await axios.post(`${this.baseURL}/authorization/token`, {}, { headers });
       this.token = response.data.token;
       
       this.client.defaults.headers.common['Authorization'] = `Bearer ${this.token}`;
+      if (this.tenantId) {
+        this.client.defaults.headers.common['tenantId'] = this.tenantId;
+      }
       return this.token;
     } catch (error) {
       this._handleError(error, 'Authorization');
