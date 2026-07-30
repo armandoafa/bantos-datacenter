@@ -227,25 +227,23 @@ const ProductModal = ({ isOpen, onClose, product, onSave, session, inventory = [
     name: '', model: '', variant: '', category: '', productReference: '', lockable: false, manufacturer: '', is_serialized: true, description: '', picture_url: '', tac: '', build: '', default_managed_by: '', base_value: 0, productType: 'Handset', vat_rate: 0, ...product
   });
 
-  // 1. Opciones de Fabricante (Marca) registradas en BD/Inventario
+  // 1. Opciones de Fabricante (Marca) registradas en BD e Inventario
   const existingManufacturers = Array.from(new Set([
     ...products.map(p => p.manufacturer).filter(Boolean),
+    ...inventory.map(i => i.manufacturer).filter(Boolean),
     ...(formData.manufacturer ? [formData.manufacturer.trim()] : [])
   ])).sort();
 
-  // 2. Opciones de Modelo asociadas al Fabricante seleccionado (o todas si no se especifica)
+  // 2. Opciones de Modelo: Incluir todos los modelos existentes en la base de datos
   const existingModels = Array.from(new Set([
-    ...products.filter(p => !formData.manufacturer || (p.manufacturer && p.manufacturer.toLowerCase() === formData.manufacturer.toLowerCase())).map(p => p.model).filter(Boolean),
+    ...products.map(p => p.model).filter(Boolean),
     ...inventory.map(i => i.model).filter(Boolean),
     ...(formData.model ? [formData.model.trim()] : [])
   ])).sort();
 
-  // 3. Opciones de Variante asociadas al Modelo (y Fabricante) seleccionado (o todas si no se especifica)
+  // 3. Opciones de Variante: Incluir todas las variantes existentes en la base de datos
   const existingVariants = Array.from(new Set([
-    ...products.filter(p => 
-      (!formData.manufacturer || (p.manufacturer && p.manufacturer.toLowerCase() === formData.manufacturer.toLowerCase())) &&
-      (!formData.model || (p.model && p.model.toLowerCase() === formData.model.toLowerCase()))
-    ).map(p => p.variant).filter(Boolean),
+    ...products.map(p => p.variant).filter(Boolean),
     ...(formData.variant ? [formData.variant.trim()] : [])
   ])).sort();
 
