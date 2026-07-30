@@ -17,8 +17,8 @@ function App() {
   const [clientId, setClientId] = useState('');
   
   const handleValidated = (data) => {
-    // data contiene device, contract_id, amount, client_id desde el backend
-    setAmount(parseFloat(data.amount).toFixed(2));
+    // Establecemos por defecto 0.00 según lo solicitado para que el usuario ingrese su monto
+    setAmount('0.00');
     setClientId(data.client_id);
     setStep('payment');
   };

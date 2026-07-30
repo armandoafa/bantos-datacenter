@@ -2346,7 +2346,7 @@ app.post('/api/webview/validate-device', async (req, res) => {
       data: {
         device: result.device,
         contract_id: 'CTR-WEBVIEW-01',
-        amount: 899.99,
+        amount: 0.00,
         client_id: 'CLI-001'
       }
     });
