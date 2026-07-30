@@ -50,12 +50,22 @@ function App() {
         <div className="w-12 h-12 bg-white rounded-2xl shadow-sm flex items-center justify-center mb-4 border border-gray-100">
           <ShieldCheck className="w-6 h-6 text-indigo-600" />
         </div>
-        <h1 className="text-gray-500 text-sm font-medium uppercase tracking-wider mb-1">Total a Pagar</h1>
-        <h2 className="text-4xl font-extrabold text-gray-900 tracking-tight flex items-start">
-          <span className="text-2xl mt-1 mr-1 text-gray-400">$</span>
-          {amount}
-          <span className="text-base mt-2 ml-1 text-gray-500 font-medium">MXN</span>
-        </h2>
+        <h1 className="text-gray-500 text-sm font-medium uppercase tracking-wider mb-1">Monto / Total a Pagar</h1>
+        <div className="relative flex items-center justify-center">
+          <span className="text-2xl font-bold text-gray-400 mr-1">$</span>
+          <input 
+            type="number"
+            step="0.01"
+            min="1"
+            value={amount}
+            onChange={(e) => setAmount(e.target.value)}
+            className="text-4xl font-extrabold text-gray-900 bg-white/70 backdrop-blur-sm border border-gray-200 rounded-2xl px-3 py-1 text-center w-44 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white shadow-sm transition-all"
+          />
+          <span className="text-base ml-2 text-gray-500 font-medium">MXN</span>
+        </div>
+        <p className="text-[11px] text-gray-400 mt-2 flex items-center gap-1">
+          <span>✎ Haz clic en el monto para modificarlo</span>
+        </p>
       </header>
 
       {/* Main Content */}
