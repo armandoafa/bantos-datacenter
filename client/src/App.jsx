@@ -234,16 +234,19 @@ const ProductModal = ({ isOpen, onClose, product, onSave, session, inventory = [
     ...(formData.manufacturer ? [formData.manufacturer.trim()] : [])
   ])).sort();
 
-  // 2. Opciones de Modelo: Incluir todos los modelos existentes en la base de datos
+  // 2. Opciones de Modelo: Incluir todos los modelos existentes en la base de datos e inventario
   const existingModels = Array.from(new Set([
     ...products.map(p => p.model).filter(Boolean),
+    ...products.map(p => p.name).filter(Boolean),
     ...inventory.map(i => i.model).filter(Boolean),
     ...(formData.model ? [formData.model.trim()] : [])
   ])).sort();
 
-  // 3. Opciones de Variante: Incluir todas las variantes existentes en la base de datos
+  // 3. Opciones de Variante: Incluir todas las variantes existentes en BD, inventario y valores conocidos
   const existingVariants = Array.from(new Set([
     ...products.map(p => p.variant).filter(Boolean),
+    ...inventory.map(i => i.variant).filter(Boolean),
+    ...inventory.map(i => i.color).filter(Boolean),
     ...(formData.variant ? [formData.variant.trim()] : [])
   ])).sort();
 
