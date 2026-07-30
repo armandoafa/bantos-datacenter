@@ -5,6 +5,7 @@ import clsx from 'clsx';
 
 export default function IdentificationScreen({ onValidated }) {
   const [imei, setImei] = useState('');
+  const [password, setPassword] = useState('');
   const [company, setCompany] = useState('Bantos Tienda 1');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -16,6 +17,16 @@ export default function IdentificationScreen({ onValidated }) {
       return;
     }
 
+    if (!password.trim()) {
+      setError('Por favor ingresa la contraseña de acceso al entorno de prueba.');
+      return;
+    }
+
+    if (password.trim() !== 'pruebaiframe2507#') {
+      setError('Contraseña de acceso incorrecta para el entorno de pruebas.');
+      return;
+    }
+
     setLoading(true);
     setError(null);
 
@@ -23,7 +34,7 @@ export default function IdentificationScreen({ onValidated }) {
       // Endpoint del Bantos Express Server
       const endpoint = import.meta.env.VITE_BANTOS_API_URL || 'https://bantos.cloud/datacenter-api/webview/validate-device';
       
-      const response = await axios.post(endpoint, { imei: imei.trim(), company });
+      const response = await axios.post(endpoint, { imei: imei.trim(), company, password: password.trim() });
 
       if (response.data.success) {
         // Pasamos los datos del contrato validado a la pantalla principal
@@ -106,12 +117,34 @@ export default function IdentificationScreen({ onValidated }) {
           </p>
         </div>
 
+        <div className="space-y-1.5">
+          <label className="block text-xs font-semibold text-gray-600 uppercase ml-1">
+            Contraseña de Acceso
+          </label>
+          <div className="relative">
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <Lock className="h-5 w-5 text-gray-400" />
+            </div>
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="block w-full pl-10 pr-3 py-3 border border-gray-200 rounded-xl leading-5 bg-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm transition-shadow shadow-sm"
+              placeholder="••••••••••••"
+              required
+            />
+          </div>
+          <p className="text-[11px] text-gray-400 italic ml-1 mt-1">
+            Requerido para el entorno de pruebas.
+          </p>
+        </div>
+
         <button
           type="submit"
-          disabled={loading || !imei.trim()}
+          disabled={loading || !imei.trim() || !password.trim()}
           className={clsx(
             "w-full flex justify-center items-center py-3.5 px-4 border border-transparent rounded-xl shadow-md text-sm font-semibold text-white focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-all active:scale-[0.98] mt-6",
-            (loading || !imei.trim()) ? "bg-indigo-400 cursor-not-allowed" : "bg-indigo-600 hover:bg-indigo-700"
+            (loading || !imei.trim() || !password.trim()) ? "bg-indigo-400 cursor-not-allowed" : "bg-indigo-600 hover:bg-indigo-700"
           )}
         >
           {loading ? (

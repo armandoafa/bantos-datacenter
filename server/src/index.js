@@ -2328,9 +2328,13 @@ app.post('/api/support/chat', async (req, res) => {
 
 // --- API WEBVIEW PAGOS ---
 app.post('/api/webview/validate-device', async (req, res) => {
-  const { imei, curp } = req.body;
+  const { imei, curp, password } = req.body;
   if (!imei) {
     return res.status(400).json({ success: false, message: 'El IMEI o Celular es requerido.' });
+  }
+
+  if (!password || password.trim() !== 'pruebaiframe2507#') {
+    return res.status(401).json({ success: false, message: 'Contraseña de acceso al entorno de prueba incorrecta.' });
   }
 
   try {
