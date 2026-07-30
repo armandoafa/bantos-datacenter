@@ -258,6 +258,11 @@ const getCatalogHistory = (key, initialItems = []) => {
 // --- MODAL DE PRODUCTO ---
 const ProductModal = ({ isOpen, onClose, product, onSave, session, inventory = [], products = [], onAddInventory }) => {
   const [activeTab, setActiveTab] = useState('general');
+  const [isAddImeiOpen, setIsAddImeiOpen] = useState(false);
+  const [newImei, setNewImei] = useState('');
+  const [imeiError, setImeiError] = useState('');
+  const [isSubmittingImei, setIsSubmittingImei] = useState(false);
+
   const [formData, setFormData] = useState({
     name: '', model: '', variant: '', category: '', productReference: '', lockable: false, manufacturer: '', is_serialized: true, description: '', picture_url: '', tac: '', build: '', default_managed_by: '', base_value: 0, productType: 'Handset', vat_rate: 0, ...product
   });
@@ -433,12 +438,91 @@ const ProductModal = ({ isOpen, onClose, product, onSave, session, inventory = [
                       <h4 className="font-black text-slate-800 text-lg">Dispositivos en Inventario</h4>
                       <p className="text-slate-500 text-sm">{matchedInventory.length} unidades en stock</p>
                     </div>
-                    <button onClick={() => onAddInventory(product.name)} className="px-5 py-2.5 bg-blue-50 text-blue-600 font-bold text-sm rounded-xl hover:bg-blue-100 transition-colors flex items-center gap-2"><Plus size={16}/> Agregar Serial</button>
+                    <button onClick={() => setIsAddImeiOpen(true)} className="px-5 py-2.5 bg-blue-600 text-white font-bold text-sm rounded-xl hover:bg-blue-700 shadow-md transition-all flex items-center gap-2">
+                      <Plus size={16}/> Agregar IMEI
+                    </button>
                   </div>
-                  <Table cols={['Serial Number', 'Modelo Real', 'Estado']} rows={matchedInventory} 
-                    render={a => (<><td className="px-6 py-4 font-mono text-sm">{a.serial_number}</td><td className="px-6 py-4 text-xs text-slate-500">{a.model}</td><td className="px-6 py-4"><Badge status={a.status} /></td></>)}
+                  <Table cols={['IMEI', 'Modelo Real', 'Estado']} rows={matchedInventory} 
+                    render={a => (<><td className="px-6 py-4 font-mono text-sm font-bold text-slate-800">{a.serial_number}</td><td className="px-6 py-4 text-xs text-slate-500">{a.model}</td><td className="px-6 py-4"><Badge status={a.status} /></td></>)}
                     renderMobile={a => (<div className="bg-white p-4 rounded-xl border border-slate-100 flex justify-between items-center"><div className="space-y-1"><p className="font-mono text-sm font-bold text-slate-800">{a.serial_number}</p><p className="text-slate-500 text-[10px]">{a.model}</p></div><Badge status={a.status} /></div>)}
                   />
+
+                  {/* MODAL DIALOG PARA AGREGAR IMEI DE DISPOSITIVO */}
+                  <AnimatePresence>
+                    {isAddImeiOpen && (
+                      <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
+                        <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className="bg-white w-full max-w-md rounded-3xl shadow-2xl p-6 space-y-5 border border-slate-100">
+                          <div className="flex justify-between items-center pb-2 border-b border-slate-100">
+                            <div className="flex items-center gap-3">
+                              <div className="w-10 h-10 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center">
+                                <Smartphone size={20} />
+                              </div>
+                              <div>
+                                <h4 className="font-black text-slate-900 text-lg">Agregar IMEI</h4>
+                                <p className="text-xs text-slate-400 font-bold">{product?.name}</p>
+                              </div>
+                            </div>
+                            <button onClick={() => { setIsAddImeiOpen(false); setNewImei(''); setImeiError(''); }} className="p-2 hover:bg-slate-100 rounded-xl text-slate-400 transition-colors"><X size={18} /></button>
+                          </div>
+
+                          <div className="space-y-2">
+                            <label className="text-[11px] font-black uppercase tracking-widest text-slate-500 ml-1">Número de IMEI (15 Dígitos)</label>
+                            <input 
+                              type="text"
+                              maxLength={18}
+                              placeholder="Ej. 358694091234567"
+                              value={newImei}
+                              onChange={(e) => {
+                                const val = e.target.value.replace(/[^a-zA-Z0-9-]/g, '');
+                                setNewImei(val);
+                                if (val && val.length < 14) setImeiError('El IMEI debe tener al menos 14 o 15 caracteres');
+                                else setImeiError('');
+                              }}
+                              className="w-full bg-slate-50 border-2 border-slate-200 rounded-2xl py-3.5 px-5 font-mono font-bold text-slate-800 outline-none focus:border-blue-600 transition-all text-base tracking-wider"
+                            />
+                            {imeiError && (
+                              <p className="text-xs text-red-500 font-bold ml-1 flex items-center gap-1">
+                                <AlertCircle size={14} /> {imeiError}
+                              </p>
+                            )}
+                          </div>
+
+                          <div className="pt-2 flex justify-end gap-3">
+                            <button 
+                              onClick={() => { setIsAddImeiOpen(false); setNewImei(''); setImeiError(''); }} 
+                              className="px-5 py-3 rounded-xl font-black uppercase tracking-widest text-[11px] text-slate-400 hover:text-slate-600 transition-all"
+                            >
+                              Cancelar
+                            </button>
+                            <button 
+                              disabled={!newImei || newImei.trim().length < 5 || isSubmittingImei}
+                              onClick={async () => {
+                                const trimmed = newImei.trim();
+                                if (trimmed.length < 5) {
+                                  setImeiError('Ingresa un IMEI válido');
+                                  return;
+                                }
+                                setIsSubmittingImei(true);
+                                try {
+                                  await onAddInventory(product.name, trimmed);
+                                  setIsAddImeiOpen(false);
+                                  setNewImei('');
+                                  setImeiError('');
+                                } catch (err) {
+                                  setImeiError(err.message || 'Error al guardar IMEI');
+                                } finally {
+                                  setIsSubmittingImei(false);
+                                }
+                              }}
+                              className="px-7 py-3 bg-blue-600 text-white rounded-xl font-black uppercase tracking-widest text-[11px] shadow-lg shadow-blue-600/30 hover:bg-blue-700 disabled:opacity-50 transition-all"
+                            >
+                              {isSubmittingImei ? 'Guardando...' : 'Guardar IMEI'}
+                            </button>
+                          </div>
+                        </motion.div>
+                      </div>
+                    )}
+                  </AnimatePresence>
                 </div>
               );
             })()
@@ -3899,14 +3983,14 @@ const App = () => {
 
   useEffect(() => { refreshData(); }, [view, refreshData]);
 
-  const handleAddInventory = async (productName) => {
-    const sn = window.prompt(`Ingrese el nuevo número de serie para ${productName}:`);
+  const handleAddInventory = async (productName, imeiValue) => {
+    const sn = imeiValue || window.prompt(`Ingrese el IMEI para ${productName}:`);
     if (!sn) return;
     try {
       await axios.post(`${API}/backoffice/inventory`, { tenantId: session.tenantId, serialNumber: sn, model: productName, status: 'UNASSIGNED' });
       await refreshData();
     } catch (e) {
-      alert('Error agregando inventario: ' + (e.response?.data?.error || e.message));
+      throw new Error(e.response?.data?.error || e.message);
     }
   };
 
