@@ -220,6 +220,19 @@ const SelectableOrCustomInput = ({ label, value, options = [], onChange, placeho
   );
 };
 
+const cleanHistoryList = (list) => {
+  const cleanList = Array.from(new Set(list.filter(Boolean).map(x => typeof x === 'string' ? x.trim() : x)));
+  return cleanList.filter(item => {
+    // Filtrar caracteres parciales escritos tecla a tecla (ej: "Color N", "Color Ne", "Color Neg")
+    const isMidWordPartial = cleanList.some(other => {
+      if (other === item || !other.startsWith(item)) return false;
+      const remainder = other.slice(item.length);
+      return !remainder.startsWith(' ');
+    });
+    return !isMidWordPartial;
+  });
+};
+
 const saveToCatalogHistory = (key, val) => {
   if (!val || typeof val !== 'string' || !val.trim()) return;
   try {
@@ -227,7 +240,7 @@ const saveToCatalogHistory = (key, val) => {
     const cleaned = val.trim();
     if (!list.includes(cleaned)) {
       list.push(cleaned);
-      localStorage.setItem(key, JSON.stringify(list));
+      localStorage.setItem(key, JSON.stringify(cleanHistoryList(list)));
     }
   } catch (e) {}
 };
@@ -235,10 +248,10 @@ const saveToCatalogHistory = (key, val) => {
 const getCatalogHistory = (key, initialItems = []) => {
   try {
     const saved = JSON.parse(localStorage.getItem(key) || '[]');
-    const combined = [...saved, ...initialItems].filter(Boolean).map(x => typeof x === 'string' ? x.trim() : x);
-    return Array.from(new Set(combined)).sort();
+    const combined = cleanHistoryList([...saved, ...initialItems]);
+    return combined.sort();
   } catch (e) {
-    return Array.from(new Set(initialItems.filter(Boolean).map(x => typeof x === 'string' ? x.trim() : x))).sort();
+    return cleanHistoryList(initialItems).sort();
   }
 };
 
@@ -249,7 +262,7 @@ const ProductModal = ({ isOpen, onClose, product, onSave, session, inventory = [
     name: '', model: '', variant: '', category: '', productReference: '', lockable: false, manufacturer: '', is_serialized: true, description: '', picture_url: '', tac: '', build: '', default_managed_by: '', base_value: 0, productType: 'Handset', vat_rate: 0, ...product
   });
 
-  // Guardar dinámicamente en el historial del catálogo maestro
+  // Cargar dinámicamente el catálogo maestro existente (sin guardar teclas parciales en tiempo real)
   useEffect(() => {
     products.forEach(p => {
       if (p.manufacturer) saveToCatalogHistory('bantos_catalog_manufacturers', p.manufacturer);
@@ -264,36 +277,27 @@ const ProductModal = ({ isOpen, onClose, product, onSave, session, inventory = [
     });
   }, [products, inventory]);
 
-  useEffect(() => {
-    if (formData.manufacturer) saveToCatalogHistory('bantos_catalog_manufacturers', formData.manufacturer);
-    if (formData.model) saveToCatalogHistory('bantos_catalog_models', formData.model);
-    if (formData.variant) saveToCatalogHistory('bantos_catalog_variants', formData.variant);
-  }, [formData.manufacturer, formData.model, formData.variant]);
-
-  // 1. Opciones de Fabricante (Marca) acumuladas
+  // 1. Opciones de Fabricante (Marca) acumuladas y limpias
   const existingManufacturers = getCatalogHistory('bantos_catalog_manufacturers', [
     ...products.map(p => p.manufacturer),
     ...inventory.map(i => i.manufacturer),
-    product?.manufacturer,
-    formData.manufacturer
+    product?.manufacturer
   ]);
 
-  // 2. Opciones de Modelo acumuladas
+  // 2. Opciones de Modelo acumuladas y limpias
   const existingModels = getCatalogHistory('bantos_catalog_models', [
     ...products.map(p => p.model),
     ...products.map(p => p.name),
     ...inventory.map(i => i.model),
-    product?.model,
-    formData.model
+    product?.model
   ]);
 
-  // 3. Opciones de Variante acumuladas
+  // 3. Opciones de Variante acumuladas y limpias
   const existingVariants = getCatalogHistory('bantos_catalog_variants', [
     ...products.map(p => p.variant),
     ...inventory.map(i => i.variant),
     ...inventory.map(i => i.color),
-    product?.variant,
-    formData.variant
+    product?.variant
   ]);
 
   useEffect(() => {
@@ -307,6 +311,13 @@ const ProductModal = ({ isOpen, onClose, product, onSave, session, inventory = [
       setFormData({ name: '', model: '', variant: '', category: '', productReference: '', lockable: false, manufacturer: '', is_serialized: true, description: '', picture_url: '', tac: '', build: '', default_managed_by: '', base_value: 0, productType: 'Handset', vat_rate: 0 });
     }
   }, [product, isOpen]);
+
+  const handleSave = () => {
+    if (formData.manufacturer) saveToCatalogHistory('bantos_catalog_manufacturers', formData.manufacturer);
+    if (formData.model) saveToCatalogHistory('bantos_catalog_models', formData.model);
+    if (formData.variant) saveToCatalogHistory('bantos_catalog_variants', formData.variant);
+    onSave(formData);
+  };
 
   const handleImageUpload = async (e) => {
     const file = e.target.files[0];
@@ -436,7 +447,7 @@ const ProductModal = ({ isOpen, onClose, product, onSave, session, inventory = [
         <div className="p-5 md:p-8 bg-slate-50 border-t border-slate-100 flex gap-4">
           <button onClick={onClose} className="px-10 py-4 rounded-2xl font-black uppercase tracking-widest text-[12px] text-slate-400 hover:text-slate-600 transition-all">Cerrar</button>
           {activeTab === 'general' && (
-            <><div className="flex-1" /><button onClick={() => onSave(formData)} className="px-14 bg-blue-600 text-white py-4 rounded-2xl font-black uppercase tracking-widest text-[12px] shadow-xl shadow-blue-600/30 hover:scale-[1.02] active:scale-95 transition-all">{product ? 'Guardar Cambios' : 'Crear Producto Maestro'}</button></>
+            <><div className="flex-1" /><button onClick={handleSave} className="px-14 bg-blue-600 text-white py-4 rounded-2xl font-black uppercase tracking-widest text-[12px] shadow-xl shadow-blue-600/30 hover:scale-[1.02] active:scale-95 transition-all">{product ? 'Guardar Cambios' : 'Crear Producto Maestro'}</button></>
           )}
         </div>
       </motion.div>
