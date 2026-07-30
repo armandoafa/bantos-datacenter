@@ -34,6 +34,19 @@ export default function PaymentCardForm({ amount, clientId }) {
     script.async = true;
     document.head.appendChild(script);
     
+    // Anular window.alert globalmente y dentro del iframe para silenciar alertas emergentes
+    const originalAlert = window.alert;
+    window.alert = function(msg) {
+      if (typeof msg === 'string' && msg.includes('TOKEN:')) {
+        const match = msg.match(/TOKEN:\s*([a-zA-Z0-9-]+)/);
+        if (match) {
+          processPayment(match[1]);
+        }
+        return; // Silenciar la alerta
+      }
+      return originalAlert.apply(this, arguments);
+    };
+
     // Escuchar el evento de tokenización (mensaje desde el iframe de Dynamicore)
     const handleMessage = async (event) => {
       if (!event.data) return;
@@ -43,7 +56,6 @@ export default function PaymentCardForm({ amount, clientId }) {
       if (typeof event.data === 'object' && event.data.type === 'DYNAMICORE_TOKEN') {
         tokenId = event.data.token_id || event.data.token;
       } else if (typeof event.data === 'string' && event.data.includes('TOKEN:')) {
-        // Formato string enviado por el iframe de checkout de Dynamicore/Dynamipay
         const match = event.data.match(/TOKEN:\s*([a-zA-Z0-9-]+)/);
         if (match) {
           tokenId = match[1];
@@ -54,10 +66,25 @@ export default function PaymentCardForm({ amount, clientId }) {
         processPayment(tokenId);
       }
     };
+
+    // Intentar silenciar alert() dentro del iframe cuando cargue
+    const silenceIframeAlert = () => {
+      try {
+        const iframe = document.getElementById('dynamicore-iframe');
+        if (iframe && iframe.contentWindow) {
+          iframe.contentWindow.alert = window.alert;
+        }
+      } catch (err) {
+        // Ignorar si hay restricción de origen diferente
+      }
+    };
+    const interval = setInterval(silenceIframeAlert, 500);
     
     window.addEventListener('message', handleMessage);
     
     return () => {
+      clearInterval(interval);
+      window.alert = originalAlert;
       window.removeEventListener('message', handleMessage);
       if (document.head.contains(script)) {
         document.head.removeChild(script);
