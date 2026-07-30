@@ -143,25 +143,81 @@ const ProductInput = ({ label, value, type = 'text', onChange }) => (
 );
 
 const SelectableOrCustomInput = ({ label, value, options = [], onChange, placeholder = '' }) => {
-  const listId = `list-${label.toLowerCase().replace(/[^a-z0-9]/g, '-')}`;
+  const [isOpen, setIsOpen] = useState(false);
+  const containerRef = useRef(null);
+
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (containerRef.current && !containerRef.current.contains(e.target)) {
+        setIsOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const handleSelectOption = (opt) => {
+    onChange({ target: { value: opt } });
+    setIsOpen(false);
+  };
+
+  const filteredOptions = Array.from(new Set(options.filter(Boolean))).filter(opt =>
+    opt.toLowerCase().includes((value || '').toLowerCase())
+  );
+
   return (
-    <div className="space-y-1.5">
+    <div className="space-y-1.5 relative" ref={containerRef}>
       <label className="text-[11px] font-black uppercase tracking-widest text-slate-400 ml-1">{label}</label>
       <div className="relative">
         <input 
           type="text" 
-          list={listId}
           placeholder={placeholder || `Seleccionar o escribir ${label.toLowerCase()}...`}
-          className="w-full bg-slate-50 border-2 border-slate-100 rounded-xl py-3.5 px-5 font-bold text-slate-800 focus:border-blue-600 outline-none transition-all text-base" 
+          className="w-full bg-slate-50 border-2 border-slate-100 rounded-xl py-3.5 pl-5 pr-10 font-bold text-slate-800 focus:border-blue-600 outline-none transition-all text-base" 
           value={value !== undefined && value !== null ? value : ''} 
-          onChange={onChange} 
+          onChange={(e) => {
+            onChange(e);
+            setIsOpen(true);
+          }} 
+          onFocus={() => setIsOpen(true)}
         />
-        <datalist id={listId}>
-          {options.map((opt, idx) => (
-            <option key={idx} value={opt} />
-          ))}
-        </datalist>
+        <button
+          type="button"
+          onClick={() => setIsOpen(!isOpen)}
+          className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1"
+        >
+          <ChevronDown size={18} className={`transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
+        </button>
       </div>
+
+      {isOpen && (
+        <div className="absolute z-50 left-0 right-0 top-full mt-1 bg-white border-2 border-slate-100 rounded-2xl shadow-xl max-h-52 overflow-y-auto py-2">
+          {filteredOptions.length > 0 ? (
+            filteredOptions.map((opt, idx) => (
+              <div
+                key={idx}
+                onClick={() => handleSelectOption(opt)}
+                className={`px-5 py-2.5 font-bold text-sm cursor-pointer hover:bg-blue-50 hover:text-blue-600 transition-colors flex items-center justify-between ${value === opt ? 'bg-blue-50 text-blue-600' : 'text-slate-700'}`}
+              >
+                <span>{opt}</span>
+                {value === opt && <Check size={16} className="text-blue-600" />}
+              </div>
+            ))
+          ) : (
+            <div className="px-5 py-3 text-xs text-slate-400 font-bold">
+              {value ? `Presiona enter o guardar para registrar "${value}" como nuevo ${label.toLowerCase()}` : `No hay ${label.toLowerCase()}s previos. Escribe uno nuevo.`}
+            </div>
+          )}
+
+          {value && !options.includes(value) && (
+            <div 
+              onClick={() => handleSelectOption(value)}
+              className="border-t border-slate-100 mt-1 pt-2 px-5 py-2 text-xs font-black text-blue-600 hover:bg-blue-50 cursor-pointer flex items-center gap-1.5"
+            >
+              <Plus size={14} /> Registrar "{value}" como nuevo {label.toLowerCase()}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 };
