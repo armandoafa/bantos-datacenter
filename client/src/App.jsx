@@ -256,9 +256,10 @@ const getCatalogHistory = (key, initialItems = []) => {
 };
 
 // --- MODAL DE PRODUCTO ---
-const ProductModal = ({ isOpen, onClose, product, onSave, session, inventory = [], products = [], onAddInventory }) => {
+const ProductModal = ({ isOpen, onClose, product, onSave, session, inventory = [], products = [], onAddInventory, onEditInventory }) => {
   const [activeTab, setActiveTab] = useState('general');
   const [isAddImeiOpen, setIsAddImeiOpen] = useState(false);
+  const [editingInventoryItem, setEditingInventoryItem] = useState(null);
   const [newImei, setNewImei] = useState('');
   const [imeiError, setImeiError] = useState('');
   const [isSubmittingImei, setIsSubmittingImei] = useState(false);
@@ -438,16 +439,57 @@ const ProductModal = ({ isOpen, onClose, product, onSave, session, inventory = [
                       <h4 className="font-black text-slate-800 text-lg">Dispositivos en Inventario</h4>
                       <p className="text-slate-500 text-sm">{matchedInventory.length} unidades en stock</p>
                     </div>
-                    <button onClick={() => setIsAddImeiOpen(true)} className="px-5 py-2.5 bg-blue-600 text-white font-bold text-sm rounded-xl hover:bg-blue-700 shadow-md transition-all flex items-center gap-2">
+                    <button onClick={() => { setEditingInventoryItem(null); setNewImei(''); setImeiError(''); setIsAddImeiOpen(true); }} className="px-5 py-2.5 bg-blue-600 text-white font-bold text-sm rounded-xl hover:bg-blue-700 shadow-md transition-all flex items-center gap-2">
                       <Plus size={16}/> Agregar IMEI
                     </button>
                   </div>
-                  <Table cols={['IMEI', 'Modelo Real', 'Estado']} rows={matchedInventory} 
-                    render={a => (<><td className="px-6 py-4 font-mono text-sm font-bold text-slate-800">{a.serial_number}</td><td className="px-6 py-4 text-xs text-slate-500">{a.model}</td><td className="px-6 py-4"><Badge status={a.status} /></td></>)}
-                    renderMobile={a => (<div className="bg-white p-4 rounded-xl border border-slate-100 flex justify-between items-center"><div className="space-y-1"><p className="font-mono text-sm font-bold text-slate-800">{a.serial_number}</p><p className="text-slate-500 text-[10px]">{a.model}</p></div><Badge status={a.status} /></div>)}
+                  <Table cols={['IMEI', 'Modelo Real', 'Estado', 'Acciones']} rows={matchedInventory} 
+                    render={a => (
+                      <>
+                        <td className="px-6 py-4 font-mono text-sm font-bold text-slate-800">{a.serial_number}</td>
+                        <td className="px-6 py-4 text-xs text-slate-500">{a.model}</td>
+                        <td className="px-6 py-4"><Badge status={a.status} /></td>
+                        <td className="px-6 py-4">
+                          <button
+                            onClick={() => {
+                              setEditingInventoryItem(a);
+                              setNewImei(a.serial_number || '');
+                              setImeiError('');
+                              setIsAddImeiOpen(true);
+                            }}
+                            className="px-3 py-1.5 bg-slate-100 hover:bg-blue-50 text-slate-600 hover:text-blue-600 rounded-xl transition-colors flex items-center gap-1.5 font-bold text-xs"
+                            title="Editar IMEI"
+                          >
+                            <Edit size={14} /> Editar
+                          </button>
+                        </td>
+                      </>
+                    )}
+                    renderMobile={a => (
+                      <div className="bg-white p-4 rounded-xl border border-slate-100 flex justify-between items-center">
+                        <div className="space-y-1">
+                          <p className="font-mono text-sm font-bold text-slate-800">{a.serial_number}</p>
+                          <p className="text-slate-500 text-[10px]">{a.model}</p>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <Badge status={a.status} />
+                          <button
+                            onClick={() => {
+                              setEditingInventoryItem(a);
+                              setNewImei(a.serial_number || '');
+                              setImeiError('');
+                              setIsAddImeiOpen(true);
+                            }}
+                            className="p-2 bg-slate-100 hover:bg-blue-50 text-slate-600 hover:text-blue-600 rounded-xl transition-colors"
+                          >
+                            <Edit size={14} />
+                          </button>
+                        </div>
+                      </div>
+                    )}
                   />
 
-                  {/* MODAL DIALOG PARA AGREGAR IMEI DE DISPOSITIVO */}
+                  {/* MODAL DIALOG PARA AGREGAR / EDITAR IMEI DE DISPOSITIVO */}
                   <AnimatePresence>
                     {isAddImeiOpen && (
                       <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
@@ -458,11 +500,13 @@ const ProductModal = ({ isOpen, onClose, product, onSave, session, inventory = [
                                 <Smartphone size={20} />
                               </div>
                               <div>
-                                <h4 className="font-black text-slate-900 text-lg">Agregar IMEI</h4>
+                                <h4 className="font-black text-slate-900 text-lg">
+                                  {editingInventoryItem ? 'Editar IMEI' : 'Agregar IMEI'}
+                                </h4>
                                 <p className="text-xs text-slate-400 font-bold">{product?.name}</p>
                               </div>
                             </div>
-                            <button onClick={() => { setIsAddImeiOpen(false); setNewImei(''); setImeiError(''); }} className="p-2 hover:bg-slate-100 rounded-xl text-slate-400 transition-colors"><X size={18} /></button>
+                            <button onClick={() => { setIsAddImeiOpen(false); setEditingInventoryItem(null); setNewImei(''); setImeiError(''); }} className="p-2 hover:bg-slate-100 rounded-xl text-slate-400 transition-colors"><X size={18} /></button>
                           </div>
 
                           <div className="space-y-2">
@@ -489,7 +533,7 @@ const ProductModal = ({ isOpen, onClose, product, onSave, session, inventory = [
 
                           <div className="pt-2 flex justify-end gap-3">
                             <button 
-                              onClick={() => { setIsAddImeiOpen(false); setNewImei(''); setImeiError(''); }} 
+                              onClick={() => { setIsAddImeiOpen(false); setEditingInventoryItem(null); setNewImei(''); setImeiError(''); }} 
                               className="px-5 py-3 rounded-xl font-black uppercase tracking-widest text-[11px] text-slate-400 hover:text-slate-600 transition-all"
                             >
                               Cancelar
@@ -504,8 +548,13 @@ const ProductModal = ({ isOpen, onClose, product, onSave, session, inventory = [
                                 }
                                 setIsSubmittingImei(true);
                                 try {
-                                  await onAddInventory(product.name, trimmed);
+                                  if (editingInventoryItem) {
+                                    await onEditInventory(editingInventoryItem, trimmed);
+                                  } else {
+                                    await onAddInventory(product.name, trimmed);
+                                  }
                                   setIsAddImeiOpen(false);
+                                  setEditingInventoryItem(null);
                                   setNewImei('');
                                   setImeiError('');
                                 } catch (err) {
@@ -516,7 +565,7 @@ const ProductModal = ({ isOpen, onClose, product, onSave, session, inventory = [
                               }}
                               className="px-7 py-3 bg-blue-600 text-white rounded-xl font-black uppercase tracking-widest text-[11px] shadow-lg shadow-blue-600/30 hover:bg-blue-700 disabled:opacity-50 transition-all"
                             >
-                              {isSubmittingImei ? 'Guardando...' : 'Guardar IMEI'}
+                              {isSubmittingImei ? 'Guardando...' : (editingInventoryItem ? 'Actualizar IMEI' : 'Guardar IMEI')}
                             </button>
                           </div>
                         </motion.div>
@@ -3994,6 +4043,21 @@ const App = () => {
     }
   };
 
+  const handleEditInventory = async (inventoryItem, newImeiValue) => {
+    if (!inventoryItem || !newImeiValue) return;
+    try {
+      await axios.put(`${API}/backoffice/inventory/${inventoryItem.id || inventoryItem.upya_id}`, {
+        tenantId: session.tenantId,
+        serialNumber: newImeiValue,
+        model: inventoryItem.model,
+        status: inventoryItem.status
+      });
+      await refreshData();
+    } catch (e) {
+      throw new Error(e.response?.data?.error || e.message);
+    }
+  };
+
   const handleSync = async () => {
     setSyncing(true);
     try {
@@ -4629,7 +4693,7 @@ const App = () => {
         </AnimatePresence>
         </div>
 
-        <ProductModal isOpen={modalState.open && modalState.type === 'product'} onClose={() => setModalState({ type: null, open: false, item: null })} onSave={handleSaveProduct} product={modalState.item} inventory={data.inventory} products={data.products} onAddInventory={handleAddInventory} />
+        <ProductModal isOpen={modalState.open && modalState.type === 'product'} onClose={() => setModalState({ type: null, open: false, item: null })} onSave={handleSaveProduct} product={modalState.item} inventory={data.inventory} products={data.products} onAddInventory={handleAddInventory} onEditInventory={handleEditInventory} />
         <TermModal isOpen={modalState.open && modalState.type === 'term'} onClose={() => setModalState({ type: null, open: false, item: null })} onSave={handleSaveTerm} term={modalState.item} />
         <DataCollectionModal isOpen={modalState.open && modalState.type === 'collection'} onClose={() => setModalState({ type: null, open: false, item: null })} onSave={handleSaveCollection} collection={modalState.item} />
         <ActionModal isOpen={modalState.open && modalState.type === 'action'} onClose={() => setModalState({ type: null, open: false, item: null })} onSave={handleSaveAction} action={modalState.item} />

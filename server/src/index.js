@@ -1633,6 +1633,19 @@ app.post('/api/backoffice/inventory', async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+app.put('/api/backoffice/inventory/:id', async (req, res) => {
+  const { id } = req.params;
+  const { tenantId, serialNumber, model, status } = req.body;
+  if (!serialNumber) return res.status(400).json({ error: 'Serial number is required' });
+  try {
+    await pool.query(
+      'UPDATE inventory SET serial_number = ?, model = COALESCE(?, model), status = COALESCE(?, status) WHERE (id = ? OR upya_id = ?) AND tenant_id = ?',
+      [serialNumber, model || null, status || null, id, id, tenantId]
+    );
+    res.json({ success: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 app.get('/api/backoffice/payments', async (req, res) => {
   const { tenantId, userId, role, orgId, scopeRole } = req.query;
   try {
