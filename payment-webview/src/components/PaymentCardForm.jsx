@@ -98,7 +98,7 @@ export default function PaymentCardForm({ amount, clientId }) {
       setLoading(true);
       setError(null);
       
-      const baseURL = import.meta.env.VITE_API_URL || 'https://dynamicore-api.bantos.cloud';
+      const baseURL = import.meta.env.VITE_API_URL || 'https://bantos.cloud/datacenter-api/webview';
 
       // 1. Asignar tarjeta al cliente
       await axios.post(`${baseURL}/card-payments/assign-card`, {
