@@ -3100,8 +3100,8 @@ const UsersView = ({ users, structure, session, refreshData }) => {
         render={u => (
           <>
             <td className="px-8 py-5">
-              <p className="font-bold text-slate-700 text-sm">{u.contact_name}</p>
-              <p className="text-xs text-slate-400 font-medium">{u.email}</p>
+              <p className="font-bold text-slate-700 text-sm">{u.contact_name || u.username || 'Sin Nombre'}</p>
+              <p className="text-xs text-slate-400 font-medium">{u.email || 'Sin correo registrado'}</p>
             </td>
             <td className="px-8 py-5">
               <p className="font-mono text-blue-600 font-bold text-xs">{u.username || 'N/A'}</p>
@@ -3115,11 +3115,14 @@ const UsersView = ({ users, structure, session, refreshData }) => {
             </td>
             <td className="px-8 py-5">
               <span className={`text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded-lg ${u.scope_role === 'MANAGER' ? 'bg-indigo-100 text-indigo-700' : 'bg-slate-100 text-slate-600'}`}>
-                {u.scope_role || 'N/A'}
+                {u.scope_role || u.global_role || 'N/A'}
               </span>
             </td>
             <td className="px-8 py-5 text-right">
-              <button onClick={() => { setEditingUser(u); setModalOpen(true); }} className="p-2 hover:bg-blue-50 hover:text-blue-600 rounded-xl text-slate-400 transition-all"><Edit size={16}/></button>
+              <div className="flex items-center justify-end gap-1">
+                <button onClick={() => { setEditingUser(u); setModalOpen(true); }} className="p-2 hover:bg-blue-50 hover:text-blue-600 rounded-xl text-slate-400 transition-all" title="Editar"><Edit size={16}/></button>
+                <button onClick={() => handleDelete(u.id, u.contact_name || u.username)} className="p-2 hover:bg-rose-50 hover:text-rose-600 rounded-xl text-slate-400 transition-all" title="Eliminar"><Trash2 size={16}/></button>
+              </div>
             </td>
           </>
         )}
@@ -3127,23 +3130,26 @@ const UsersView = ({ users, structure, session, refreshData }) => {
           <div className="bg-white p-6 rounded-2xl border border-slate-100 space-y-4">
             <div className="flex justify-between items-start">
               <div>
-                <p className="font-bold text-slate-700 text-base">{u.contact_name}</p>
+                <p className="font-bold text-slate-700 text-base">{u.contact_name || u.username || 'Sin Nombre'}</p>
                 <p className="font-mono text-blue-600 font-bold text-xs mt-0.5">{u.username || 'N/A'}</p>
               </div>
               <span className={`text-[9px] font-black uppercase tracking-widest px-2 py-1 rounded-lg ${u.scope_role === 'MANAGER' ? 'bg-indigo-100 text-indigo-700' : 'bg-slate-100 text-slate-600'}`}>
-                {u.scope_role || 'N/A'}
+                {u.scope_role || u.global_role || 'N/A'}
               </span>
             </div>
             <div className="pt-4 border-t border-slate-50 flex justify-between items-center">
               <div className="flex flex-col gap-1">
-                <span className="text-xs text-slate-400 font-medium">{u.email}</span>
+                <span className="text-xs text-slate-400 font-medium">{u.email || 'Sin correo'}</span>
                 {u.org_name ? (
                   <div className="inline-flex items-center gap-1.5 text-slate-500 font-bold text-xs">
                     <Store size={12} /> {u.org_name}
                   </div>
                 ) : <span className="text-slate-300 font-bold text-xs italic">Sin Asignar</span>}
               </div>
-              <button onClick={() => { setEditingUser(u); setModalOpen(true); }} className="p-2.5 bg-slate-50 hover:bg-blue-50 hover:text-blue-600 rounded-xl text-slate-400 transition-all"><Edit size={16}/></button>
+              <div className="flex items-center gap-1">
+                <button onClick={() => { setEditingUser(u); setModalOpen(true); }} className="p-2.5 bg-slate-50 hover:bg-blue-50 hover:text-blue-600 rounded-xl text-slate-400 transition-all"><Edit size={16}/></button>
+                <button onClick={() => handleDelete(u.id, u.contact_name || u.username)} className="p-2.5 bg-slate-50 hover:bg-rose-50 hover:text-rose-600 rounded-xl text-slate-400 transition-all"><Trash2 size={16}/></button>
+              </div>
             </div>
           </div>
         )}

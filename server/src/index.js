@@ -928,12 +928,12 @@ app.get('/api/backoffice/users', async (req, res) => {
   const { tenantId } = req.query;
   try {
     const [rows] = await pool.query(
-      `SELECT u.id, u.username, u.contact_name, u.email, u.role as global_role, 
+      `SELECT u.id, u.username, COALESCE(u.contact_name, u.username) as contact_name, u.email, u.role as global_role, 
               s.org_id, s.role as scope_role, o.name as org_name
        FROM users u 
        LEFT JOIN user_scopes s ON u.id = s.user_id 
        LEFT JOIN org_structure o ON s.org_id = o.id
-       WHERE u.tenant_id = ? ORDER BY u.contact_name ASC`, 
+       WHERE u.tenant_id = ? ORDER BY COALESCE(u.contact_name, u.username) ASC`, 
       [tenantId]
     );
     res.json(rows);
