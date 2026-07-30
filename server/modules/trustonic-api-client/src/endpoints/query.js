@@ -4,14 +4,14 @@ export default class QueryEndpoints {
   }
 
   /**
-   * Obtiene la información detallada de uno o más dispositivos (5.4 Device Info)
-   * NOTA: Utiliza v2 de la API según especificación
-   * @param {Array|String} imeis - IMEI o arreglo de IMEIs
+   * 5. Device Info - Obtiene información detallada de los dispositivos
+   * POST api/v2/query/devices
+   * @param {Array|String} imeis - IMEI, deviceUid o arreglo de IMEIs/deviceUids
    */
   async getDeviceInfo(imeis) {
-    const deviceList = Array.isArray(imeis) ? imeis.map(imei => ({ deviceUid: imei })) : [{ deviceUid: imeis }];
+    const list = Array.isArray(imeis) ? imeis : [imeis];
+    const deviceList = list.map(item => (typeof item === 'object' ? item : { deviceUid: item }));
     
-    // Sobrescribimos el baseURL localmente para usar v2
     const originalBase = this.client.client.defaults.baseURL;
     this.client.client.defaults.baseURL = originalBase.replace('/api/v1', '/api/v2');
     
@@ -23,28 +23,19 @@ export default class QueryEndpoints {
       });
       return response;
     } finally {
-      // Restauramos la URL base a v1
       this.client.client.defaults.baseURL = originalBase;
     }
   }
 
   /**
-   * Obtiene la información del tenant (5.1 Tenant Info)
+   * 4. Upload Status - Revisa el estatus de carga de dispositivos
+   * GET api/v1/inventory?uploadid={uploadID}
+   * @param {String} uploadID
    */
-  async getTenantInfo() {
+  async getUploadStatus(uploadID) {
     return this.client.request({
       method: 'GET',
-      url: '/query/tenant'
-    });
-  }
-
-  /**
-   * Obtiene la información de inventario (5.2 Inventory Info)
-   */
-  async getInventoryInfo() {
-    return this.client.request({
-      method: 'GET',
-      url: '/query/inventory'
+      url: `/inventory?uploadid=${encodeURIComponent(uploadID)}`
     });
   }
 }

@@ -4,62 +4,30 @@ export default class ServiceEndpoints {
   }
 
   /**
-   * Activa el servicio en los dispositivos especificados (3.1 Activate)
-   * @param {Array|String} imeis - IMEI o arreglo de IMEIs
-   * @param {Number} cycleDays - Días del ciclo de facturación
+   * 3. Activate Service - Activar servicio DeviceFinancing postpaid para dispositivo en inventario
+   * POST api/v1/service/activate
+   * @param {Array} deviceList - Arreglo de objetos de dispositivos segun especificacion
    */
-  async activate(imeis, cycleDays = 30) {
-    const devices = Array.isArray(imeis) ? imeis.map(imei => ({ imei1: imei })) : [{ imei1: imeis }];
+  async activate(deviceList) {
+    const list = Array.isArray(deviceList) ? deviceList : [deviceList];
     return this.client.request({
       method: 'POST',
-      url: '/services/activate',
-      data: {
-        devices,
-        cycleDays
-      }
+      url: '/service/activate',
+      data: { deviceList: list }
     });
   }
 
   /**
-   * Desactiva el servicio de los dispositivos (3.2 Deactivate)
-   * @param {Array|String} imeis - IMEI o arreglo de IMEIs
+   * 11. Deactivate Service - Desactivar servicio y remover dispositivo del financiamiento
+   * DELETE api/v1/service
+   * @param {Array} deviceList - Arreglo de objetos de dispositivos segun especificacion
    */
-  async deactivate(imeis) {
-    const devices = Array.isArray(imeis) ? imeis.map(imei => ({ imei1: imei })) : [{ imei1: imeis }];
+  async deactivate(deviceList) {
+    const list = Array.isArray(deviceList) ? deviceList : [deviceList];
     return this.client.request({
-      method: 'POST',
-      url: '/services/deactivate',
-      data: { devices }
-    });
-  }
-
-  /**
-   * Actualiza parámetros del servicio como días del ciclo (3.3 Update)
-   * @param {Array|String} imeis - IMEI o arreglo de IMEIs
-   * @param {Number} reloadDays - Días a recargar
-   */
-  async update(imeis, reloadDays) {
-    const devices = Array.isArray(imeis) ? imeis.map(imei => ({ imei1: imei })) : [{ imei1: imeis }];
-    return this.client.request({
-      method: 'POST',
-      url: '/services/update',
-      data: {
-        devices,
-        reloadDays
-      }
-    });
-  }
-
-  /**
-   * Consulta el estado del servicio de los dispositivos (3.4 Status)
-   * @param {Array|String} imeis - IMEI o arreglo de IMEIs
-   */
-  async status(imeis) {
-    const devices = Array.isArray(imeis) ? imeis.map(imei => ({ imei1: imei })) : [{ imei1: imeis }];
-    return this.client.request({
-      method: 'POST',
-      url: '/services/status',
-      data: { devices }
+      method: 'DELETE',
+      url: '/service',
+      data: { deviceList: list }
     });
   }
 }
