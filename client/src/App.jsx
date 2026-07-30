@@ -7,7 +7,7 @@ import {
   ChevronDown, ChevronRight, Database, Building2, Globe, MapPin, Store, Edit, X, Trash2,
   BookOpen, Zap, CheckSquare, MessageSquare, ListTodo, ClipboardCheck,
   Upload, PenTool, Send, AlertCircle, Printer, Activity, Menu, Calendar,
-  FileSpreadsheet, Check
+  FileSpreadsheet, Check, Eye, EyeOff
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import axios from 'axios';
@@ -3682,6 +3682,7 @@ const App = () => {
   const [selectedTenantId, setSelectedTenantId] = useState('');
   const [loginLoading, setLoginLoading] = useState(false);
   const [loginError, setLoginError] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
 
   const refreshData = useCallback(async () => {
     const tenantId = session?.tenantId;
@@ -4018,7 +4019,22 @@ const App = () => {
             {loginStep === 'credentials' && (
               <>
                 <input id="u" type="text" placeholder="Usuario" className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl py-4 px-6 font-bold text-slate-800 outline-none focus:border-blue-600 transition-all" />
-                <input id="p" type="password" placeholder="Contraseña" className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl py-4 px-6 font-bold text-slate-800 outline-none focus:border-blue-600 transition-all" />
+                <div className="relative w-full">
+                  <input 
+                    id="p" 
+                    type={showPassword ? "text" : "password"} 
+                    placeholder="Contraseña" 
+                    className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl py-4 pl-6 pr-14 font-bold text-slate-800 outline-none focus:border-blue-600 transition-all" 
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1 transition-colors"
+                    title={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
+                  >
+                    {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                  </button>
+                </div>
                 <input id="tid" type="text" placeholder="Tenant ID (ej. c-romel)" className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl py-4 px-6 font-bold text-slate-800 outline-none focus:border-blue-600 transition-all" />
                 <button
                   disabled={loginLoading}
