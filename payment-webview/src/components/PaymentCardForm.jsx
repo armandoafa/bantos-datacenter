@@ -136,14 +136,17 @@ export default function PaymentCardForm({ amount, clientId }) {
   const handleTokenize = () => {
     setLoading(true);
     setError(null);
-    // Disparar la orden de tokenización hacia el iframe
-    // En la integración real de Dynamicore, se llama a una función inyectada por su SDK
-    if (window.DynamicoreHelper && window.DynamicoreHelper.submit) {
+    
+    const iframe = document.getElementById('dynamicore-iframe');
+    
+    if (window.DynamicoreHelper && typeof window.DynamicoreHelper.submit === 'function') {
       window.DynamicoreHelper.submit();
+    } else if (iframe && iframe.contentWindow) {
+      // Disparar mensaje directo de submit al iframe de Dynamipay
+      iframe.contentWindow.postMessage({ type: 'SUBMIT_FORM', action: 'tokenize' }, '*');
     } else {
-      // Simulación para propósitos de UI si no está cargado
       setTimeout(() => {
-        setError('El SDK de Dynamicore no se cargó correctamente. Contacta a soporte.');
+        setError('No se pudo conectar con el formulario de pagos. Por favor intenta de nuevo.');
         setLoading(false);
       }, 1000);
     }
