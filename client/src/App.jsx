@@ -142,12 +142,47 @@ const ProductInput = ({ label, value, type = 'text', onChange }) => (
   </div>
 );
 
+const SelectableOrCustomInput = ({ label, value, options = [], onChange, placeholder = '' }) => {
+  const listId = `list-${label.toLowerCase().replace(/[^a-z0-9]/g, '-')}`;
+  return (
+    <div className="space-y-1.5">
+      <label className="text-[11px] font-black uppercase tracking-widest text-slate-400 ml-1">{label}</label>
+      <div className="relative">
+        <input 
+          type="text" 
+          list={listId}
+          placeholder={placeholder || `Seleccionar o escribir ${label.toLowerCase()}...`}
+          className="w-full bg-slate-50 border-2 border-slate-100 rounded-xl py-3.5 px-5 font-bold text-slate-800 focus:border-blue-600 outline-none transition-all text-base" 
+          value={value !== undefined && value !== null ? value : ''} 
+          onChange={onChange} 
+        />
+        <datalist id={listId}>
+          {options.map((opt, idx) => (
+            <option key={idx} value={opt} />
+          ))}
+        </datalist>
+      </div>
+    </div>
+  );
+};
+
 // --- MODAL DE PRODUCTO ---
-const ProductModal = ({ isOpen, onClose, product, onSave, session, inventory = [], onAddInventory }) => {
+const ProductModal = ({ isOpen, onClose, product, onSave, session, inventory = [], products = [], onAddInventory }) => {
   const [activeTab, setActiveTab] = useState('general');
   const [formData, setFormData] = useState({
     name: '', model: '', variant: '', category: '', productReference: '', lockable: false, manufacturer: '', is_serialized: true, description: '', picture_url: '', tac: '', build: '', default_managed_by: '', base_value: 0, productType: 'Handset', vat_rate: 0, ...product
   });
+
+  // Extraer modelos y variantes únicos existentes en los productos registrados e inventario
+  const existingModels = Array.from(new Set([
+    ...products.map(p => p.model).filter(Boolean),
+    ...inventory.map(i => i.model).filter(Boolean)
+  ])).sort();
+
+  const existingVariants = Array.from(new Set([
+    ...products.map(p => p.variant).filter(Boolean)
+  ])).sort();
+
   useEffect(() => {
     setActiveTab('general');
     if (product) setFormData({ ...product, is_serialized: product.is_serialized !== false, productReference: product.reference || product.productReference, model: product.model || '', variant: product.variant || '' });
@@ -200,8 +235,8 @@ const ProductModal = ({ isOpen, onClose, product, onSave, session, inventory = [
                 <div className="col-span-1 md:col-span-2"><p className="text-[12px] font-black text-blue-600 uppercase tracking-[0.2em] mb-2">Información Técnica</p></div>
                 <ProductInput label="Nombre del Producto (*)" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} />
                 <ProductInput label="Referencia / SKU (*)" value={formData.productReference} onChange={e => setFormData({...formData, productReference: e.target.value})} />
-                <ProductInput label="Modelo" value={formData.model} onChange={e => setFormData({...formData, model: e.target.value})} />
-                <ProductInput label="Variante" value={formData.variant} onChange={e => setFormData({...formData, variant: e.target.value})} />
+                <SelectableOrCustomInput label="Modelo" value={formData.model} options={existingModels} onChange={e => setFormData({...formData, model: e.target.value})} />
+                <SelectableOrCustomInput label="Variante" value={formData.variant} options={existingVariants} onChange={e => setFormData({...formData, variant: e.target.value})} />
                 <ProductInput label="Fabricante" value={formData.manufacturer} onChange={e => setFormData({...formData, manufacturer: e.target.value})} />
                 <ProductInput label="Categoría" value={formData.category} onChange={e => setFormData({...formData, category: e.target.value})} />
                 <div className="space-y-1.5">
@@ -4380,7 +4415,7 @@ const App = () => {
         </AnimatePresence>
         </div>
 
-        <ProductModal isOpen={modalState.open && modalState.type === 'product'} onClose={() => setModalState({ type: null, open: false, item: null })} onSave={handleSaveProduct} product={modalState.item} inventory={data.inventory} onAddInventory={handleAddInventory} />
+        <ProductModal isOpen={modalState.open && modalState.type === 'product'} onClose={() => setModalState({ type: null, open: false, item: null })} onSave={handleSaveProduct} product={modalState.item} inventory={data.inventory} products={data.products} onAddInventory={handleAddInventory} />
         <TermModal isOpen={modalState.open && modalState.type === 'term'} onClose={() => setModalState({ type: null, open: false, item: null })} onSave={handleSaveTerm} term={modalState.item} />
         <DataCollectionModal isOpen={modalState.open && modalState.type === 'collection'} onClose={() => setModalState({ type: null, open: false, item: null })} onSave={handleSaveCollection} collection={modalState.item} />
         <ActionModal isOpen={modalState.open && modalState.type === 'action'} onClose={() => setModalState({ type: null, open: false, item: null })} onSave={handleSaveAction} action={modalState.item} />
