@@ -36,9 +36,21 @@ export default function PaymentCardForm({ amount, clientId }) {
     
     // Escuchar el evento de tokenización (mensaje desde el iframe de Dynamicore)
     const handleMessage = async (event) => {
-      // Validar origen si es necesario
-      if (event.data && event.data.type === 'DYNAMICORE_TOKEN') {
-        const tokenId = event.data.token_id;
+      if (!event.data) return;
+
+      let tokenId = null;
+
+      if (typeof event.data === 'object' && event.data.type === 'DYNAMICORE_TOKEN') {
+        tokenId = event.data.token_id || event.data.token;
+      } else if (typeof event.data === 'string' && event.data.includes('TOKEN:')) {
+        // Formato string enviado por el iframe de checkout de Dynamicore/Dynamipay
+        const match = event.data.match(/TOKEN:\s*([a-zA-Z0-9-]+)/);
+        if (match) {
+          tokenId = match[1];
+        }
+      }
+
+      if (tokenId) {
         processPayment(tokenId);
       }
     };
