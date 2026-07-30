@@ -1,7 +1,7 @@
 import { TrustonicClient } from '../../modules/trustonic-api-client/index.js';
 import { scrapeTrustonic } from './trustonic.js';
 
-const API_KEY = 'qjF+s7/rxVffo3Fnzm20PdIlFGDDpYOredEsRvl3wYYUAh2vhnmeHoQuUQNkKdoyOQCQN6oDcAZ7166n59orHQ==';
+const API_KEY = 'CMPltSM90eh05BMA99cLACoKVkxSLBls0z1A335Mv6YKxjUOOi+eTGHZLHw4o0DazdEBlXhMgA2A/dwk9xW+dw==';
 const client = new TrustonicClient(API_KEY);
 
 export async function getTrustonicToken() {
