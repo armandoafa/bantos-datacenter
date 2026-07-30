@@ -173,14 +173,16 @@ const ProductModal = ({ isOpen, onClose, product, onSave, session, inventory = [
     name: '', model: '', variant: '', category: '', productReference: '', lockable: false, manufacturer: '', is_serialized: true, description: '', picture_url: '', tac: '', build: '', default_managed_by: '', base_value: 0, productType: 'Handset', vat_rate: 0, ...product
   });
 
-  // Extraer modelos y variantes únicos existentes en los productos registrados e inventario
+  // Extraer modelos y variantes únicos existentes en los productos registrados e inventario + valor recién escrito
   const existingModels = Array.from(new Set([
     ...products.map(p => p.model).filter(Boolean),
-    ...inventory.map(i => i.model).filter(Boolean)
+    ...inventory.map(i => i.model).filter(Boolean),
+    ...(formData.model ? [formData.model.trim()] : [])
   ])).sort();
 
   const existingVariants = Array.from(new Set([
-    ...products.map(p => p.variant).filter(Boolean)
+    ...products.map(p => p.variant).filter(Boolean),
+    ...(formData.variant ? [formData.variant.trim()] : [])
   ])).sort();
 
   useEffect(() => {
@@ -3898,7 +3900,7 @@ const App = () => {
       if (modalState.item) await axios.put(`${API}/backoffice/products/${modalState.item.upya_id}`, payload);
       else await axios.post(`${API}/backoffice/products`, payload);
       setModalState({ type: null, open: false, item: null });
-      refreshData();
+      await refreshData();
     } catch (e) { alert(e.message); }
   };
 
