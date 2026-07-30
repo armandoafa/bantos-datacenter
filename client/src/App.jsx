@@ -161,9 +161,7 @@ const SelectableOrCustomInput = ({ label, value, options = [], onChange, placeho
     setIsOpen(false);
   };
 
-  const filteredOptions = Array.from(new Set(options.filter(Boolean))).filter(opt =>
-    opt.toLowerCase().includes((value || '').toLowerCase())
-  );
+  const allOptions = Array.from(new Set(options.filter(Boolean)));
 
   return (
     <div className="space-y-1.5 relative" ref={containerRef}>
@@ -191,8 +189,8 @@ const SelectableOrCustomInput = ({ label, value, options = [], onChange, placeho
 
       {isOpen && (
         <div className="absolute z-50 left-0 right-0 top-full mt-1 bg-white border-2 border-slate-100 rounded-2xl shadow-xl max-h-52 overflow-y-auto py-2">
-          {filteredOptions.length > 0 ? (
-            filteredOptions.map((opt, idx) => (
+          {allOptions.length > 0 ? (
+            allOptions.map((opt, idx) => (
               <div
                 key={idx}
                 onClick={() => handleSelectOption(opt)}
@@ -204,16 +202,16 @@ const SelectableOrCustomInput = ({ label, value, options = [], onChange, placeho
             ))
           ) : (
             <div className="px-5 py-3 text-xs text-slate-400 font-bold">
-              {value ? `Presiona enter o guardar para registrar "${value}" como nuevo ${label.toLowerCase()}` : `No hay ${label.toLowerCase()}s previos. Escribe uno nuevo.`}
+              {value ? `Escribe o guarda para registrar "${value}" como nuevo ${label.toLowerCase()}` : `No hay ${label.toLowerCase()}s guardados previamente. Escribe uno nuevo.`}
             </div>
           )}
 
-          {value && !options.includes(value) && (
+          {value && !allOptions.includes(value) && (
             <div 
               onClick={() => handleSelectOption(value)}
               className="border-t border-slate-100 mt-1 pt-2 px-5 py-2 text-xs font-black text-blue-600 hover:bg-blue-50 cursor-pointer flex items-center gap-1.5"
             >
-              <Plus size={14} /> Registrar "{value}" como nuevo {label.toLowerCase()}
+              <Plus size={14} /> Usar "{value}" como nuevo {label.toLowerCase()}
             </div>
           )}
         </div>
@@ -229,15 +227,25 @@ const ProductModal = ({ isOpen, onClose, product, onSave, session, inventory = [
     name: '', model: '', variant: '', category: '', productReference: '', lockable: false, manufacturer: '', is_serialized: true, description: '', picture_url: '', tac: '', build: '', default_managed_by: '', base_value: 0, productType: 'Handset', vat_rate: 0, ...product
   });
 
-  // Extraer modelos y variantes únicos existentes en los productos registrados e inventario + valor recién escrito
+  // 1. Opciones de Fabricante (Marca) registradas en BD/Inventario
+  const existingManufacturers = Array.from(new Set([
+    ...products.map(p => p.manufacturer).filter(Boolean),
+    ...(formData.manufacturer ? [formData.manufacturer.trim()] : [])
+  ])).sort();
+
+  // 2. Opciones de Modelo asociadas al Fabricante seleccionado (o todas si no se especifica)
   const existingModels = Array.from(new Set([
-    ...products.map(p => p.model).filter(Boolean),
+    ...products.filter(p => !formData.manufacturer || (p.manufacturer && p.manufacturer.toLowerCase() === formData.manufacturer.toLowerCase())).map(p => p.model).filter(Boolean),
     ...inventory.map(i => i.model).filter(Boolean),
     ...(formData.model ? [formData.model.trim()] : [])
   ])).sort();
 
+  // 3. Opciones de Variante asociadas al Modelo (y Fabricante) seleccionado (o todas si no se especifica)
   const existingVariants = Array.from(new Set([
-    ...products.map(p => p.variant).filter(Boolean),
+    ...products.filter(p => 
+      (!formData.manufacturer || (p.manufacturer && p.manufacturer.toLowerCase() === formData.manufacturer.toLowerCase())) &&
+      (!formData.model || (p.model && p.model.toLowerCase() === formData.model.toLowerCase()))
+    ).map(p => p.variant).filter(Boolean),
     ...(formData.variant ? [formData.variant.trim()] : [])
   ])).sort();
 
@@ -293,9 +301,9 @@ const ProductModal = ({ isOpen, onClose, product, onSave, session, inventory = [
                 <div className="col-span-1 md:col-span-2"><p className="text-[12px] font-black text-blue-600 uppercase tracking-[0.2em] mb-2">Información Técnica</p></div>
                 <ProductInput label="Nombre del Producto (*)" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} />
                 <ProductInput label="Referencia / SKU (*)" value={formData.productReference} onChange={e => setFormData({...formData, productReference: e.target.value})} />
+                <SelectableOrCustomInput label="Fabricante / Marca" value={formData.manufacturer} options={existingManufacturers} onChange={e => setFormData({...formData, manufacturer: e.target.value})} />
                 <SelectableOrCustomInput label="Modelo" value={formData.model} options={existingModels} onChange={e => setFormData({...formData, model: e.target.value})} />
                 <SelectableOrCustomInput label="Variante" value={formData.variant} options={existingVariants} onChange={e => setFormData({...formData, variant: e.target.value})} />
-                <ProductInput label="Fabricante" value={formData.manufacturer} onChange={e => setFormData({...formData, manufacturer: e.target.value})} />
                 <ProductInput label="Categoría" value={formData.category} onChange={e => setFormData({...formData, category: e.target.value})} />
                 <div className="space-y-1.5">
                   <label className="text-[11px] font-black uppercase tracking-widest text-slate-400 ml-1">Tipo de Producto</label>
