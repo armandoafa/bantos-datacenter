@@ -220,6 +220,28 @@ const SelectableOrCustomInput = ({ label, value, options = [], onChange, placeho
   );
 };
 
+const saveToCatalogHistory = (key, val) => {
+  if (!val || typeof val !== 'string' || !val.trim()) return;
+  try {
+    const list = JSON.parse(localStorage.getItem(key) || '[]');
+    const cleaned = val.trim();
+    if (!list.includes(cleaned)) {
+      list.push(cleaned);
+      localStorage.setItem(key, JSON.stringify(list));
+    }
+  } catch (e) {}
+};
+
+const getCatalogHistory = (key, initialItems = []) => {
+  try {
+    const saved = JSON.parse(localStorage.getItem(key) || '[]');
+    const combined = [...saved, ...initialItems].filter(Boolean).map(x => typeof x === 'string' ? x.trim() : x);
+    return Array.from(new Set(combined)).sort();
+  } catch (e) {
+    return Array.from(new Set(initialItems.filter(Boolean).map(x => typeof x === 'string' ? x.trim() : x))).sort();
+  }
+};
+
 // --- MODAL DE PRODUCTO ---
 const ProductModal = ({ isOpen, onClose, product, onSave, session, inventory = [], products = [], onAddInventory }) => {
   const [activeTab, setActiveTab] = useState('general');
@@ -227,33 +249,63 @@ const ProductModal = ({ isOpen, onClose, product, onSave, session, inventory = [
     name: '', model: '', variant: '', category: '', productReference: '', lockable: false, manufacturer: '', is_serialized: true, description: '', picture_url: '', tac: '', build: '', default_managed_by: '', base_value: 0, productType: 'Handset', vat_rate: 0, ...product
   });
 
-  // 1. Opciones de Fabricante (Marca) registradas en BD e Inventario
-  const existingManufacturers = Array.from(new Set([
-    ...products.map(p => p.manufacturer).filter(Boolean),
-    ...inventory.map(i => i.manufacturer).filter(Boolean),
-    ...(formData.manufacturer ? [formData.manufacturer.trim()] : [])
-  ])).sort();
+  // Guardar dinámicamente en el historial del catálogo maestro
+  useEffect(() => {
+    products.forEach(p => {
+      if (p.manufacturer) saveToCatalogHistory('bantos_catalog_manufacturers', p.manufacturer);
+      if (p.model) saveToCatalogHistory('bantos_catalog_models', p.model);
+      if (p.variant) saveToCatalogHistory('bantos_catalog_variants', p.variant);
+    });
+    inventory.forEach(i => {
+      if (i.manufacturer) saveToCatalogHistory('bantos_catalog_manufacturers', i.manufacturer);
+      if (i.model) saveToCatalogHistory('bantos_catalog_models', i.model);
+      if (i.variant) saveToCatalogHistory('bantos_catalog_variants', i.variant);
+      if (i.color) saveToCatalogHistory('bantos_catalog_variants', i.color);
+    });
+  }, [products, inventory]);
 
-  // 2. Opciones de Modelo: Incluir todos los modelos existentes en la base de datos e inventario
-  const existingModels = Array.from(new Set([
-    ...products.map(p => p.model).filter(Boolean),
-    ...products.map(p => p.name).filter(Boolean),
-    ...inventory.map(i => i.model).filter(Boolean),
-    ...(formData.model ? [formData.model.trim()] : [])
-  ])).sort();
+  useEffect(() => {
+    if (formData.manufacturer) saveToCatalogHistory('bantos_catalog_manufacturers', formData.manufacturer);
+    if (formData.model) saveToCatalogHistory('bantos_catalog_models', formData.model);
+    if (formData.variant) saveToCatalogHistory('bantos_catalog_variants', formData.variant);
+  }, [formData.manufacturer, formData.model, formData.variant]);
 
-  // 3. Opciones de Variante: Incluir todas las variantes existentes en BD, inventario y valores conocidos
-  const existingVariants = Array.from(new Set([
-    ...products.map(p => p.variant).filter(Boolean),
-    ...inventory.map(i => i.variant).filter(Boolean),
-    ...inventory.map(i => i.color).filter(Boolean),
-    ...(formData.variant ? [formData.variant.trim()] : [])
-  ])).sort();
+  // 1. Opciones de Fabricante (Marca) acumuladas
+  const existingManufacturers = getCatalogHistory('bantos_catalog_manufacturers', [
+    ...products.map(p => p.manufacturer),
+    ...inventory.map(i => i.manufacturer),
+    product?.manufacturer,
+    formData.manufacturer
+  ]);
+
+  // 2. Opciones de Modelo acumuladas
+  const existingModels = getCatalogHistory('bantos_catalog_models', [
+    ...products.map(p => p.model),
+    ...products.map(p => p.name),
+    ...inventory.map(i => i.model),
+    product?.model,
+    formData.model
+  ]);
+
+  // 3. Opciones de Variante acumuladas
+  const existingVariants = getCatalogHistory('bantos_catalog_variants', [
+    ...products.map(p => p.variant),
+    ...inventory.map(i => i.variant),
+    ...inventory.map(i => i.color),
+    product?.variant,
+    formData.variant
+  ]);
 
   useEffect(() => {
     setActiveTab('general');
-    if (product) setFormData({ ...product, is_serialized: product.is_serialized !== false, productReference: product.reference || product.productReference, model: product.model || '', variant: product.variant || '' });
-    else setFormData({ name: '', model: '', variant: '', category: '', productReference: '', lockable: false, manufacturer: '', is_serialized: true, description: '', picture_url: '', tac: '', build: '', default_managed_by: '', base_value: 0, productType: 'Handset', vat_rate: 0 });
+    if (product) {
+      if (product.manufacturer) saveToCatalogHistory('bantos_catalog_manufacturers', product.manufacturer);
+      if (product.model) saveToCatalogHistory('bantos_catalog_models', product.model);
+      if (product.variant) saveToCatalogHistory('bantos_catalog_variants', product.variant);
+      setFormData({ ...product, is_serialized: product.is_serialized !== false, productReference: product.reference || product.productReference, model: product.model || '', variant: product.variant || '' });
+    } else {
+      setFormData({ name: '', model: '', variant: '', category: '', productReference: '', lockable: false, manufacturer: '', is_serialized: true, description: '', picture_url: '', tac: '', build: '', default_managed_by: '', base_value: 0, productType: 'Handset', vat_rate: 0 });
+    }
   }, [product, isOpen]);
 
   const handleImageUpload = async (e) => {
