@@ -2537,18 +2537,19 @@ app.post('/api/superadmin/users', async (req, res) => {
 
 app.put('/api/superadmin/users/:id', async (req, res) => {
   const { id } = req.params;
-  const { username, email, role, status, password } = req.body;
+  const { username, email, role, status, password, tenant_id } = req.body;
   try {
+    const tenantVal = (tenant_id === 'NULL' || !tenant_id) ? null : tenant_id;
     if (password) {
       const hashedPassword = await bcrypt.hash(password, 10);
       await pool.query(
-        'UPDATE users SET username = ?, email = ?, role = ?, status = ?, password = ? WHERE id = ?',
-        [username, email, role, status, hashedPassword, id]
+        'UPDATE users SET username = ?, email = ?, tenant_id = ?, role = ?, status = ?, password = ? WHERE id = ?',
+        [username, email || null, tenantVal, role || 'agent', status || 'active', hashedPassword, id]
       );
     } else {
       await pool.query(
-        'UPDATE users SET username = ?, email = ?, role = ?, status = ? WHERE id = ?',
-        [username, email, role, status, id]
+        'UPDATE users SET username = ?, email = ?, tenant_id = ?, role = ?, status = ? WHERE id = ?',
+        [username, email || null, tenantVal, role || 'agent', status || 'active', id]
       );
     }
     res.json({ success: true, message: 'Usuario actualizado con éxito.' });
