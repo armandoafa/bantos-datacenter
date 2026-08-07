@@ -2463,14 +2463,14 @@ app.get('/api/superadmin/tenants/stats', async (req, res) => {
 });
 
 app.post('/api/superadmin/tenants', async (req, res) => {
-  const { tenant_id, company_name, upya_user, upya_pass, status } = req.body;
+  const { tenant_id, company_name, status } = req.body;
   if (!tenant_id) {
     return res.status(400).json({ error: 'tenant_id es requerido.' });
   }
   try {
     await pool.query(
-      'INSERT INTO tenants (tenant_id, company_name, upya_user, upya_pass, status) VALUES (?, ?, ?, ?, ?)',
-      [tenant_id, company_name || null, upya_user || null, upya_pass || null, status || 'active']
+      'INSERT INTO tenants (tenant_id, company_name, status) VALUES (?, ?, ?)',
+      [tenant_id, company_name || null, status || 'active']
     );
     res.json({ success: true, message: 'Tenant registrado con éxito.' });
   } catch (e) {
@@ -2480,11 +2480,11 @@ app.post('/api/superadmin/tenants', async (req, res) => {
 
 app.put('/api/superadmin/tenants/:tenantId', async (req, res) => {
   const { tenantId } = req.params;
-  const { company_name, upya_user, upya_pass, status } = req.body;
+  const { company_name, status } = req.body;
   try {
     await pool.query(
-      'UPDATE tenants SET company_name = ?, upya_user = ?, upya_pass = ?, status = ? WHERE tenant_id = ?',
-      [company_name, upya_user || null, upya_pass || null, status, tenantId]
+      'UPDATE tenants SET company_name = ?, status = ? WHERE tenant_id = ?',
+      [company_name || null, status || 'active', tenantId]
     );
     res.json({ success: true, message: 'Tenant actualizado con éxito.' });
   } catch (e) {

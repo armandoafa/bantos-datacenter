@@ -34,8 +34,6 @@ function App() {
   const [tenantForm, setTenantForm] = useState({
     tenant_id: '',
     company_name: '',
-    upya_user: '',
-    upya_pass: '',
     status: 'active'
   });
 
@@ -135,7 +133,7 @@ function App() {
   // --- TENANT CRUD ---
   const openNewTenantModal = () => {
     setEditingTenant(null);
-    setTenantForm({ tenant_id: '', company_name: '', upya_user: '', upya_pass: '', status: 'active' });
+    setTenantForm({ tenant_id: '', company_name: '', status: 'active' });
     setShowTenantModal(true);
   };
 
@@ -144,8 +142,6 @@ function App() {
     setTenantForm({
       tenant_id: t.tenant_id,
       company_name: t.company_name || '',
-      upya_user: t.upya_user || '',
-      upya_pass: t.upya_pass || '',
       status: t.status || 'active'
     });
     setShowTenantModal(true);
@@ -503,6 +499,7 @@ function App() {
                     <th>Contratos</th>
                     <th>Pagos</th>
                     <th>Volumen General</th>
+                    <th>Acciones</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -522,6 +519,11 @@ function App() {
                         <td>{t.contracts_count}</td>
                         <td>{t.payments_count}</td>
                         <td className="font-bold">{totalRows} registros</td>
+                        <td>
+                          <div className="action-buttons">
+                            <button className="btn-icon" onClick={() => openEditTenantModal(t)} title="Editar"><Edit2 size={16} /></button>
+                          </div>
+                        </td>
                       </tr>
                     );
                   })}
@@ -539,7 +541,6 @@ function App() {
                 <tr>
                   <th>Tenant ID</th>
                   <th>Nombre Comercial</th>
-                  <th>Usuario Upya</th>
                   <th>Estado</th>
                   <th>Acciones</th>
                 </tr>
@@ -551,7 +552,6 @@ function App() {
                     <tr key={t.id}>
                       <td className="font-bold text-indigo">{t.tenant_id}</td>
                       <td>{t.company_name || '—'}</td>
-                      <td>{t.upya_user || '—'}</td>
                       <td>
                         <span className={`badge badge-${t.status === 'active' ? 'success' : 'danger'}`}>
                           {t.status === 'active' ? 'Activo' : 'Suspendido'}
@@ -656,22 +656,6 @@ function App() {
                 />
               </div>
               <div className="form-group">
-                <label>Usuario API Upya</label>
-                <input 
-                  type="text" 
-                  value={tenantForm.upya_user}
-                  onChange={e => setTenantForm({ ...tenantForm, upya_user: e.target.value })}
-                />
-              </div>
-              <div className="form-group">
-                <label>Contraseña API Upya</label>
-                <input 
-                  type="password" 
-                  value={tenantForm.upya_pass}
-                  onChange={e => setTenantForm({ ...tenantForm, upya_pass: e.target.value })}
-                />
-              </div>
-              <div className="form-group">
                 <label>Estado del Tenant</label>
                 <select 
                   value={tenantForm.status} 
@@ -681,9 +665,26 @@ function App() {
                   <option value="suspended">Suspendido / Deshabilitado</option>
                 </select>
               </div>
-              <div className="modal-footer">
-                <button type="button" className="btn btn-light" onClick={() => setShowTenantModal(false)}>Cancelar</button>
-                <button type="submit" disabled={loading} className="btn btn-primary">Guardar Cambios</button>
+              <div className="modal-footer" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div>
+                  {editingTenant && (
+                    <button 
+                      type="button" 
+                      className="btn btn-danger" 
+                      onClick={() => { 
+                        setShowTenantModal(false); 
+                        handleDeleteTenant(editingTenant.tenant_id); 
+                      }}
+                    >
+                      <Trash2 size={16} style={{ marginRight: '6px' }} />
+                      Eliminar Tenant
+                    </button>
+                  )}
+                </div>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <button type="button" className="btn btn-light" onClick={() => setShowTenantModal(false)}>Cancelar</button>
+                  <button type="submit" disabled={loading} className="btn btn-primary">Guardar Cambios</button>
+                </div>
               </div>
             </form>
           </div>
