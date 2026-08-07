@@ -11,6 +11,7 @@ export async function scrapeTrustonic(username, password, domain, deepAudit = fa
 
     try {
         await page.goto('https://portal.cloud.trustonic.com/login', { waitUntil: 'domcontentloaded' });
+        await page.waitForSelector('#login-form_username', { timeout: 15000 });
 
         // Login
         await page.type('#login-form_username', username);
