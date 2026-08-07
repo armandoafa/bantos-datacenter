@@ -521,7 +521,10 @@ function App() {
                         <td className="font-bold">{totalRows} registros</td>
                         <td>
                           <div className="action-buttons">
-                            <button className="btn-icon" onClick={() => openEditTenantModal(t)} title="Editar"><Edit2 size={16} /></button>
+                            <button className="btn-edit" onClick={() => openEditTenantModal(t)} title="Editar Tenant">
+                              <Edit2 size={14} />
+                              <span>Editar</span>
+                            </button>
                           </div>
                         </td>
                       </tr>
@@ -559,8 +562,14 @@ function App() {
                       </td>
                       <td>
                         <div className="action-buttons">
-                          <button className="btn-icon" onClick={() => openEditTenantModal(t)} title="Editar"><Edit2 size={16} /></button>
-                          <button className="btn-icon text-danger" onClick={() => handleDeleteTenant(t.tenant_id)} title="Eliminar"><Trash2 size={16} /></button>
+                          <button className="btn-edit" onClick={() => openEditTenantModal(t)} title="Editar Tenant">
+                            <Edit2 size={14} />
+                            <span>Editar</span>
+                          </button>
+                          <button className="btn-delete" onClick={() => handleDeleteTenant(t.tenant_id)} title="Eliminar Tenant">
+                            <Trash2 size={14} />
+                            <span>Eliminar</span>
+                          </button>
                         </div>
                       </td>
                     </tr>
@@ -608,15 +617,14 @@ function App() {
                       <td>{u.scope_role || '—'}</td>
                       <td>
                         <div className="action-buttons">
-                          <button 
-                            className="btn-icon" 
-                            title="Gestionar Alcance y Permisos"
-                            onClick={() => openEditUserModal(u)}
-                          >
-                            <ShieldCheck size={16} className="text-indigo" />
+                          <button className="btn-edit" onClick={() => openEditUserModal(u)} title="Editar Usuario">
+                            <Edit2 size={14} />
+                            <span>Editar</span>
                           </button>
-                          <button className="btn-icon" onClick={() => openEditUserModal(u)} title="Editar"><Edit2 size={16} /></button>
-                          <button className="btn-icon text-danger" onClick={() => handleDeleteUser(u.id)} title="Eliminar"><Trash2 size={16} /></button>
+                          <button className="btn-delete" onClick={() => handleDeleteUser(u.id)} title="Eliminar Usuario">
+                            <Trash2 size={14} />
+                            <span>Eliminar</span>
+                          </button>
                         </div>
                       </td>
                     </tr>
