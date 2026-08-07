@@ -2727,9 +2727,19 @@ const TrustonicDevicesView = ({ data, onSync, syncing, onEdit, onCreate }) => {
   // Conteos para tabs de navegación rápida
   const counts = {
     total: normalizedDevices.length,
-    prepago: normalizedDevices.filter(d => (d.service || '').toLowerCase().includes('prepago')).length,
-    pospago: normalizedDevices.filter(d => (d.service || '').toLowerCase().includes('pospago') || (d.service || '').toLowerCase().includes('postpago')).length,
-    inventario: normalizedDevices.filter(d => (d.service || '').toLowerCase().includes('inventario') || (d.status || '').toLowerCase().includes('inactivo')).length,
+    prepago: normalizedDevices.filter(d => {
+      const s = (d.service || '').toLowerCase();
+      return s.includes('prepago') || s.includes('prepaid');
+    }).length,
+    pospago: normalizedDevices.filter(d => {
+      const s = (d.service || '').toLowerCase();
+      return s.includes('pospago') || s.includes('postpago') || s.includes('postpaid');
+    }).length,
+    inventario: normalizedDevices.filter(d => {
+      const s = (d.service || '').toLowerCase();
+      const st = (d.status || '').toLowerCase();
+      return s.includes('inventario') || st.includes('inactivo') || st.includes('inactive');
+    }).length,
   };
 
   const formatDate = (dateStr) => {
@@ -2749,9 +2759,9 @@ const TrustonicDevicesView = ({ data, onSync, syncing, onEdit, onCreate }) => {
     const deviceImei1 = (d.imei1 || '').toLowerCase();
     const deviceImei2 = (d.imei2 || '').toLowerCase();
     
-    const isPostpagoMatch = searchService === 'pospago' && (deviceService.includes('pospago') || deviceService.includes('postpago'));
-    const isPrepagoMatch = searchService === 'prepago' && deviceService.includes('prepago');
-    const isInventarioMatch = searchService === 'inventario' && deviceService.includes('inventario');
+    const isPostpagoMatch = searchService === 'pospago' && (deviceService.includes('pospago') || deviceService.includes('postpago') || deviceService.includes('postpaid'));
+    const isPrepagoMatch = searchService === 'prepago' && (deviceService.includes('prepago') || deviceService.includes('prepaid'));
+    const isInventarioMatch = searchService === 'inventario' && (deviceService.includes('inventario') || (d.status || '').toLowerCase().includes('inactivo') || (d.status || '').toLowerCase().includes('inactive'));
     
     const serviceMatch = !filters.service || isPostpagoMatch || isPrepagoMatch || isInventarioMatch || deviceService.includes(searchService);
     const imeiMatch = !filters.imei || deviceImei1.includes(filters.imei.toLowerCase()) || deviceImei2.includes(filters.imei.toLowerCase());
