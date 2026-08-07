@@ -4292,14 +4292,13 @@ const App = () => {
   const handleSyncTrustonic = async () => {
     setSyncingTrustonic(true);
     try {
-      await axios.post(`${API}/sync/trustonic`, { 
-        username: 'itdevelopment', 
-        password: 'Alika2012.', 
-        domain: 'bantos-msp',
+      const res = await axios.post(`${API}/sync/trustonic`, { 
         tenantId: session.tenantId
       });
       await refreshData();
-      alert('✅ Sincronización de Trustonic completada');
+      const count = res.data.devicesCount || res.data.count || 0;
+      const src = res.data.source || 'API';
+      alert(`✅ Sincronización de Trustonic completada (${src})\n• Equipos procesados: ${count}`);
     } catch (e) { 
       alert('Error en sincronización Trustonic: ' + (e.response?.data?.error || e.message)); 
     } finally { setSyncingTrustonic(false); }

@@ -723,50 +723,19 @@ app.post('/api/sync/bootstrap', async (req, res) => {
   })();
 });
 
-// --- MOTOR DE SINCRONIZACIÓN TRUSTONIC ---
+// --- MOTOR DE SINCRONIZACIÓN TRUSTONIC (API DIRECTA EN MILISEGUNDOS) ---
 app.post('/api/sync/trustonic', async (req, res) => {
-  const { username, password, domain, tenantId } = req.body;
+  const { tenantId } = req.body;
   const targetTenant = tenantId || 'c-romel';
-  console.log(`>>> [SYNC TRUSTONIC] Iniciando captura para Tenant: ${targetTenant}...`);
+  console.log(`>>> [SYNC TRUSTONIC API] Iniciando sincronización ultra-rápida para Tenant: ${targetTenant}...`);
   
   try {
-    const devices = await scrapeTrustonic(username, password, domain);
-    
-    let count = 0;
-    for (const d of devices) {
-      const parseDate = (str) => {
-        if (!str || str === '—') return null;
-        try {
-          const months = {
-            'ene': 'jan', 'feb': 'feb', 'mar': 'mar', 'abr': 'apr', 'may': 'may', 'jun': 'jun',
-            'jul': 'jul', 'ago': 'aug', 'sep': 'sep', 'oct': 'oct', 'nov': 'nov', 'dic': 'dec'
-          };
-          let cleanStr = str.toLowerCase();
-          Object.keys(months).forEach(m => {
-            cleanStr = cleanStr.replace(m, months[m]);
-          });
-          const dt = new Date(cleanStr);
-          return isNaN(dt.getTime()) ? null : dt;
-        } catch { return null; }
-      };
-
-      await pool.query(
-        `INSERT INTO trustonic_devices (
-          imei1, imei2, tenant_id, service, status, brand, model, last_change, last_connection
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) 
-        ON DUPLICATE KEY UPDATE 
-          imei2=VALUES(imei2), service=VALUES(service), status=VALUES(status), 
-          brand=VALUES(brand), model=VALUES(model), last_change=VALUES(last_change), 
-          last_connection=VALUES(last_connection)`,
-        [
-          d.imei1, d.imei2 || null, targetTenant, d.service, d.status, d.brand, d.model, 
-          parseDate(d.last_change), parseDate(d.last_connection)
-        ]
-      );
-      count++;
+    const result = await trustonicApi.syncMovements(pool, targetTenant);
+    if (result.success) {
+      res.json({ success: true, devicesCount: result.count, source: result.source });
+    } else {
+      res.status(500).json({ error: result.message });
     }
-
-    res.json({ success: true, devicesCount: count });
   } catch (error) {
     console.error('>>> [SYNC TRUSTONIC ERROR]:', error.message);
     res.status(500).json({ error: error.message });
