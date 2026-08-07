@@ -1,7 +1,7 @@
 import puppeteer from 'puppeteer';
 
-export async function scrapeTrustonic(username, password, domain) {
-    console.log(`>>> [Trustonic] Iniciando scraping profundo para el dominio: ${domain}`);
+export async function scrapeTrustonic(username, password, domain, deepAudit = false) {
+    console.log(`>>> [Trustonic] Iniciando scraping (deepAudit=${deepAudit}) para el dominio: ${domain}`);
     const browser = await puppeteer.launch({
         headless: true,
         args: ['--no-sandbox', '--disable-setuid-sandbox']
@@ -10,18 +10,18 @@ export async function scrapeTrustonic(username, password, domain) {
     await page.setViewport({ width: 1280, height: 1024 });
 
     try {
-        await page.goto('https://portal.cloud.trustonic.com/login', { waitUntil: 'networkidle2' });
+        await page.goto('https://portal.cloud.trustonic.com/login', { waitUntil: 'domcontentloaded' });
 
         // Login
         await page.type('#login-form_username', username);
         await page.type('#login-form_password', password);
         await page.type('#login-form_domain', domain);
         await page.click('button[type="submit"]');
-        await page.waitForNavigation({ waitUntil: 'networkidle2' });
+        await page.waitForNavigation({ waitUntil: 'domcontentloaded' }).catch(() => {});
         
         // Navegar a la lista de smartphones
-        await page.goto('https://portal.cloud.trustonic.com/smartphones', { waitUntil: 'networkidle2' });
-        await new Promise(r => setTimeout(r, 10000));
+        await page.goto('https://portal.cloud.trustonic.com/smartphones', { waitUntil: 'domcontentloaded' });
+        await page.waitForSelector('.ant-table-row', { timeout: 8000 }).catch(() => {});
         
         // Obtener lista de IMEIs y sus selectores de icono de "Ojo"
         const devicesBasic = await page.evaluate(() => {
@@ -60,8 +60,13 @@ export async function scrapeTrustonic(username, password, domain) {
             }).filter(d => d.imei1 && /^\d+$/.test(d.imei1));
         });
 
-        console.log(`>>> [Trustonic] Procesando ${devicesBasic.length} dispositivos para detalle...`);
-        
+        console.log(`>>> [Trustonic] Se obtuvieron ${devicesBasic.length} dispositivos desde la tabla.`);
+
+        if (!deepAudit) {
+            await browser.close();
+            return devicesBasic;
+        }
+
         const finalDevices = [];
         for (const dev of devicesBasic) {
             try {

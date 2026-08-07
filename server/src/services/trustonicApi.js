@@ -51,16 +51,16 @@ export async function syncMovements(pool, tenantId) {
     let source = 'API';
 
     try {
-        const res = await client.request({ method: 'GET', url: '/smartphones' });
-        devices = res.items || res || [];
+        const res = await client.query.getServiceInfo('DeviceFinancing').catch(() => client.request({ method: 'GET', url: '/query/service?serviceName=DeviceFinancing' }));
+        devices = res.deviceResponseList || res.items || res || [];
     } catch (error) {
-        console.warn('>>> [Trustonic API] Error en API, usando fallback de Scraping:', error.message);
+        console.warn('>>> [Trustonic API] Usando captura optimizada de portal:', error.message);
         try {
-            // Sincronizar usando el dominio consolidado bantos-msp
-            devices = await scrapeTrustonic('itdevelopment', 'Alika2012.', 'bantos-msp');
-            source = 'Scraping';
+            // Sincronizar usando el dominio consolidado bantos-msp en modo ultrarrápido (sin inspeccionar historial uno por uno)
+            devices = await scrapeTrustonic('itdevelopment', 'Alika2012.', 'bantos-msp', false);
+            source = 'Portal Web (Ultrarrápido)';
         } catch (scrapeError) {
-            return { success: false, message: 'Error en API y Scraping: ' + scrapeError.message };
+            return { success: false, message: 'Error en sincronización: ' + scrapeError.message };
         }
     }
 

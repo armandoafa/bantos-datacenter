@@ -25,7 +25,9 @@ class BantosGatewayService {
             bodyStr = typeof body === 'object' ? JSON.stringify(body) : JSON.stringify(JSON.parse(body));
         }
 
-        const requestData = timestamp + method.toUpperCase() + path + query + bodyStr;
+        const urlObj = new URL(`${this.baseUrl}${path}`);
+        const fullPath = urlObj.pathname;
+        const requestData = timestamp + method.toUpperCase() + fullPath + query + bodyStr;
         
         const hmac = crypto.createHmac('sha256', secretKey);
         hmac.update(requestData);
@@ -65,28 +67,30 @@ class BantosGatewayService {
         const lastname = nameParts.slice(1).join(' ') || 'Bantos';
         
         const payload = {
-            client_type: "17",
             status: "Active",
+            client_type: "17",
             pii: {
                 firstname: firstname,
                 lastname: lastname,
                 name: clientData.name || `${firstname} ${lastname}`,
-                rfc: "XAXX010101000",
                 email: clientData.email || `bantos_test_${Date.now()}@example.com`,
-                phone: "+525500000000"
+                phone: clientData.phone || "+525500000000",
+                rfc: clientData.rfc || "XAXX010101000"
             }
         };
-        // Path corregido segun descubrimiento (marketplace/apps)
-        return this.request('POST', '/marketplace/apps/dynamicore/clients', payload);
+        // Cambiado a ruta directa segun Documentacion_Tecnica_Clientes_Wallet_CLABE.pdf
+        return this.request('POST', '/clients', payload);
     }
 
-    async createAccount(clientId, product = 'STP_WALLET') {
-        const payload = { product, client: clientId, currency: 'MXN', enabled: true };
-        return this.request('POST', '/marketplace/apps/dynamicore/accounts', payload);
+    async createAccount(clientId, product = 2352) {
+        const payload = { product, client: clientId, currency: '484', enabled: '1' };
+        // Cambiado a ruta directa segun Documentacion_Tecnica_Clientes_Wallet_CLABE.pdf
+        return this.request('POST', '/accounts', payload);
     }
 
     async getAccount(accountId) {
-        return this.request('GET', `/marketplace/apps/dynamicore/accounts/${accountId}`);
+        // Cambiado a ruta directa segun Documentacion_Tecnica_Clientes_Wallet_CLABE.pdf
+        return this.request('GET', `/accounts/${accountId}`);
     }
 
     // --- CONEKTA (Payments) ---
