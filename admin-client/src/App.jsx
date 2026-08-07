@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { 
-  Building2, Users, ShieldCheck, Plus, Search, LogOut, Check, X, Edit2, AlertCircle, RefreshCw, Trash2, ShieldAlert
+  Building2, Users, ShieldCheck, Plus, Search, LogOut, Check, X, Edit2, AlertCircle, RefreshCw, Trash2, ShieldAlert, Eye, EyeOff
 } from 'lucide-react';
 import './App.css';
 
@@ -15,6 +15,8 @@ function App() {
   });
 
   const [loginData, setLoginData] = useState({ username: '', password: '' });
+  const [showLoginPassword, setShowLoginPassword] = useState(false);
+  const [showUserPassword, setShowUserPassword] = useState(false);
   const [loginError, setLoginError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -194,6 +196,7 @@ function App() {
   // --- USER CRUD ---
   const openNewUserModal = () => {
     setEditingUser(null);
+    setShowUserPassword(false);
     setUserForm({
       username: '',
       email: '',
@@ -209,6 +212,7 @@ function App() {
 
   const openEditUserModal = (u) => {
     setEditingUser(u);
+    setShowUserPassword(false);
     setUserForm({
       username: u.username || '',
       email: u.email || '',
@@ -317,13 +321,24 @@ function App() {
             </div>
             <div className="form-group">
               <label>Contraseña</label>
-              <input 
-                type="password" 
-                placeholder="Ingresa tu contraseña"
-                value={loginData.password}
-                onChange={e => setLoginData({ ...loginData, password: e.target.value })}
-                required
-              />
+              <div className="password-input-wrapper">
+                <input 
+                  type={showLoginPassword ? "text" : "password"} 
+                  placeholder="Ingresa tu contraseña"
+                  value={loginData.password}
+                  onChange={e => setLoginData({ ...loginData, password: e.target.value })}
+                  required
+                />
+                <button 
+                  type="button" 
+                  className="password-toggle-btn"
+                  onClick={() => setShowLoginPassword(!showLoginPassword)}
+                  tabIndex="-1"
+                  title={showLoginPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
+                >
+                  {showLoginPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
             </div>
             {loginError && (
               <div className="login-error">
@@ -704,13 +719,24 @@ function App() {
               </div>
               <div className="form-group">
                 <label>Contraseña {editingUser && '(Dejar vacío para mantener actual)'}</label>
-                <input 
-                  type="password" 
-                  placeholder={editingUser ? 'Nueva contraseña (opcional)' : 'Ingresa contraseña'}
-                  value={userForm.password}
-                  onChange={e => setUserForm({ ...userForm, password: e.target.value })}
-                  required={!editingUser}
-                />
+                <div className="password-input-wrapper">
+                  <input 
+                    type={showUserPassword ? "text" : "password"} 
+                    placeholder={editingUser ? 'Nueva contraseña (opcional)' : 'Ingresa contraseña'}
+                    value={userForm.password}
+                    onChange={e => setUserForm({ ...userForm, password: e.target.value })}
+                    required={!editingUser}
+                  />
+                  <button 
+                    type="button" 
+                    className="password-toggle-btn"
+                    onClick={() => setShowUserPassword(!showUserPassword)}
+                    tabIndex="-1"
+                    title={showUserPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
+                  >
+                    {showUserPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                  </button>
+                </div>
               </div>
               <div className="form-group">
                 <label>Asignar Tenant</label>
@@ -746,15 +772,6 @@ function App() {
                   <option value="active">Activo</option>
                   <option value="inactive">Inactivo / Deshabilitado</option>
                 </select>
-              </div>
-              <div className="form-group">
-                <label>ID de la Organización (Org ID de Upya)</label>
-                <input 
-                  type="text" 
-                  placeholder="ej. org-sucursal-centro" 
-                  value={userForm.org_id}
-                  onChange={e => setUserForm({ ...userForm, org_id: e.target.value })}
-                />
               </div>
               <div className="form-group">
                 <label>Rol de Acceso en Sucursal</label>
