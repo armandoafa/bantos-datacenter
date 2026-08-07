@@ -1238,6 +1238,81 @@ app.put('/api/backoffice/trustonic-devices/:imei1', async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+app.post('/api/backoffice/trustonic-actions', async (req, res) => {
+  const { action, imei, tenantId, title, message, lockMessage, reason } = req.body;
+  if (!imei) return res.status(400).json({ error: 'IMEI requerido' });
+
+  try {
+    let apiResult = null;
+    let newStatus = null;
+    const act = (action || '').toLowerCase();
+
+    if (act === 'lock' || act === 'lock_message') {
+      try {
+        apiResult = await trustonicApi.lockDevice(imei, lockMessage || 'Dispositivo bloqueado por falta de pago');
+      } catch (err) {
+        apiResult = { message: err.message };
+      }
+      newStatus = 'Bloqueado';
+    } else if (act === 'unlock') {
+      try {
+        apiResult = await trustonicApi.unlockDevice(imei);
+      } catch (err) {
+        apiResult = { message: err.message };
+      }
+      newStatus = 'Activo';
+    } else if (act === 'inhabilitar') {
+      try {
+        apiResult = await trustonicApi.archiveDevice(imei);
+      } catch (err) {
+        apiResult = { message: err.message };
+      }
+      newStatus = 'Inactivo';
+    } else if (act === 'liberar') {
+      try {
+        apiResult = await trustonicApi.releaseDevice(imei, reason || 'Liberación por fin de contrato');
+      } catch (err) {
+        apiResult = { message: err.message };
+      }
+      newStatus = 'Liberado';
+    } else if (act === 'notificar') {
+      try {
+        apiResult = await trustonicApi.notifyDevice(imei, title || 'Aviso Bantos', message || 'Por favor revise su cuenta', 'HEADSUP');
+      } catch (err) {
+        apiResult = { message: err.message };
+      }
+    } else if (act === 'pin_unlock') {
+      try {
+        apiResult = await trustonicApi.pinUnlockDevice(imei);
+      } catch (err) {
+        apiResult = { message: err.message };
+      }
+    } else {
+      return res.status(400).json({ error: 'Acción de Trustonic no válida' });
+    }
+
+    // Actualizar estado local si aplica
+    if (newStatus) {
+      await pool.query(
+        'UPDATE trustonic_devices SET status = ?, last_change = NOW() WHERE imei1 = ? OR imei2 = ?',
+        [newStatus, imei, imei]
+      );
+    }
+
+    // Registrar en log de auditoría
+    await pool.query(
+      `INSERT INTO trustonic_logs (imei1, tenant_id, operation_date, operation_type, status, comment) 
+       VALUES (?, ?, NOW(), ?, ?, ?)`,
+      [imei, tenantId || 'c-romel', `Acción Ejecutada: ${action.toUpperCase()}`, newStatus || 'Completado', message || lockMessage || reason || 'Ejecutado']
+    );
+
+    res.json({ success: true, action, imei, status: newStatus, result: apiResult });
+  } catch (e) {
+    console.error('>>> [TRUSTONIC ACTION ERROR]:', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
 app.get('/api/backoffice/trustonic-logs', async (req, res) => {
   const { tenantId } = req.query;
   try {

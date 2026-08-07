@@ -103,3 +103,27 @@ export async function syncMovements(pool, tenantId) {
 
     return { success: true, count: syncedCount, source: source === 'API' ? 'API' : 'Portal' };
 }
+
+export async function lockDevice(imei, lockMessage = '') {
+    return await client.device.lock(imei, lockMessage);
+}
+
+export async function unlockDevice(imei) {
+    return await client.device.unlock(imei);
+}
+
+export async function archiveDevice(imei) {
+    return await client.device.archive(imei);
+}
+
+export async function releaseDevice(imei, reason = 'End of Tenure') {
+    return await client.device.release(imei, reason);
+}
+
+export async function notifyDevice(imei, title = '', message = '', type = 'HEADSUP') {
+    return await client.device.notify(imei, title, message, type);
+}
+
+export async function pinUnlockDevice(imei) {
+    return await client.device.pinUnlock(imei);
+}

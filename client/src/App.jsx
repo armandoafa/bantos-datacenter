@@ -7,7 +7,7 @@ import {
   ChevronDown, ChevronRight, Database, Building2, Globe, MapPin, Store, Edit, X, Trash2,
   BookOpen, Zap, CheckSquare, MessageSquare, ListTodo, ClipboardCheck,
   Upload, PenTool, Send, AlertCircle, Printer, Activity, Menu, Calendar,
-  FileSpreadsheet, Check, Eye, EyeOff
+  FileSpreadsheet, Check, Eye, EyeOff, MoreVertical, Lock, Unlock, Ban, CheckCircle2, Bell, KeyRound
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import axios from 'axios';
@@ -2696,10 +2696,67 @@ const TrustonicDeviceModal = ({ isOpen, onClose, device, onSave }) => {
   );
 };
 
-const TrustonicDevicesView = ({ data, onSync, syncing, onEdit, onCreate }) => {
+const TrustonicDevicesView = ({ data, onSync, syncing, onEdit, onCreate, session, onRefresh }) => {
   const { devices = [], summary = [] } = data;
   const [filters, setFilters] = useState({ imei: '', service: '', status: '', brand: '', model: '' });
   const [selectedDevice, setSelectedDevice] = useState(null);
+  const [openMenuImei, setOpenMenuImei] = useState(null);
+  const [executingAction, setExecutingAction] = useState(false);
+
+  // Cerrar menú emergente al hacer clic fuera
+  useEffect(() => {
+    const handleClickOutside = () => setOpenMenuImei(null);
+    window.addEventListener('click', handleClickOutside);
+    return () => window.removeEventListener('click', handleClickOutside);
+  }, []);
+
+  const handleExecuteAction = async (actionType, device) => {
+    setOpenMenuImei(null);
+    const imei = device.imei1;
+    let payload = { action: actionType, imei, tenantId: session?.tenantId };
+
+    if (actionType === 'lock') {
+      const lockMsg = window.prompt(`🔒 Bloquear dispositivo (${imei})\nIngrese el mensaje que aparecerá en pantalla:`, "Dispositivo bloqueado por falta de pago");
+      if (lockMsg === null) return;
+      payload.lockMessage = lockMsg;
+    } else if (actionType === 'unlock') {
+      if (!window.confirm(`🔓 ¿Está seguro de enviar la orden de DESBLOQUEO a Trustonic para el IMEI ${imei}?`)) return;
+    } else if (actionType === 'inhabilitar') {
+      if (!window.confirm(`🚫 ¿Está seguro de INHABILITAR / ARCHIVAR el dispositivo IMEI ${imei}?`)) return;
+    } else if (actionType === 'liberar') {
+      const reason = window.prompt(`✅ Liberar dispositivo (${imei}) definitivamente.\nIngrese motivo de liberación:`, "End of Tenure");
+      if (reason === null) return;
+      payload.reason = reason;
+    } else if (actionType === 'notificar') {
+      const title = window.prompt(`🔔 Notificación al dispositivo (${imei})\nTítulo de la notificación:`, "Aviso Bantos");
+      if (title === null) return;
+      const message = window.prompt(`Mensaje de notificación:`, "Estimado cliente, recuerde realizar su pago a tiempo.");
+      if (message === null) return;
+      payload.title = title;
+      payload.message = message;
+    } else if (actionType === 'pin_unlock') {
+      if (!window.confirm(`🔑 ¿Solicitar PIN de desbloqueo offline para el IMEI ${imei}?`)) return;
+    } else if (actionType === 'lock_message') {
+      const lockMsg = window.prompt(`💬 Actualizar mensaje de bloqueo para IMEI ${imei}:`, "Favor de comunicarse para regularizar su cuenta.");
+      if (lockMsg === null) return;
+      payload.lockMessage = lockMsg;
+    }
+
+    setExecutingAction(true);
+    try {
+      const res = await axios.post(`${API}/backoffice/trustonic-actions`, payload);
+      if (res.data.success) {
+        alert(`✅ Acción "${actionType.toUpperCase()}" enviada a Trustonic para IMEI ${imei}`);
+        if (onRefresh) await onRefresh();
+      } else {
+        alert(`⚠️ Ocurrió un inconveniente: ${res.data.error || 'No se pudo completar'}`);
+      }
+    } catch (err) {
+      alert(`Error al ejecutar acción Trustonic: ` + (err.response?.data?.error || err.message));
+    } finally {
+      setExecutingAction(false);
+    }
+  };
 
   // Normalizar y filtrar filas de Total o datos inválidos capturados por el scraper
   const normalizedDevices = devices
@@ -2787,11 +2844,11 @@ const TrustonicDevicesView = ({ data, onSync, syncing, onEdit, onCreate }) => {
             </button>
             <button 
               onClick={onSync} 
-              disabled={syncing} 
+              disabled={syncing || executingAction} 
               className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl shadow-blue-600/20 transition-all active:scale-95 disabled:opacity-50"
             >
-              <RefreshCw size={16} className={syncing ? 'animate-spin' : ''} /> 
-              {syncing ? 'Sincronizando...' : 'Sincronizar Trustonic'}
+              <RefreshCw size={16} className={syncing || executingAction ? 'animate-spin' : ''} /> 
+              {syncing ? 'Sincronizando...' : executingAction ? 'Procesando...' : 'Sincronizar Trustonic'}
             </button>
           </div>
         } 
@@ -2958,6 +3015,77 @@ const TrustonicDevicesView = ({ data, onSync, syncing, onEdit, onCreate }) => {
                 >
                   <Edit size={16} />
                 </button>
+
+                {/* Menú Tres Puntos (...) Acciones API Trustonic */}
+                <div className="relative inline-block text-left">
+                  <button 
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setOpenMenuImei(openMenuImei === d.imei1 ? null : d.imei1);
+                    }} 
+                    className={`p-2 rounded-xl transition-all border ${
+                      openMenuImei === d.imei1 ? 'bg-blue-600 text-white border-blue-600 shadow-md' : 'bg-slate-50 hover:bg-blue-50 text-slate-600 hover:text-blue-600 border-slate-100'
+                    }`}
+                    title="Opciones Trustonic"
+                  >
+                    <MoreVertical size={16} />
+                  </button>
+
+                  {openMenuImei === d.imei1 && (
+                    <div 
+                      className="absolute right-0 mt-2 w-52 bg-white rounded-2xl shadow-2xl border border-slate-100 z-50 py-2 divide-y divide-slate-100 text-left font-bold text-xs"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <div className="px-3 py-1.5 text-[9px] font-black uppercase text-slate-400 tracking-wider">Acciones Trustonic</div>
+                      <div className="py-1">
+                        <button 
+                          onClick={() => handleExecuteAction('lock', d)} 
+                          className="w-full px-3.5 py-2 flex items-center gap-2.5 hover:bg-rose-50 text-slate-700 hover:text-rose-600 transition-colors"
+                        >
+                          <Lock size={14} className="text-rose-500" /> Lock (Bloquear)
+                        </button>
+                        <button 
+                          onClick={() => handleExecuteAction('unlock', d)} 
+                          className="w-full px-3.5 py-2 flex items-center gap-2.5 hover:bg-emerald-50 text-slate-700 hover:text-emerald-600 transition-colors"
+                        >
+                          <Unlock size={14} className="text-emerald-500" /> UnLock (Desbloquear)
+                        </button>
+                        <button 
+                          onClick={() => handleExecuteAction('inhabilitar', d)} 
+                          className="w-full px-3.5 py-2 flex items-center gap-2.5 hover:bg-amber-50 text-slate-700 hover:text-amber-600 transition-colors"
+                        >
+                          <Ban size={14} className="text-amber-500" /> Inhabilitar
+                        </button>
+                        <button 
+                          onClick={() => handleExecuteAction('liberar', d)} 
+                          className="w-full px-3.5 py-2 flex items-center gap-2.5 hover:bg-indigo-50 text-slate-700 hover:text-indigo-600 transition-colors"
+                        >
+                          <CheckCircle2 size={14} className="text-indigo-500" /> Liberar
+                        </button>
+                      </div>
+                      <div className="py-1">
+                        <button 
+                          onClick={() => handleExecuteAction('notificar', d)} 
+                          className="w-full px-3.5 py-2 flex items-center gap-2.5 hover:bg-blue-50 text-slate-700 hover:text-blue-600 transition-colors"
+                        >
+                          <Bell size={14} className="text-blue-500" /> Notificar
+                        </button>
+                        <button 
+                          onClick={() => handleExecuteAction('pin_unlock', d)} 
+                          className="w-full px-3.5 py-2 flex items-center gap-2.5 hover:bg-cyan-50 text-slate-700 hover:text-cyan-600 transition-colors"
+                        >
+                          <KeyRound size={14} className="text-cyan-500" /> PIN Unlock
+                        </button>
+                        <button 
+                          onClick={() => handleExecuteAction('lock_message', d)} 
+                          className="w-full px-3.5 py-2 flex items-center gap-2.5 hover:bg-purple-50 text-slate-700 hover:text-purple-600 transition-colors"
+                        >
+                          <MessageSquare size={14} className="text-purple-500" /> Lock Message
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
             </td>
           </>
@@ -4840,6 +4968,8 @@ const App = () => {
                 syncing={syncingTrustonic} 
                 onEdit={(d) => setModalState({ type: 'trustonic-device', open: true, item: d })}
                 onCreate={() => setModalState({ type: 'trustonic-device', open: true, item: null })}
+                session={session}
+                onRefresh={refreshData}
               />
             )}
             {view === 'manage-trustonic-logs' && (
