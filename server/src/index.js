@@ -1239,7 +1239,7 @@ app.put('/api/backoffice/trustonic-devices/:imei1', async (req, res) => {
 });
 
 app.post('/api/backoffice/trustonic-actions', async (req, res) => {
-  const { action, imei, tenantId, title, message, lockMessage, reason } = req.body;
+  const { action, imei, tenantId, title, message, lockMessage, reason, comment } = req.body;
   if (!imei) return res.status(400).json({ error: 'IMEI requerido' });
 
   try {
@@ -1300,10 +1300,11 @@ app.post('/api/backoffice/trustonic-actions', async (req, res) => {
     }
 
     // Registrar en log de auditoría
+    const logComment = comment || message || lockMessage || reason || 'Sin comentario';
     await pool.query(
       `INSERT INTO trustonic_logs (imei1, tenant_id, operation_date, operation_type, status, comment) 
        VALUES (?, ?, NOW(), ?, ?, ?)`,
-      [imei, tenantId || 'c-romel', `Acción Ejecutada: ${action.toUpperCase()}`, newStatus || 'Completado', message || lockMessage || reason || 'Ejecutado']
+      [imei, tenantId || 'c-romel', `Acción Ejecutada: ${action.toUpperCase()}`, newStatus || 'Completado', logComment]
     );
 
     res.json({ success: true, action, imei, status: newStatus, result: apiResult });

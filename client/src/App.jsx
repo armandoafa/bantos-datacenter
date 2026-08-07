@@ -2696,11 +2696,168 @@ const TrustonicDeviceModal = ({ isOpen, onClose, device, onSave }) => {
   );
 };
 
+const TrustonicActionModal = ({ isOpen, onClose, device, actionType, onConfirm, loading }) => {
+  const [comment, setComment] = useState('');
+  const [lockMessage, setLockMessage] = useState('Dispositivo bloqueado por falta de pago');
+  const [title, setTitle] = useState('Aviso Bantos');
+  const [message, setMessage] = useState('Estimado cliente, por favor póngase al día con su cuota.');
+  const [reason, setReason] = useState('End of Tenure');
+
+  useEffect(() => {
+    if (isOpen) {
+      setComment('');
+      if (actionType === 'lock') setLockMessage('Dispositivo bloqueado por falta de pago');
+      if (actionType === 'lock_message') setLockMessage('Favor de comunicarse para regularizar su cuenta.');
+      if (actionType === 'notificar') {
+        setTitle('Aviso Bantos');
+        setMessage('Estimado cliente, recuerde realizar su pago a tiempo.');
+      }
+      if (actionType === 'liberar') setReason('End of Tenure');
+    }
+  }, [isOpen, actionType]);
+
+  if (!isOpen || !device) return null;
+
+  const getActionMeta = () => {
+    switch (actionType) {
+      case 'lock': return { name: 'Lock (Bloquear)', icon: Lock, color: 'text-rose-600', bg: 'bg-rose-50' };
+      case 'unlock': return { name: 'UnLock (Desbloquear)', icon: Unlock, color: 'text-emerald-600', bg: 'bg-emerald-50' };
+      case 'inhabilitar': return { name: 'Inhabilitar Dispositivo', icon: Ban, color: 'text-amber-600', bg: 'bg-amber-50' };
+      case 'liberar': return { name: 'Liberar Dispositivo', icon: CheckCircle2, color: 'text-indigo-600', bg: 'bg-indigo-50' };
+      case 'notificar': return { name: 'Enviar Notificación', icon: Bell, color: 'text-blue-600', bg: 'bg-blue-50' };
+      case 'pin_unlock': return { name: 'PIN Unlock', icon: KeyRound, color: 'text-cyan-600', bg: 'bg-cyan-50' };
+      case 'lock_message': return { name: 'Mensaje de Bloqueo', icon: MessageSquare, color: 'text-purple-600', bg: 'bg-purple-50' };
+      default: return { name: 'Ejecutar Acción', icon: ShieldCheck, color: 'text-blue-600', bg: 'bg-blue-50' };
+    }
+  };
+
+  const meta = getActionMeta();
+  const IconComponent = meta.icon;
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    onConfirm({
+      action: actionType,
+      imei: device.imei1,
+      comment,
+      lockMessage,
+      title,
+      message,
+      reason
+    });
+  };
+
+  return (
+    <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+      <div className="bg-white rounded-[32px] w-full max-w-md shadow-2xl p-8 space-y-6 animate-in fade-in zoom-in-95 duration-200">
+        <div className="flex justify-between items-center border-b border-slate-100 pb-4">
+          <div className="flex items-center gap-3">
+            <div className={`w-10 h-10 rounded-2xl ${meta.bg} flex items-center justify-center ${meta.color}`}>
+              <IconComponent size={20} />
+            </div>
+            <div>
+              <h3 className="text-lg font-black text-slate-900">{meta.name}</h3>
+              <p className="text-xs font-mono font-bold text-slate-400">IMEI: {device.imei1}</p>
+            </div>
+          </div>
+          <button onClick={onClose} className="p-2 text-slate-400 hover:text-slate-700 rounded-xl bg-slate-50"><X size={18} /></button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          {(actionType === 'lock' || actionType === 'lock_message') && (
+            <div>
+              <label className="block text-[10px] font-black uppercase text-slate-400 tracking-widest mb-1.5 ml-1">Mensaje en Pantalla del Teléfono</label>
+              <input 
+                type="text" 
+                required
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs font-bold outline-none focus:border-blue-600 focus:bg-white transition-all"
+                value={lockMessage}
+                onChange={e => setLockMessage(e.target.value)}
+              />
+            </div>
+          )}
+
+          {actionType === 'notificar' && (
+            <>
+              <div>
+                <label className="block text-[10px] font-black uppercase text-slate-400 tracking-widest mb-1.5 ml-1">Título Notificación</label>
+                <input 
+                  type="text" 
+                  required
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs font-bold outline-none focus:border-blue-600 focus:bg-white transition-all"
+                  value={title}
+                  onChange={e => setTitle(e.target.value)}
+                />
+              </div>
+              <div>
+                <label className="block text-[10px] font-black uppercase text-slate-400 tracking-widest mb-1.5 ml-1">Mensaje Notificación</label>
+                <textarea 
+                  required
+                  rows={2}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs font-bold outline-none focus:border-blue-600 focus:bg-white transition-all"
+                  value={message}
+                  onChange={e => setMessage(e.target.value)}
+                />
+              </div>
+            </>
+          )}
+
+          {actionType === 'liberar' && (
+            <div>
+              <label className="block text-[10px] font-black uppercase text-slate-400 tracking-widest mb-1.5 ml-1">Motivo de Liberación</label>
+              <input 
+                type="text" 
+                required
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs font-bold outline-none focus:border-blue-600 focus:bg-white transition-all"
+                value={reason}
+                onChange={e => setReason(e.target.value)}
+              />
+            </div>
+          )}
+
+          {/* CAMPO DE COMENTARIO OBLIGATORIO PARA TODAS LAS ACCIONES */}
+          <div>
+            <label className="block text-[10px] font-black uppercase text-slate-400 tracking-widest mb-1.5 ml-1">
+              Comentario / Justificación de la Acción <span className="text-red-500">*</span>
+            </label>
+            <textarea 
+              required
+              rows={3}
+              placeholder="Escriba un comentario u observación sobre esta operación..."
+              className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs font-bold outline-none focus:border-blue-600 focus:bg-white transition-all"
+              value={comment}
+              onChange={e => setComment(e.target.value)}
+            />
+          </div>
+
+          <div className="flex justify-end gap-3 pt-4 border-t border-slate-100">
+            <button 
+              type="button" 
+              onClick={onClose} 
+              className="px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest text-slate-500 hover:bg-slate-100 transition-all"
+            >
+              Cancelar
+            </button>
+            <button 
+              type="submit" 
+              disabled={loading}
+              className="px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest bg-blue-600 text-white shadow-lg shadow-blue-600/20 hover:bg-blue-700 transition-all active:scale-95 disabled:opacity-50"
+            >
+              {loading ? 'Ejecutando...' : 'Confirmar y Ejecutar'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+};
+
 const TrustonicDevicesView = ({ data, onSync, syncing, onEdit, onCreate, session, onRefresh }) => {
   const { devices = [], summary = [] } = data;
   const [filters, setFilters] = useState({ imei: '', service: '', status: '', brand: '', model: '' });
   const [selectedDevice, setSelectedDevice] = useState(null);
   const [openMenuImei, setOpenMenuImei] = useState(null);
+  const [actionModalState, setActionModalState] = useState({ open: false, device: null, actionType: null });
   const [executingAction, setExecutingAction] = useState(false);
 
   // Cerrar menú emergente al hacer clic fuera
@@ -2710,43 +2867,19 @@ const TrustonicDevicesView = ({ data, onSync, syncing, onEdit, onCreate, session
     return () => window.removeEventListener('click', handleClickOutside);
   }, []);
 
-  const handleExecuteAction = async (actionType, device) => {
+  const handleOpenActionModal = (actionType, device) => {
     setOpenMenuImei(null);
-    const imei = device.imei1;
-    let payload = { action: actionType, imei, tenantId: session?.tenantId };
+    setActionModalState({ open: true, device, actionType });
+  };
 
-    if (actionType === 'lock') {
-      const lockMsg = window.prompt(`🔒 Bloquear dispositivo (${imei})\nIngrese el mensaje que aparecerá en pantalla:`, "Dispositivo bloqueado por falta de pago");
-      if (lockMsg === null) return;
-      payload.lockMessage = lockMsg;
-    } else if (actionType === 'unlock') {
-      if (!window.confirm(`🔓 ¿Está seguro de enviar la orden de DESBLOQUEO a Trustonic para el IMEI ${imei}?`)) return;
-    } else if (actionType === 'inhabilitar') {
-      if (!window.confirm(`🚫 ¿Está seguro de INHABILITAR / ARCHIVAR el dispositivo IMEI ${imei}?`)) return;
-    } else if (actionType === 'liberar') {
-      const reason = window.prompt(`✅ Liberar dispositivo (${imei}) definitivamente.\nIngrese motivo de liberación:`, "End of Tenure");
-      if (reason === null) return;
-      payload.reason = reason;
-    } else if (actionType === 'notificar') {
-      const title = window.prompt(`🔔 Notificación al dispositivo (${imei})\nTítulo de la notificación:`, "Aviso Bantos");
-      if (title === null) return;
-      const message = window.prompt(`Mensaje de notificación:`, "Estimado cliente, recuerde realizar su pago a tiempo.");
-      if (message === null) return;
-      payload.title = title;
-      payload.message = message;
-    } else if (actionType === 'pin_unlock') {
-      if (!window.confirm(`🔑 ¿Solicitar PIN de desbloqueo offline para el IMEI ${imei}?`)) return;
-    } else if (actionType === 'lock_message') {
-      const lockMsg = window.prompt(`💬 Actualizar mensaje de bloqueo para IMEI ${imei}:`, "Favor de comunicarse para regularizar su cuenta.");
-      if (lockMsg === null) return;
-      payload.lockMessage = lockMsg;
-    }
-
+  const handleConfirmActionModal = async (actionData) => {
     setExecutingAction(true);
     try {
+      const payload = { ...actionData, tenantId: session?.tenantId };
       const res = await axios.post(`${API}/backoffice/trustonic-actions`, payload);
       if (res.data.success) {
-        alert(`✅ Acción "${actionType.toUpperCase()}" enviada a Trustonic para IMEI ${imei}`);
+        alert(`✅ Acción "${actionData.action.toUpperCase()}" ejecutada exitosamente para IMEI ${actionData.imei}`);
+        setActionModalState({ open: false, device: null, actionType: null });
         if (onRefresh) await onRefresh();
       } else {
         alert(`⚠️ Ocurrió un inconveniente: ${res.data.error || 'No se pudo completar'}`);
@@ -3039,25 +3172,25 @@ const TrustonicDevicesView = ({ data, onSync, syncing, onEdit, onCreate, session
                       <div className="px-3 py-1.5 text-[9px] font-black uppercase text-slate-400 tracking-wider">Acciones Trustonic</div>
                       <div className="py-1">
                         <button 
-                          onClick={() => handleExecuteAction('lock', d)} 
+                          onClick={() => handleOpenActionModal('lock', d)} 
                           className="w-full px-3.5 py-2 flex items-center gap-2.5 hover:bg-rose-50 text-slate-700 hover:text-rose-600 transition-colors"
                         >
                           <Lock size={14} className="text-rose-500" /> Lock (Bloquear)
                         </button>
                         <button 
-                          onClick={() => handleExecuteAction('unlock', d)} 
+                          onClick={() => handleOpenActionModal('unlock', d)} 
                           className="w-full px-3.5 py-2 flex items-center gap-2.5 hover:bg-emerald-50 text-slate-700 hover:text-emerald-600 transition-colors"
                         >
                           <Unlock size={14} className="text-emerald-500" /> UnLock (Desbloquear)
                         </button>
                         <button 
-                          onClick={() => handleExecuteAction('inhabilitar', d)} 
+                          onClick={() => handleOpenActionModal('inhabilitar', d)} 
                           className="w-full px-3.5 py-2 flex items-center gap-2.5 hover:bg-amber-50 text-slate-700 hover:text-amber-600 transition-colors"
                         >
                           <Ban size={14} className="text-amber-500" /> Inhabilitar
                         </button>
                         <button 
-                          onClick={() => handleExecuteAction('liberar', d)} 
+                          onClick={() => handleOpenActionModal('liberar', d)} 
                           className="w-full px-3.5 py-2 flex items-center gap-2.5 hover:bg-indigo-50 text-slate-700 hover:text-indigo-600 transition-colors"
                         >
                           <CheckCircle2 size={14} className="text-indigo-500" /> Liberar
@@ -3065,19 +3198,19 @@ const TrustonicDevicesView = ({ data, onSync, syncing, onEdit, onCreate, session
                       </div>
                       <div className="py-1">
                         <button 
-                          onClick={() => handleExecuteAction('notificar', d)} 
+                          onClick={() => handleOpenActionModal('notificar', d)} 
                           className="w-full px-3.5 py-2 flex items-center gap-2.5 hover:bg-blue-50 text-slate-700 hover:text-blue-600 transition-colors"
                         >
                           <Bell size={14} className="text-blue-500" /> Notificar
                         </button>
                         <button 
-                          onClick={() => handleExecuteAction('pin_unlock', d)} 
+                          onClick={() => handleOpenActionModal('pin_unlock', d)} 
                           className="w-full px-3.5 py-2 flex items-center gap-2.5 hover:bg-cyan-50 text-slate-700 hover:text-cyan-600 transition-colors"
                         >
                           <KeyRound size={14} className="text-cyan-500" /> PIN Unlock
                         </button>
                         <button 
-                          onClick={() => handleExecuteAction('lock_message', d)} 
+                          onClick={() => handleOpenActionModal('lock_message', d)} 
                           className="w-full px-3.5 py-2 flex items-center gap-2.5 hover:bg-purple-50 text-slate-700 hover:text-purple-600 transition-colors"
                         >
                           <MessageSquare size={14} className="text-purple-500" /> Lock Message
@@ -3090,6 +3223,16 @@ const TrustonicDevicesView = ({ data, onSync, syncing, onEdit, onCreate, session
             </td>
           </>
         )} 
+      />
+
+      {/* Modal de Confirmación y Comentarios para Acciones API Trustonic */}
+      <TrustonicActionModal 
+        isOpen={actionModalState.open}
+        onClose={() => setActionModalState({ open: false, device: null, actionType: null })}
+        device={actionModalState.device}
+        actionType={actionModalState.actionType}
+        onConfirm={handleConfirmActionModal}
+        loading={executingAction}
       />
 
       {/* Modal Detalle de Dispositivo */}
