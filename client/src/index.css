@@ -12,7 +12,11 @@
 
 @layer base {
   body {
-    @apply bg-bantos-bg text-bantos-text-main font-sans antialiased min-h-screen m-0 p-0;
+    @apply bg-bantos-bg text-bantos-text-main font-sans antialiased min-h-dvh m-0 p-0;
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
   }
 }
 

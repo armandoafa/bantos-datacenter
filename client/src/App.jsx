@@ -2698,13 +2698,13 @@ const TrustonicDeviceModal = ({ isOpen, onClose, device, onSave }) => {
 
 const TrustonicDevicesView = ({ data, onSync, syncing, onEdit, onCreate }) => {
   const { devices = [], summary = [] } = data;
-  const [filters, setFilters] = useState({ imei: '', service: '', brand: '', model: '' });
+  const [filters, setFilters] = useState({ imei: '', service: '', status: '', brand: '', model: '' });
+  const [selectedDevice, setSelectedDevice] = useState(null);
 
   // Normalizar y filtrar filas de Total o datos inválidos capturados por el scraper
   const normalizedDevices = devices
     .map(d => {
       const serviceKeywords = ['prepago', 'pospago', 'postpago'];
-      // Si el IMEI1 es en realidad un servicio, intentamos mover los datos
       if (d.imei1 && serviceKeywords.some(k => d.imei1.toLowerCase().includes(k))) {
         return {
           ...d,
@@ -2716,97 +2716,297 @@ const TrustonicDevicesView = ({ data, onSync, syncing, onEdit, onCreate }) => {
       return d;
     })
     .filter(d => {
-      // Solo nos quedamos con los que tienen un IMEI válido (numérico o no vacío)
-      // y que sean de Prepago o Pospago únicamente
       const hasImei = d.imei1 && d.imei1 !== '—' && d.imei1.length > 5;
       const isNotTotal = !d.imei1?.toLowerCase().includes('total');
-      const s = (d.service || '').toLowerCase();
-      const isCorrectService = s.includes('prepago') || s.includes('pospago') || s.includes('postpago');
-      return hasImei && isNotTotal && isCorrectService;
+      return hasImei && isNotTotal;
     });
 
-  // Filtrar el resumen para que solo muestre Prepago y Pospago
-  const filteredSummary = summary.filter(s => {
-    const name = (s.service || '').toLowerCase();
-    return name.includes('prepago') || name.includes('pospago') || name.includes('postpago');
-  });
+  // Marcas únicas disponibles
+  const availableBrands = Array.from(new Set(normalizedDevices.map(d => d.brand?.toUpperCase()).filter(Boolean))).sort();
 
-  const totals = filteredSummary.reduce((acc, curr) => ({
-    inactivo: acc.inactivo + (curr.inactivo || 0),
-    listo: acc.listo + (curr.listo || 0),
-    activo: acc.activo + (curr.activo || 0),
-    bloqueado: acc.bloqueado + (curr.bloqueado || 0),
-    liberado: acc.liberado + (curr.liberado || 0),
-    total: acc.total + (curr.total || 0),
-  }), { inactivo: 0, listo: 0, activo: 0, bloqueado: 0, liberado: 0, total: 0 });
+  // Conteos para tabs de navegación rápida
+  const counts = {
+    total: normalizedDevices.length,
+    prepago: normalizedDevices.filter(d => (d.service || '').toLowerCase().includes('prepago')).length,
+    pospago: normalizedDevices.filter(d => (d.service || '').toLowerCase().includes('pospago') || (d.service || '').toLowerCase().includes('postpago')).length,
+    inventario: normalizedDevices.filter(d => (d.service || '').toLowerCase().includes('inventario') || (d.status || '').toLowerCase().includes('inactivo')).length,
+  };
+
+  const formatDate = (dateStr) => {
+    if (!dateStr || dateStr === '—') return '—';
+    try {
+      const d = new Date(dateStr);
+      if (isNaN(d.getTime())) return dateStr;
+      return d.toLocaleDateString('es-MX', { month: 'short', day: '2-digit', year: 'numeric' }) + ' ' + d.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' });
+    } catch {
+      return dateStr;
+    }
+  };
 
   const filteredDevices = normalizedDevices.filter(d => {
     const searchService = filters.service.toLowerCase();
     const deviceService = (d.service || '').toLowerCase();
-    const deviceImei = (d.imei1 || '').toLowerCase();
+    const deviceImei1 = (d.imei1 || '').toLowerCase();
+    const deviceImei2 = (d.imei2 || '').toLowerCase();
     
-    // Si buscamos Pospago, aceptamos variaciones comunes
-    const isPostpagoMatch = searchService === 'pospago' && (deviceService.includes('pospago') || deviceService.includes('postpago') || deviceImei.includes('pospago') || deviceImei.includes('postpago'));
-    const isPrepagoMatch = searchService === 'prepago' && (deviceService.includes('prepago') || deviceImei.includes('prepago'));
+    const isPostpagoMatch = searchService === 'pospago' && (deviceService.includes('pospago') || deviceService.includes('postpago'));
+    const isPrepagoMatch = searchService === 'prepago' && deviceService.includes('prepago');
+    const isInventarioMatch = searchService === 'inventario' && deviceService.includes('inventario');
     
-    const serviceMatch = !filters.service || isPostpagoMatch || isPrepagoMatch || deviceService.includes(searchService);
+    const serviceMatch = !filters.service || isPostpagoMatch || isPrepagoMatch || isInventarioMatch || deviceService.includes(searchService);
+    const imeiMatch = !filters.imei || deviceImei1.includes(filters.imei.toLowerCase()) || deviceImei2.includes(filters.imei.toLowerCase());
+    const statusMatch = !filters.status || (d.status || '').toLowerCase() === filters.status.toLowerCase();
+    const brandMatch = !filters.brand || (d.brand || '').toLowerCase().includes(filters.brand.toLowerCase());
+    const modelMatch = !filters.model || (d.model || '').toLowerCase().includes(filters.model.toLowerCase());
 
-    return (
-      (d.imei1 || '').toLowerCase().includes(filters.imei.toLowerCase()) &&
-      serviceMatch &&
-      (d.brand || '').toLowerCase().includes(filters.brand.toLowerCase()) &&
-      (d.model || '').toLowerCase().includes(filters.model.toLowerCase())
-    );
+    return serviceMatch && imeiMatch && statusMatch && brandMatch && modelMatch;
   });
 
   return (
-    <div className="space-y-10">
-      <PageHeader title="Dispositivos" subtitle="Seguridad Trustonic en tiempo real" action={<div className="flex gap-4"><button onClick={onCreate} className="flex items-center gap-3 bg-white border-2 border-slate-100 hover:border-blue-600 text-slate-900 px-8 py-4 rounded-[20px] font-black text-sm uppercase tracking-widest transition-all active:scale-95 shadow-sm"><Plus size={18} className="text-blue-600" /> Nuevo Dispositivo</button><button onClick={onSync} disabled={syncing} className="flex items-center gap-3 bg-blue-600 hover:bg-blue-700 text-white px-8 py-4 rounded-[20px] font-black text-sm uppercase tracking-widest shadow-xl shadow-blue-600/20 transition-all active:scale-95 disabled:opacity-50"><RefreshCw size={18} className={syncing ? 'animate-spin' : ''} /> {syncing ? 'Sincronizando...' : 'Sincronizar Trustonic'}</button></div>} />
-      <div className="bg-white rounded-[32px] overflow-hidden border border-slate-100 shadow-sm">
-        <table className="w-full text-left text-[15px] font-bold text-slate-800">
-          <thead className="bg-slate-50 border-b border-slate-100 text-[12px] font-black uppercase tracking-widest text-slate-400">
-            <tr><th className="px-8 py-6">Servicio</th><th className="px-8 py-6">Inactivos</th><th className="px-8 py-6">Listo para su uso</th><th className="px-8 py-6">Activos</th><th className="px-8 py-6">Bloqueados</th><th className="px-8 py-6">Liberados</th><th className="px-8 py-6">Total</th></tr>
-          </thead>
-          <tbody>
-            {filteredSummary.map((s, i) => (<tr key={i} className="border-b border-slate-50"><td className="px-8 py-5 text-blue-600 font-black">{s.service || 'Desconocido'}</td><td className="px-8 py-5 text-slate-400">{s.inactivo || 0}</td><td className="px-8 py-5 text-slate-600">{s.listo || 0}</td><td className="px-8 py-5 text-emerald-600">{s.activo || 0}</td><td className="px-8 py-5 text-red-600">{s.bloqueado || 0}</td><td className="px-8 py-5 text-slate-400">{s.liberado || 0}</td><td className="px-8 py-5 font-black">{s.total || 0}</td></tr>))}
-          </tbody>
-          <tfoot className="bg-slate-50/50 font-black text-base border-t border-slate-100">
-            <tr><td className="px-8 py-6 uppercase tracking-widest text-[12px]">Total Acumulado</td><td className="px-8 py-6">{totals.inactivo}</td><td className="px-8 py-6">{totals.listo}</td><td className="px-8 py-6 text-emerald-600">{totals.activo}</td><td className="px-8 py-6 text-red-600">{totals.bloqueado}</td><td className="px-8 py-6">{totals.liberado}</td><td className="px-8 py-6 text-blue-600 text-xl">{totals.total}</td></tr>
-          </tfoot>
-        </table>
+    <div className="space-y-8">
+      <PageHeader 
+        title="Dispositivos Trustonic (Smartphones)" 
+        subtitle="Inventario e inspección de seguridad en tiempo real" 
+        action={
+          <div className="flex gap-3">
+            <button 
+              onClick={onCreate} 
+              className="flex items-center gap-2 bg-white border-2 border-slate-100 hover:border-blue-600 text-slate-900 px-6 py-3 rounded-2xl font-black text-xs uppercase tracking-widest transition-all active:scale-95 shadow-sm"
+            >
+              <Plus size={16} className="text-blue-600" /> Nuevo Dispositivo
+            </button>
+            <button 
+              onClick={onSync} 
+              disabled={syncing} 
+              className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl shadow-blue-600/20 transition-all active:scale-95 disabled:opacity-50"
+            >
+              <RefreshCw size={16} className={syncing ? 'animate-spin' : ''} /> 
+              {syncing ? 'Sincronizando...' : 'Sincronizar Trustonic'}
+            </button>
+          </div>
+        } 
+      />
+
+      {/* Tabs de Filtro Rápido */}
+      <div className="flex flex-wrap items-center gap-3">
+        <button
+          onClick={() => setFilters({ ...filters, service: '' })}
+          className={`flex items-center gap-2 px-5 py-3 rounded-2xl font-black text-xs uppercase tracking-widest transition-all ${
+            filters.service === '' ? 'bg-slate-900 text-white shadow-lg shadow-slate-900/20' : 'bg-white text-slate-600 border border-slate-100 hover:bg-slate-50'
+          }`}
+        >
+          <span>Todos los Dispositivos</span>
+          <span className={`px-2 py-0.5 rounded-full text-[10px] ${filters.service === '' ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-700'}`}>{counts.total}</span>
+        </button>
+
+        <button
+          onClick={() => setFilters({ ...filters, service: 'Prepago' })}
+          className={`flex items-center gap-2 px-5 py-3 rounded-2xl font-black text-xs uppercase tracking-widest transition-all ${
+            filters.service === 'Prepago' ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/20' : 'bg-white text-slate-600 border border-slate-100 hover:bg-slate-50'
+          }`}
+        >
+          <span>Prepago</span>
+          <span className={`px-2 py-0.5 rounded-full text-[10px] ${filters.service === 'Prepago' ? 'bg-white/20 text-white' : 'bg-blue-50 text-blue-700'}`}>{counts.prepago}</span>
+        </button>
+
+        <button
+          onClick={() => setFilters({ ...filters, service: 'Pospago' })}
+          className={`flex items-center gap-2 px-5 py-3 rounded-2xl font-black text-xs uppercase tracking-widest transition-all ${
+            filters.service === 'Pospago' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/20' : 'bg-white text-slate-600 border border-slate-100 hover:bg-slate-50'
+          }`}
+        >
+          <span>Pospago</span>
+          <span className={`px-2 py-0.5 rounded-full text-[10px] ${filters.service === 'Pospago' ? 'bg-white/20 text-white' : 'bg-indigo-50 text-indigo-700'}`}>{counts.pospago}</span>
+        </button>
+
+        <button
+          onClick={() => setFilters({ ...filters, service: 'Inventario' })}
+          className={`flex items-center gap-2 px-5 py-3 rounded-2xl font-black text-xs uppercase tracking-widest transition-all ${
+            filters.service === 'Inventario' ? 'bg-amber-600 text-white shadow-lg shadow-amber-600/20' : 'bg-white text-slate-600 border border-slate-100 hover:bg-slate-50'
+          }`}
+        >
+          <span>Inventario / Inactivo</span>
+          <span className={`px-2 py-0.5 rounded-full text-[10px] ${filters.service === 'Inventario' ? 'bg-white/20 text-white' : 'bg-amber-50 text-amber-700'}`}>{counts.inventario}</span>
+        </button>
       </div>
-      
-      <div className="space-y-6">
-        <div className="flex justify-between items-end">
-          <h3 className="text-2xl font-black text-slate-900 tracking-tighter">Listado Detallado</h3>
-          <div className="flex gap-4 bg-white p-3 rounded-[24px] border border-slate-100 shadow-sm">
-            <div className="flex flex-col gap-1">
-              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2">IMEI1</label>
-              <input type="text" className="bg-slate-50 border border-slate-100 rounded-xl px-4 py-2 text-sm font-bold outline-none focus:border-blue-600 focus:ring-4 focus:ring-blue-600/10 transition-all w-36" placeholder="Buscar..." value={filters.imei} onChange={e => setFilters({...filters, imei: e.target.value})} />
+
+      {/* Barra de Filtros Avanzada tipo Portal Trustonic */}
+      <div className="bg-white p-5 rounded-[28px] border border-slate-100 shadow-sm grid grid-cols-1 md:grid-cols-5 gap-4 items-end">
+        <div className="flex flex-col gap-1.5">
+          <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">IMEI</label>
+          <div className="relative">
+            <input 
+              type="text" 
+              className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-10 pr-4 py-2.5 text-xs font-bold outline-none focus:border-blue-600 focus:bg-white transition-all" 
+              placeholder="000000000000000" 
+              value={filters.imei} 
+              onChange={e => setFilters({...filters, imei: e.target.value})} 
+            />
+            <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+          </div>
+        </div>
+
+        <div className="flex flex-col gap-1.5">
+          <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Servicio</label>
+          <select 
+            className="w-full bg-slate-50 border border-slate-200 text-slate-800 rounded-xl px-4 py-2.5 text-xs font-bold outline-none focus:border-blue-600 focus:bg-white transition-all"
+            value={filters.service} 
+            onChange={e => setFilters({...filters, service: e.target.value})}
+          >
+            <option value="">Todos los servicios</option>
+            <option value="Prepago">Prepago</option>
+            <option value="Pospago">Pospago</option>
+            <option value="Inventario">Inventario</option>
+          </select>
+        </div>
+
+        <div className="flex flex-col gap-1.5">
+          <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Marca</label>
+          <select 
+            className="w-full bg-slate-50 border border-slate-200 text-slate-800 rounded-xl px-4 py-2.5 text-xs font-bold outline-none focus:border-blue-600 focus:bg-white transition-all"
+            value={filters.brand} 
+            onChange={e => setFilters({...filters, brand: e.target.value})}
+          >
+            <option value="">Todas las marcas</option>
+            {availableBrands.map(b => (
+              <option key={b} value={b}>{b}</option>
+            ))}
+          </select>
+        </div>
+
+        <div className="flex flex-col gap-1.5">
+          <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Estado Actual</label>
+          <select 
+            className="w-full bg-slate-50 border border-slate-200 text-slate-800 rounded-xl px-4 py-2.5 text-xs font-bold outline-none focus:border-blue-600 focus:bg-white transition-all"
+            value={filters.status} 
+            onChange={e => setFilters({...filters, status: e.target.value})}
+          >
+            <option value="">Todos los estados</option>
+            <option value="Activo">Activo</option>
+            <option value="Bloqueado">Bloqueado</option>
+            <option value="Liberado">Liberado</option>
+            <option value="Inactivo">Inactivo</option>
+            <option value="Listo para su uso">Listo para su uso</option>
+          </select>
+        </div>
+
+        <div>
+          <button 
+            onClick={() => setFilters({ imei: '', service: '', status: '', brand: '', model: '' })}
+            className="w-full bg-slate-100 hover:bg-slate-200 text-slate-700 py-2.5 rounded-xl font-bold text-xs transition-all flex items-center justify-center gap-2"
+          >
+            <RefreshCw size={14} /> Limpiar Filtros
+          </button>
+        </div>
+      </div>
+
+      {/* Tabla de Dispositivos tipo Trustonic Portal */}
+      <Table 
+        cols={['IMEI 1', 'IMEI 2', 'Servicio', 'Estado actual', 'Marca', 'Modelo', 'Último cambio', 'Última conexión', 'Acciones']} 
+        rows={filteredDevices} 
+        render={d => (
+          <>
+            <td className="px-8 py-5 font-mono text-sm font-bold text-blue-600">{d.imei1}</td>
+            <td className="px-8 py-5 font-mono text-sm text-slate-400">{d.imei2 || '—'}</td>
+            <td className="px-8 py-5 text-xs font-black uppercase tracking-wider text-slate-700">
+              <span className={`px-3 py-1 rounded-lg ${
+                (d.service || '').toLowerCase().includes('pospago') ? 'bg-indigo-50 text-indigo-700' :
+                (d.service || '').toLowerCase().includes('prepago') ? 'bg-blue-50 text-blue-700' :
+                'bg-slate-100 text-slate-600'
+              }`}>
+                {d.service || 'Desconocido'}
+              </span>
+            </td>
+            <td className="px-8 py-5">
+              <span className={`px-3.5 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest ${
+                d.status === 'Activo' ? 'bg-emerald-100 text-emerald-700' : 
+                d.status === 'Bloqueado' ? 'bg-rose-100 text-rose-700' : 
+                d.status === 'Liberado' ? 'bg-slate-100 text-slate-700' :
+                d.status === 'Listo para su uso' ? 'bg-blue-100 text-blue-700' :
+                'bg-amber-100 text-amber-700'
+              }`}>
+                {d.status || 'Desconocido'}
+              </span>
+            </td>
+            <td className="px-8 py-5 font-black text-sm uppercase text-slate-800">{d.brand || '—'}</td>
+            <td className="px-8 py-5 text-slate-600 font-bold text-sm">{d.model || '—'}</td>
+            <td className="px-8 py-5 text-xs text-slate-500 font-bold">{formatDate(d.last_change)}</td>
+            <td className="px-8 py-5 text-xs text-slate-500 font-bold">{formatDate(d.last_connection)}</td>
+            <td className="px-8 py-5">
+              <div className="flex items-center gap-2">
+                <button 
+                  onClick={() => setSelectedDevice(d)} 
+                  className="p-2 bg-slate-50 hover:bg-blue-50 text-slate-400 hover:text-blue-600 rounded-xl transition-all border border-slate-100"
+                  title="Ver Detalle"
+                >
+                  <Eye size={16} />
+                </button>
+                <button 
+                  onClick={() => onEdit(d)} 
+                  className="p-2 bg-slate-50 hover:bg-blue-50 text-slate-400 hover:text-blue-600 rounded-xl transition-all border border-slate-100"
+                  title="Editar Dispositivo"
+                >
+                  <Edit size={16} />
+                </button>
+              </div>
+            </td>
+          </>
+        )} 
+      />
+
+      {/* Modal Detalle de Dispositivo */}
+      {selectedDevice && (
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-[32px] w-full max-w-lg shadow-2xl p-8 space-y-6">
+            <div className="flex justify-between items-center border-b border-slate-100 pb-4">
+              <div>
+                <h3 className="text-xl font-black text-slate-900">Detalle de Dispositivo</h3>
+                <p className="text-xs text-slate-400 font-bold font-mono mt-0.5">{selectedDevice.imei1}</p>
+              </div>
+              <button onClick={() => setSelectedDevice(null)} className="p-2 text-slate-400 hover:text-slate-700 rounded-xl bg-slate-50"><X size={18} /></button>
             </div>
-            <div className="flex flex-col gap-1 relative">
-              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2">Servicio</label>
-              <div className="relative">
-                <select className="bg-blue-50 border border-blue-100 text-blue-700 rounded-xl px-4 py-2 text-sm font-black outline-none focus:border-blue-600 focus:ring-4 focus:ring-blue-600/10 transition-all w-40 appearance-none pr-10" value={filters.service} onChange={e => setFilters({...filters, service: e.target.value})}>
-                  <option value="" className="text-slate-800 bg-white">Todos</option>
-                  <option value="Prepago" className="text-slate-800 bg-white">Prepago</option>
-                  <option value="Pospago" className="text-slate-800 bg-white">Pospago</option>
-                </select>
-                <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-blue-600"><ChevronDown size={16} /></div>
+            <div className="space-y-4 text-sm font-bold text-slate-700">
+              <div className="grid grid-cols-2 gap-4 bg-slate-50 p-4 rounded-2xl">
+                <div>
+                  <p className="text-[10px] font-black uppercase text-slate-400">IMEI 1</p>
+                  <p className="font-mono text-blue-600">{selectedDevice.imei1}</p>
+                </div>
+                <div>
+                  <p className="text-[10px] font-black uppercase text-slate-400">IMEI 2</p>
+                  <p className="font-mono text-slate-500">{selectedDevice.imei2 || '—'}</p>
+                </div>
+                <div>
+                  <p className="text-[10px] font-black uppercase text-slate-400">Servicio</p>
+                  <p>{selectedDevice.service || '—'}</p>
+                </div>
+                <div>
+                  <p className="text-[10px] font-black uppercase text-slate-400">Estado Actual</p>
+                  <p className="text-emerald-600">{selectedDevice.status || '—'}</p>
+                </div>
+                <div>
+                  <p className="text-[10px] font-black uppercase text-slate-400">Marca</p>
+                  <p>{selectedDevice.brand || '—'}</p>
+                </div>
+                <div>
+                  <p className="text-[10px] font-black uppercase text-slate-400">Modelo</p>
+                  <p>{selectedDevice.model || '—'}</p>
+                </div>
+                <div className="col-span-2">
+                  <p className="text-[10px] font-black uppercase text-slate-400">Último Cambio</p>
+                  <p>{formatDate(selectedDevice.last_change)}</p>
+                </div>
+                <div className="col-span-2">
+                  <p className="text-[10px] font-black uppercase text-slate-400">Última Conexión</p>
+                  <p>{formatDate(selectedDevice.last_connection)}</p>
+                </div>
               </div>
             </div>
-            <div className="flex flex-col gap-1">
-              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2">Marca</label>
-              <input type="text" className="bg-slate-50 border border-slate-100 rounded-xl px-4 py-2 text-sm font-bold outline-none focus:border-blue-600 focus:ring-4 focus:ring-blue-600/10 transition-all w-36" placeholder="Buscar..." value={filters.brand} onChange={e => setFilters({...filters, brand: e.target.value})} />
-            </div>
-            <div className="flex flex-col gap-1">
-              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2">Modelo</label>
-              <input type="text" className="bg-slate-50 border border-slate-100 rounded-xl px-4 py-2 text-sm font-bold outline-none focus:border-blue-600 focus:ring-4 focus:ring-blue-600/10 transition-all w-36" placeholder="Buscar..." value={filters.model} onChange={e => setFilters({...filters, model: e.target.value})} />
+            <div className="flex justify-end pt-2">
+              <button onClick={() => setSelectedDevice(null)} className="bg-blue-600 text-white px-6 py-3 rounded-2xl font-black text-xs uppercase tracking-widest">Cerrar</button>
             </div>
           </div>
         </div>
-        <Table cols={['IMEI1', 'IMEI2', 'Servicio', 'Estado actual', 'Marca', 'Modelo', 'Ultimo cambio', 'Acciones']} rows={filteredDevices} render={d => (<><td className="px-8 py-5 font-mono text-base text-blue-600">{d.imei1}</td><td className="px-8 py-5 font-mono text-base text-slate-400">{d.imei2 || '—'}</td><td className="px-8 py-5 text-[13px] font-black uppercase tracking-widest">{d.service}</td><td className="px-8 py-5"><span className={`px-4 py-1.5 rounded-full text-[11px] font-black uppercase tracking-widest ${d.status === 'Activo' ? 'bg-emerald-100 text-emerald-700' : d.status === 'Bloqueado' ? 'bg-red-100 text-red-700' : 'bg-slate-100 text-slate-600'}`}>{d.status}</span></td><td className="px-8 py-5 font-bold text-base">{d.brand}</td><td className="px-8 py-5 text-slate-600 font-bold">{d.model}</td><td className="px-8 py-5 text-sm text-slate-500 font-bold">{d.last_change ? new Date(d.last_change).toLocaleString() : '—'}</td><td className="px-8 py-5"><button onClick={() => onEdit(d)} className="p-2.5 bg-slate-50 hover:bg-blue-50 text-slate-400 hover:text-blue-600 rounded-xl transition-all border border-slate-100 hover:border-blue-100"><Edit size={16} /></button></td></>)} />
-      </div>
+      )}
     </div>
   );
 };
@@ -3963,7 +4163,7 @@ const App = () => {
       return 'manage-dashboard';
     }
   });
-  const [expandedMenus, setExpandedMenus] = useState(['setup', 'records']);
+  const [expandedMenus, setExpandedMenus] = useState(['setup', 'records', 'trustonic-menu']);
   const [summary, setSummary] = useState({ totalClients: 0, totalContracts: 0, totalInventory: 0, totalProducts: 0, totalDataCollections: 0, totalPaid: 0 });
   const [data, setData] = useState({ clients: [], contracts: [], inventory: [], payments: [], products: [], paymentPlans: [], orgStructure: [], actions: [], audit: [], dataCollections: [], trustonic: { devices: [], summary: [] }, trustonicLogs: [], users: [] });
   const [syncing, setSyncing] = useState(false);
@@ -4489,11 +4689,11 @@ const App = () => {
         { id: 'record-actions', label: 'Ventas', icon: Zap },
         { id: 'manage-clients', label: 'Clientes', icon: Users },
         { id: 'manage-contracts', label: 'Contratos', icon: FileText },
-        // { id: 'manage-inventory', label: 'Dispositivos', icon: Smartphone },
-        // { id: 'manage-trustonic', label: 'Trustonic (Deprecado)', icon: Smartphone },
-        // { id: 'manage-trustonic-logs', label: 'Movimientos', icon: Activity },
-        // { id: 'record-comms', label: 'Comunicaciones', icon: MessageSquare },
         { id: 'manage-payments', label: 'Pagos', icon: CreditCard },
+      ]},
+      { id: 'trustonic-menu', label: 'Trustonic', icon: Smartphone, children: [
+        { id: 'manage-trustonic', label: 'Dispositivos', icon: Smartphone },
+        { id: 'manage-trustonic-logs', label: 'Movimientos', icon: Activity },
       ]},
       { id: 'manage-audit', label: 'Auditoría', icon: Clock },
     ]},
@@ -4505,7 +4705,10 @@ const App = () => {
         { section: 'Operación', items: [
           { id: 'manage-contracts', label: 'Contratos', icon: FileText },
           { id: 'manage-payments', label: 'Pagos', icon: CreditCard },
-          // { id: 'manage-trustonic-logs', label: 'Movimientos', icon: Activity },
+          { id: 'trustonic-menu', label: 'Trustonic', icon: Smartphone, children: [
+            { id: 'manage-trustonic', label: 'Dispositivos', icon: Smartphone },
+            { id: 'manage-trustonic-logs', label: 'Movimientos', icon: Activity },
+          ]},
         ]},
         { section: 'Estructura', items: [
           { id: 'setup-system', label: 'Sincronización', icon: RefreshCw },
