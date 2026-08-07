@@ -194,19 +194,30 @@ function App() {
   // --- USER CRUD ---
   const openNewUserModal = () => {
     setEditingUser(null);
-    setUserForm({ username: '', email: '', password: '', tenant_id: '', role: 'agent', status: 'active' });
+    setUserForm({
+      username: '',
+      email: '',
+      password: '',
+      tenant_id: '',
+      role: 'agent',
+      status: 'active',
+      org_id: '',
+      scope_role: 'STAFF'
+    });
     setShowUserModal(true);
   };
 
   const openEditUserModal = (u) => {
     setEditingUser(u);
     setUserForm({
-      username: u.username,
+      username: u.username || '',
       email: u.email || '',
       password: '', // Dejar vacío si no se cambia
       tenant_id: u.tenant_id ? u.tenant_id : 'NULL',
       role: u.role || 'agent',
-      status: u.status || 'active'
+      status: u.status || 'active',
+      org_id: u.org_id || '',
+      scope_role: u.scope_role || 'STAFF'
     });
     setShowUserModal(true);
   };
@@ -584,16 +595,8 @@ function App() {
                         <div className="action-buttons">
                           <button 
                             className="btn-icon" 
-                            title="Gestionar Alcance"
-                            onClick={() => {
-                              setEditingUserForScope(u);
-                              setScopeForm({
-                                org_id: u.org_id || '',
-                                role: u.scope_role || 'STAFF',
-                                tenant_id: u.tenant_id || ''
-                              });
-                              setShowScopeModal(true);
-                            }}
+                            title="Gestionar Alcance y Permisos"
+                            onClick={() => openEditUserModal(u)}
                           >
                             <ShieldCheck size={16} className="text-indigo" />
                           </button>
@@ -742,6 +745,26 @@ function App() {
                 >
                   <option value="active">Activo</option>
                   <option value="inactive">Inactivo / Deshabilitado</option>
+                </select>
+              </div>
+              <div className="form-group">
+                <label>ID de la Organización (Org ID de Upya)</label>
+                <input 
+                  type="text" 
+                  placeholder="ej. org-sucursal-centro" 
+                  value={userForm.org_id}
+                  onChange={e => setUserForm({ ...userForm, org_id: e.target.value })}
+                />
+              </div>
+              <div className="form-group">
+                <label>Rol de Acceso en Sucursal</label>
+                <select 
+                  value={userForm.scope_role}
+                  onChange={e => setUserForm({ ...userForm, scope_role: e.target.value })}
+                >
+                  <option value="STAFF">STAFF / Operativo</option>
+                  <option value="MANAGER">MANAGER / Encargado</option>
+                  <option value="ADMIN">ADMIN</option>
                 </select>
               </div>
               <div className="modal-footer">

@@ -2518,7 +2518,7 @@ app.get('/api/superadmin/users', async (req, res) => {
 });
 
 app.post('/api/superadmin/users', async (req, res) => {
-  const { username, email, password, tenant_id, role, status } = req.body;
+  const { username, email, password, tenant_id, role, status, org_id, scope_role } = req.body;
   if (!username || !password) {
     return res.status(400).json({ error: 'username y password son requeridos.' });
   }
@@ -2529,7 +2529,14 @@ app.post('/api/superadmin/users', async (req, res) => {
       'INSERT INTO users (username, email, password, tenant_id, role, status) VALUES (?, ?, ?, ?, ?, ?)',
       [username, email || null, hashedPassword, tenantVal, role || 'agent', status || 'active']
     );
-    res.json({ success: true, userId: result.insertId, message: 'Usuario creado con éxito.' });
+    const userId = result.insertId;
+    if (org_id) {
+      await pool.query(
+        'INSERT INTO user_scopes (user_id, org_id, role, tenant_id) VALUES (?, ?, ?, ?)',
+        [userId, org_id, scope_role || 'STAFF', tenantVal]
+      );
+    }
+    res.json({ success: true, userId, message: 'Usuario creado con éxito.' });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
@@ -2537,7 +2544,7 @@ app.post('/api/superadmin/users', async (req, res) => {
 
 app.put('/api/superadmin/users/:id', async (req, res) => {
   const { id } = req.params;
-  const { username, email, role, status, password, tenant_id } = req.body;
+  const { username, email, role, status, password, tenant_id, org_id, scope_role } = req.body;
   try {
     const tenantVal = (tenant_id === 'NULL' || !tenant_id) ? null : tenant_id;
     if (password) {
@@ -2552,6 +2559,17 @@ app.put('/api/superadmin/users/:id', async (req, res) => {
         [username, email || null, tenantVal, role || 'agent', status || 'active', id]
       );
     }
+
+    if (org_id !== undefined) {
+      await pool.query('DELETE FROM user_scopes WHERE user_id = ?', [id]);
+      if (org_id) {
+        await pool.query(
+          'INSERT INTO user_scopes (user_id, org_id, role, tenant_id) VALUES (?, ?, ?, ?)',
+          [id, org_id, scope_role || 'STAFF', tenantVal]
+        );
+      }
+    }
+
     res.json({ success: true, message: 'Usuario actualizado con éxito.' });
   } catch (e) {
     res.status(500).json({ error: e.message });
