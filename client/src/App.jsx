@@ -2457,80 +2457,223 @@ const SmartExcelImportModal = ({ isOpen, onClose, onImportSuccess, tenantId, use
 };
 
 const ProductsView = ({ products = [], onEdit, onCreate, onDelete, onImportSuccess, tenantId, user }) => {
-  const [filter, setFilter] = useState('all');
-  const [modelFilter, setModelFilter] = useState('');
-  const [variantFilter, setVariantFilter] = useState('');
+  const [filters, setFilters] = useState({
+    search: '',
+    manufacturer: '',
+    model: '',
+    variant: '',
+    category: '',
+    type: ''
+  });
+  const [quickFilter, setQuickFilter] = useState('all');
   const [importModalOpen, setImportModalOpen] = useState(false);
+
   const safeProducts = Array.isArray(products) ? products : [];
 
-  // Collect unique models and variants for the filter dropdowns
+  // Unique collections for dropdown filters
+  const uniqueManufacturers = [...new Set(safeProducts.map(p => p.manufacturer || p.brand).filter(Boolean))].sort();
   const uniqueModels = [...new Set(safeProducts.map(p => p.model).filter(Boolean))].sort();
   const uniqueVariants = [...new Set(safeProducts.map(p => p.variant).filter(Boolean))].sort();
+  const uniqueCategories = [...new Set(safeProducts.map(p => p.category).filter(Boolean))].sort();
+
+  // Quick filter count metrics
+  const counts = {
+    total: safeProducts.length,
+    serialized: safeProducts.filter(p => p.is_serialized).length,
+    nonSerialized: safeProducts.filter(p => !p.is_serialized).length,
+    withVariant: safeProducts.filter(p => p.variant && p.variant.trim() !== '').length,
+  };
 
   const filtered = safeProducts.filter(p => {
     if (!p) return false;
-    if (filter === 'serialized' && !p.is_serialized) return false;
-    if (filter === 'non-serialized' && p.is_serialized) return false;
-    if (modelFilter && p.model !== modelFilter) return false;
-    if (variantFilter && p.variant !== variantFilter) return false;
-    return true;
+
+    // Quick tab filter
+    if (quickFilter === 'serialized' && !p.is_serialized) return false;
+    if (quickFilter === 'non-serialized' && p.is_serialized) return false;
+    if (quickFilter === 'with-variant' && (!p.variant || p.variant.trim() === '')) return false;
+
+    // Advanced search filters
+    const searchLow = filters.search.toLowerCase();
+    const nameMatch = !filters.search || (
+      (p.name || '').toLowerCase().includes(searchLow) ||
+      (p.reference || p.productReference || '').toLowerCase().includes(searchLow) ||
+      (p.model || '').toLowerCase().includes(searchLow) ||
+      (p.manufacturer || p.brand || '').toLowerCase().includes(searchLow)
+    );
+
+    const mfgMatch = !filters.manufacturer || (p.manufacturer || p.brand || '').toLowerCase() === filters.manufacturer.toLowerCase();
+    const modelMatch = !filters.model || (p.model || '').toLowerCase() === filters.model.toLowerCase();
+    const variantMatch = !filters.variant || (p.variant || '').toLowerCase() === filters.variant.toLowerCase();
+    const categoryMatch = !filters.category || (p.category || '').toLowerCase() === filters.category.toLowerCase();
+    const typeMatch = !filters.type || (
+      filters.type === 'serialized' ? p.is_serialized :
+      filters.type === 'non-serialized' ? !p.is_serialized : true
+    );
+
+    return nameMatch && mfgMatch && modelMatch && variantMatch && categoryMatch && typeMatch;
   });
 
   return (
     <div className="space-y-8">
-      <div className="flex justify-between items-end">
-        <PageHeader title="Productos" subtitle={`${filtered.length} modelos en catálogo`} />
-        <div className="flex flex-wrap gap-2 items-center mb-10">
-          {/* Serialization filter */}
-          <div className="flex gap-2 bg-slate-100 p-1.5 rounded-2xl">
-            {['all', 'serialized', 'non-serialized'].map(f => (
-              <button key={f} onClick={() => setFilter(f)} className={`px-6 py-2.5 rounded-xl text-[12px] font-black uppercase tracking-widest transition-all ${filter === f ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}>{f === 'all' ? 'Todos' : f === 'serialized' ? 'Serializados' : 'No Ser.'}</button>
+      <PageHeader 
+        title="Catálogo de Productos" 
+        subtitle={`${filtered.length} modelos registrados`} 
+        action={
+          <div className="flex gap-3">
+            <button 
+              onClick={() => setImportModalOpen(true)} 
+              className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-3 rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl shadow-emerald-600/20 transition-all active:scale-95"
+            >
+              <FileSpreadsheet size={16} /> Importar Excel
+            </button>
+            <button 
+              onClick={onCreate} 
+              className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl shadow-blue-600/20 transition-all active:scale-95"
+            >
+              <Plus size={16} /> Nuevo Producto
+            </button>
+          </div>
+        } 
+      />
+
+      {/* Quick Filter Tabs */}
+      <div className="flex flex-wrap items-center gap-3">
+        <button
+          onClick={() => { setQuickFilter('all'); setFilters({ ...filters, type: '' }); }}
+          className={`flex items-center gap-2 px-5 py-3 rounded-2xl font-black text-xs uppercase tracking-widest transition-all ${
+            quickFilter === 'all' ? 'bg-slate-900 text-white shadow-lg shadow-slate-900/20' : 'bg-white text-slate-600 border border-slate-100 hover:bg-slate-50'
+          }`}
+        >
+          <span>Todos los Productos</span>
+          <span className={`px-2 py-0.5 rounded-full text-[10px] ${quickFilter === 'all' ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-700'}`}>{counts.total}</span>
+        </button>
+
+        <button
+          onClick={() => { setQuickFilter('serialized'); setFilters({ ...filters, type: 'serialized' }); }}
+          className={`flex items-center gap-2 px-5 py-3 rounded-2xl font-black text-xs uppercase tracking-widest transition-all ${
+            quickFilter === 'serialized' ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/20' : 'bg-white text-slate-600 border border-slate-100 hover:bg-slate-50'
+          }`}
+        >
+          <span>Serializados</span>
+          <span className={`px-2 py-0.5 rounded-full text-[10px] ${quickFilter === 'serialized' ? 'bg-white/20 text-white' : 'bg-blue-50 text-blue-700'}`}>{counts.serialized}</span>
+        </button>
+
+        <button
+          onClick={() => { setQuickFilter('non-serialized'); setFilters({ ...filters, type: 'non-serialized' }); }}
+          className={`flex items-center gap-2 px-5 py-3 rounded-2xl font-black text-xs uppercase tracking-widest transition-all ${
+            quickFilter === 'non-serialized' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/20' : 'bg-white text-slate-600 border border-slate-100 hover:bg-slate-50'
+          }`}
+        >
+          <span>No Serializados</span>
+          <span className={`px-2 py-0.5 rounded-full text-[10px] ${quickFilter === 'non-serialized' ? 'bg-white/20 text-white' : 'bg-indigo-50 text-indigo-700'}`}>{counts.nonSerialized}</span>
+        </button>
+
+        <button
+          onClick={() => { setQuickFilter('with-variant'); }}
+          className={`flex items-center gap-2 px-5 py-3 rounded-2xl font-black text-xs uppercase tracking-widest transition-all ${
+            quickFilter === 'with-variant' ? 'bg-purple-600 text-white shadow-lg shadow-purple-600/20' : 'bg-white text-slate-600 border border-slate-100 hover:bg-slate-50'
+          }`}
+        >
+          <span>Con Variante</span>
+          <span className={`px-2 py-0.5 rounded-full text-[10px] ${quickFilter === 'with-variant' ? 'bg-white/20 text-white' : 'bg-purple-50 text-purple-700'}`}>{counts.withVariant}</span>
+        </button>
+      </div>
+
+      {/* Advanced Filter Bar Grid */}
+      <div className="bg-white p-5 rounded-[28px] border border-slate-100 shadow-sm grid grid-cols-1 md:grid-cols-6 gap-4 items-end">
+        <div className="flex flex-col gap-1.5 md:col-span-2">
+          <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Búsqueda / SKU / Referencia</label>
+          <div className="relative">
+            <input 
+              type="text" 
+              className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-10 pr-4 py-2.5 text-xs font-bold outline-none focus:border-blue-600 focus:bg-white transition-all" 
+              placeholder="Buscar por nombre, SKU o ref..." 
+              value={filters.search} 
+              onChange={e => setFilters({...filters, search: e.target.value})} 
+            />
+            <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+          </div>
+        </div>
+
+        <div className="flex flex-col gap-1.5">
+          <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Marca / Fabricante</label>
+          <select 
+            className="w-full bg-slate-50 border border-slate-200 text-slate-800 rounded-xl px-4 py-2.5 text-xs font-bold outline-none focus:border-blue-600 focus:bg-white transition-all"
+            value={filters.manufacturer} 
+            onChange={e => setFilters({...filters, manufacturer: e.target.value})}
+          >
+            <option value="">Todas las marcas</option>
+            {uniqueManufacturers.map(m => (
+              <option key={m} value={m}>{m}</option>
             ))}
-          </div>
-          {/* Model filter */}
-          {uniqueModels.length > 0 && (
-            <select value={modelFilter} onChange={e => setModelFilter(e.target.value)} className="bg-white border-2 border-slate-100 rounded-xl px-4 py-2.5 text-[12px] font-bold text-slate-700 focus:border-blue-600 outline-none transition-all">
-              <option value="">Todos los modelos</option>
-              {uniqueModels.map(m => <option key={m} value={m}>{m}</option>)}
-            </select>
-          )}
-          {/* Variant filter */}
-          {uniqueVariants.length > 0 && (
-            <select value={variantFilter} onChange={e => setVariantFilter(e.target.value)} className="bg-white border-2 border-slate-100 rounded-xl px-4 py-2.5 text-[12px] font-bold text-slate-700 focus:border-blue-600 outline-none transition-all">
-              <option value="">Todas las variantes</option>
-              {uniqueVariants.map(v => <option key={v} value={v}>{v}</option>)}
-            </select>
-          )}
+          </select>
+        </div>
+
+        <div className="flex flex-col gap-1.5">
+          <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Modelo</label>
+          <select 
+            className="w-full bg-slate-50 border border-slate-200 text-slate-800 rounded-xl px-4 py-2.5 text-xs font-bold outline-none focus:border-blue-600 focus:bg-white transition-all"
+            value={filters.model} 
+            onChange={e => setFilters({...filters, model: e.target.value})}
+          >
+            <option value="">Todos los modelos</option>
+            {uniqueModels.map(m => (
+              <option key={m} value={m}>{m}</option>
+            ))}
+          </select>
+        </div>
+
+        <div className="flex flex-col gap-1.5">
+          <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Variante</label>
+          <select 
+            className="w-full bg-slate-50 border border-slate-200 text-slate-800 rounded-xl px-4 py-2.5 text-xs font-bold outline-none focus:border-blue-600 focus:bg-white transition-all"
+            value={filters.variant} 
+            onChange={e => setFilters({...filters, variant: e.target.value})}
+          >
+            <option value="">Todas las variantes</option>
+            {uniqueVariants.map(v => (
+              <option key={v} value={v}>{v}</option>
+            ))}
+          </select>
+        </div>
+
+        <div>
+          <button 
+            onClick={() => { setQuickFilter('all'); setFilters({ search: '', manufacturer: '', model: '', variant: '', category: '', type: '' }); }}
+            className="w-full bg-slate-100 hover:bg-slate-200 text-slate-700 py-2.5 rounded-xl font-bold text-xs transition-all flex items-center justify-center gap-2"
+          >
+            <RefreshCw size={14} /> Limpiar Filtros
+          </button>
         </div>
       </div>
 
-      <div className="flex justify-end gap-3 mb-4">
-        <button onClick={() => setImportModalOpen(true)} className="flex items-center gap-2 bg-emerald-600 text-white px-6 py-4 rounded-2xl font-black uppercase tracking-widest text-[12px] shadow-lg shadow-emerald-600/20 hover:scale-105 transition-all">
-          <FileSpreadsheet size={16} /> Importar Excel
-        </button>
-        <button onClick={onCreate} className="flex items-center gap-2 bg-blue-600 text-white px-8 py-4 rounded-2xl font-black uppercase tracking-widest text-[12px] shadow-lg shadow-blue-600/20 hover:scale-105 transition-all">
-          <Plus size={16} /> Nuevo Producto
-        </button>
-      </div>
-
-      <Table cols={['Nombre', 'Modelo', 'Variante', 'Referencia', 'Categoría', 'Tipo', 'Acciones']} rows={filtered} render={p => (<><td className="px-8 py-5"><p className="font-bold text-slate-800">{p.name}</p><p className="text-[12px] text-slate-400 font-medium">{p.manufacturer}</p></td><td className="px-8 py-5 text-slate-700 font-semibold text-sm">{p.model || <span className="text-slate-300">—</span>}</td><td className="px-8 py-5 text-slate-500 text-sm">{p.variant || <span className="text-slate-300">—</span>}</td><td className="px-8 py-5 font-mono text-blue-600 text-sm">{p.reference || p.productReference}</td><td className="px-8 py-5 text-slate-500">{p.category}</td><td className="px-8 py-5"><span className={`px-2 py-1 rounded-md text-[11px] font-black uppercase tracking-wider ${p.is_serialized ? 'bg-blue-50 text-blue-600' : 'bg-slate-100 text-slate-500'}`}>{p.is_serialized ? 'Serializado' : 'No Ser.'}</span></td><td className="px-8 py-5"><div className="flex items-center gap-2"><button onClick={() => onEdit(p)} className="p-2 hover:bg-blue-50 text-slate-300 hover:text-blue-600 rounded-lg transition-all"><Settings2 size={16} /></button><button onClick={() => onDelete(p)} className="p-2 hover:bg-red-50 text-slate-300 hover:text-red-600 rounded-lg transition-all"><Trash2 size={16} /></button></div></td></>) } renderMobile={p => (
-        <div className="bg-white p-6 rounded-2xl border border-slate-100 flex flex-col gap-4">
-          <div className="flex justify-between items-start">
-            <div className="space-y-1">
-              <p className="font-bold text-slate-800">{p.name}</p>
-              <p className="font-mono text-blue-600 text-xs">{p.reference || p.productReference}</p>
-            </div>
-            <span className={`px-2 py-1 rounded-md text-[11px] font-black uppercase tracking-wider ${p.is_serialized ? 'bg-blue-50 text-blue-600' : 'bg-slate-100 text-slate-500'}`}>{p.is_serialized ? 'Serializado' : 'No Ser.'}</span>
-          </div>
-          <div className="flex justify-between items-center pt-4 border-t border-slate-50">
-            <p className="text-slate-400 text-sm">{p.category}</p>
-            <div className="flex gap-2">
-              <button onClick={() => onEdit(p)} className="p-2 hover:bg-blue-50 text-slate-300 hover:text-blue-600 rounded-lg transition-all"><Settings2 size={16} /></button>
-              <button onClick={() => onDelete(p)} className="p-2 hover:bg-red-50 text-slate-300 hover:text-red-600 rounded-lg transition-all"><Trash2 size={16} /></button>
-            </div>
-          </div>
-        </div>
-      )} />
+      <Table 
+        cols={['Nombre / Marca', 'Modelo', 'Variante', 'Referencia / SKU', 'Categoría', 'Tipo', 'Acciones']} 
+        rows={filtered} 
+        render={p => (
+          <>
+            <td className="px-8 py-5">
+              <p className="font-bold text-slate-800 text-sm">{p.name}</p>
+              <p className="text-[11px] text-slate-400 font-bold uppercase tracking-wider">{p.manufacturer || p.brand || '—'}</p>
+            </td>
+            <td className="px-8 py-5 text-slate-700 font-bold text-sm">{p.model || <span className="text-slate-300">—</span>}</td>
+            <td className="px-8 py-5 text-slate-600 text-sm font-semibold">{p.variant || <span className="text-slate-300">—</span>}</td>
+            <td className="px-8 py-5 font-mono text-blue-600 font-bold text-sm">{p.reference || p.productReference || '—'}</td>
+            <td className="px-8 py-5 text-slate-500 font-bold text-xs uppercase tracking-wider">{p.category || 'General'}</td>
+            <td className="px-8 py-5">
+              <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${p.is_serialized ? 'bg-blue-50 text-blue-600 border border-blue-100' : 'bg-slate-100 text-slate-500'}`}>
+                {p.is_serialized ? 'Serializado' : 'No Ser.'}
+              </span>
+            </td>
+            <td className="px-8 py-5">
+              <div className="flex items-center gap-2">
+                <button onClick={() => onEdit(p)} className="p-2 hover:bg-blue-50 text-slate-400 hover:text-blue-600 rounded-xl transition-all" title="Editar Producto"><Settings2 size={16} /></button>
+                <button onClick={() => onDelete(p)} className="p-2 hover:bg-rose-50 text-slate-400 hover:text-rose-600 rounded-xl transition-all" title="Eliminar Producto"><Trash2 size={16} /></button>
+              </div>
+            </td>
+          </>
+        )} 
+      />
 
       <SmartExcelImportModal
         isOpen={importModalOpen}
