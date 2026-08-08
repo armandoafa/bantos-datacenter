@@ -3385,6 +3385,12 @@ const TrustonicDevicesView = ({ data, onSync, syncing, onEdit, onCreate, session
       return hasImei && isNotTotal;
     });
 
+  // Servicios únicos disponibles
+  const availableServices = Array.from(new Set([
+    'Prepago', 'Pospago', 'Liberado', 'Inventario', 'Listo para su uso',
+    ...normalizedDevices.map(d => d.service).filter(Boolean)
+  ])).sort();
+
   // Marcas únicas disponibles
   const availableBrands = Array.from(new Set(normalizedDevices.map(d => d.brand?.toUpperCase()).filter(Boolean))).sort();
 
@@ -3586,10 +3592,9 @@ const TrustonicDevicesView = ({ data, onSync, syncing, onEdit, onCreate, session
             onChange={e => setFilters({...filters, service: e.target.value})}
           >
             <option value="">Todos los servicios</option>
-            <option value="Prepago">Prepago</option>
-            <option value="Pospago">Pospago</option>
-            <option value="Liberado">Liberados</option>
-            <option value="Inventario">Inventario</option>
+            {availableServices.map(s => (
+              <option key={s} value={s}>{s}</option>
+            ))}
           </select>
         </div>
 
