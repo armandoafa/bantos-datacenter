@@ -811,39 +811,156 @@ const DashboardView = ({ summary, session }) => (
   </div>
 );
 
-const ClientsView = ({ clients, onEdit }) => (
-  <div className="space-y-8">
-    <PageHeader title="Clientes" subtitle={`${clients.length} identidades certificadas`} />
-    <Table 
-      cols={['Nombre Completo', 'ID Upya', 'Email', 'CLABE', 'Estado', 'Acciones']} 
-      rows={clients} 
-      render={c => (
-        <>
-          <td className="px-8 py-5 font-bold text-slate-800">{c.name}</td>
-          <td className="px-8 py-5 font-mono text-blue-600 text-sm">{c.upya_id}</td>
-          <td className="px-8 py-5 text-slate-400">{c.email || '—'}</td>
-          <td className="px-8 py-5">
-            {c.clabe ? (
-              <span className="font-mono text-emerald-600 font-bold bg-emerald-50 px-2 py-1 rounded-lg border border-emerald-100">{c.clabe}</span>
-            ) : (
-              <span className="text-slate-300 italic text-sm">Sin wallet</span>
-            )}
-          </td>
-          <td className="px-8 py-5"><Badge status={c.status} /></td>
-          <td className="px-8 py-5 text-right">
-            <button 
-              onClick={() => onEdit(c)} 
-              className="p-2 rounded-xl hover:bg-blue-50 text-slate-300 hover:text-blue-600 transition-all"
-              title="Detalles y Wallet"
-            >
-              <Settings2 size={18} />
-            </button>
-          </td>
-        </>
-      )} 
-    />
-  </div>
-);
+const ClientsView = ({ clients = [], onEdit }) => {
+  const [filters, setFilters] = useState({
+    search: '',
+    status: '',
+    walletStatus: ''
+  });
+  const [quickFilter, setQuickFilter] = useState('all');
+
+  const safeClients = Array.isArray(clients) ? clients : [];
+
+  const counts = {
+    total: safeClients.length,
+    withWallet: safeClients.filter(c => Boolean(c.clabe)).length,
+    withoutWallet: safeClients.filter(c => !c.clabe).length,
+    active: safeClients.filter(c => (c.status || '').toLowerCase() === 'active').length,
+  };
+
+  const filtered = safeClients.filter(c => {
+    if (!c) return false;
+
+    // Quick filter tab
+    if (quickFilter === 'withWallet' && !c.clabe) return false;
+    if (quickFilter === 'withoutWallet' && c.clabe) return false;
+    if (quickFilter === 'active' && (c.status || '').toLowerCase() !== 'active') return false;
+
+    // Advanced search filters
+    const searchLow = filters.search.toLowerCase();
+    const nameMatch = !filters.search || (
+      (c.name || '').toLowerCase().includes(searchLow) ||
+      (c.email || '').toLowerCase().includes(searchLow) ||
+      (c.upya_id || '').toLowerCase().includes(searchLow) ||
+      (c.clabe || '').toLowerCase().includes(searchLow)
+    );
+
+    const statusMatch = !filters.status || (c.status || '').toLowerCase() === filters.status.toLowerCase();
+    const walletMatch = !filters.walletStatus || (
+      filters.walletStatus === 'withWallet' ? Boolean(c.clabe) :
+      filters.walletStatus === 'withoutWallet' ? !c.clabe : true
+    );
+
+    return nameMatch && statusMatch && walletMatch;
+  });
+
+  return (
+    <div className="space-y-8">
+      <PageHeader title="Clientes" subtitle={`${filtered.length} identidades registradas`} />
+
+      {/* Quick Filter Tabs */}
+      <div className="flex flex-wrap items-center gap-3">
+        <button
+          onClick={() => { setQuickFilter('all'); setFilters({ ...filters, walletStatus: '', status: '' }); }}
+          className={`flex items-center gap-2 px-5 py-3 rounded-2xl font-black text-xs uppercase tracking-widest transition-all ${
+            quickFilter === 'all' ? 'bg-slate-900 text-white shadow-lg shadow-slate-900/20' : 'bg-white text-slate-600 border border-slate-100 hover:bg-slate-50'
+          }`}
+        >
+          <span>Todos los Clientes</span>
+          <span className={`px-2 py-0.5 rounded-full text-[10px] ${quickFilter === 'all' ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-700'}`}>{counts.total}</span>
+        </button>
+
+        <button
+          onClick={() => { setQuickFilter('withWallet'); setFilters({ ...filters, walletStatus: 'withWallet' }); }}
+          className={`flex items-center gap-2 px-5 py-3 rounded-2xl font-black text-xs uppercase tracking-widest transition-all ${
+            quickFilter === 'withWallet' ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-600/20' : 'bg-white text-slate-600 border border-slate-100 hover:bg-slate-50'
+          }`}
+        >
+          <span>Con Wallet STP</span>
+          <span className={`px-2 py-0.5 rounded-full text-[10px] ${quickFilter === 'withWallet' ? 'bg-white/20 text-white' : 'bg-emerald-50 text-emerald-700'}`}>{counts.withWallet}</span>
+        </button>
+
+        <button
+          onClick={() => { setQuickFilter('withoutWallet'); setFilters({ ...filters, walletStatus: 'withoutWallet' }); }}
+          className={`flex items-center gap-2 px-5 py-3 rounded-2xl font-black text-xs uppercase tracking-widest transition-all ${
+            quickFilter === 'withoutWallet' ? 'bg-amber-600 text-white shadow-lg shadow-amber-600/20' : 'bg-white text-slate-600 border border-slate-100 hover:bg-slate-50'
+          }`}
+        >
+          <span>Sin Wallet</span>
+          <span className={`px-2 py-0.5 rounded-full text-[10px] ${quickFilter === 'withoutWallet' ? 'bg-white/20 text-white' : 'bg-amber-50 text-amber-700'}`}>{counts.withoutWallet}</span>
+        </button>
+      </div>
+
+      {/* Advanced Filter Bar Grid */}
+      <div className="bg-white p-5 rounded-[28px] border border-slate-100 shadow-sm grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+        <div className="flex flex-col gap-1.5 md:col-span-2">
+          <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Búsqueda por Nombre / ID / Email / CLABE</label>
+          <div className="relative">
+            <input 
+              type="text" 
+              className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-10 pr-4 py-2.5 text-xs font-bold outline-none focus:border-blue-600 focus:bg-white transition-all" 
+              placeholder="Buscar cliente..." 
+              value={filters.search} 
+              onChange={e => setFilters({...filters, search: e.target.value})} 
+            />
+            <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+          </div>
+        </div>
+
+        <div className="flex flex-col gap-1.5">
+          <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Estado Wallet</label>
+          <select 
+            className="w-full bg-slate-50 border border-slate-200 text-slate-800 rounded-xl px-4 py-2.5 text-xs font-bold outline-none focus:border-blue-600 focus:bg-white transition-all"
+            value={filters.walletStatus} 
+            onChange={e => setFilters({...filters, walletStatus: e.target.value})}
+          >
+            <option value="">Todos los Estados Wallet</option>
+            <option value="withWallet">Con Wallet STP (CLABE)</option>
+            <option value="withoutWallet">Sin Wallet</option>
+          </select>
+        </div>
+
+        <div>
+          <button 
+            onClick={() => { setQuickFilter('all'); setFilters({ search: '', status: '', walletStatus: '' }); }}
+            className="w-full bg-slate-100 hover:bg-slate-200 text-slate-700 py-2.5 rounded-xl font-bold text-xs transition-all flex items-center justify-center gap-2"
+          >
+            <RefreshCw size={14} /> Limpiar Filtros
+          </button>
+        </div>
+      </div>
+
+      <Table 
+        cols={['Nombre Completo', 'ID Upya', 'Email', 'CLABE Interbancaria', 'Estado', 'Acciones']} 
+        rows={filtered} 
+        render={c => (
+          <>
+            <td className="px-8 py-5 font-bold text-slate-800">{c.name}</td>
+            <td className="px-8 py-5 font-mono text-blue-600 text-sm">{c.upya_id}</td>
+            <td className="px-8 py-5 text-slate-400 font-medium">{c.email || '—'}</td>
+            <td className="px-8 py-5">
+              {c.clabe ? (
+                <span className="font-mono text-emerald-600 font-bold bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-100">{c.clabe}</span>
+              ) : (
+                <span className="text-slate-300 italic text-sm">Sin wallet</span>
+              )}
+            </td>
+            <td className="px-8 py-5"><Badge status={c.status} /></td>
+            <td className="px-8 py-5 text-right">
+              <button 
+                onClick={() => onEdit(c)} 
+                className="p-2 rounded-xl hover:bg-blue-50 text-slate-400 hover:text-blue-600 transition-all"
+                title="Detalles y Wallet"
+              >
+                <Settings2 size={18} />
+              </button>
+            </td>
+          </>
+        )} 
+      />
+    </div>
+  );
+};
 
 const ClientModal = ({ isOpen, onClose, client, onGenerateWallet }) => {
   const [generating, setGenerating] = useState(false);
@@ -951,69 +1068,178 @@ const CONTRACT_STATUSES = {
   REJECTED: ['REJECTED', 'NO APROBADO', 'CANCELLED']
 };
 
-const ContractsView = ({ contracts, onNew, onEdit, onSign, onSettle, session }) => {
-  const [filter, setFilter] = useState('all');
-  const [search, setSearch] = useState('');
+const ContractsView = ({ contracts = [], onNew, onEdit, onSign, onSettle, session }) => {
+  const [filters, setFilters] = useState({
+    search: '',
+    status: 'all',
+    product: '',
+    plan: ''
+  });
+  const [quickFilter, setQuickFilter] = useState('all');
 
-  const filtered = contracts.filter(c => {
+  const safeContracts = Array.isArray(contracts) ? contracts : [];
+
+  const uniqueProducts = [...new Set(safeContracts.map(c => c.product_name || c.device).filter(Boolean))].sort();
+
+  const counts = {
+    total: safeContracts.length,
+    signed: safeContracts.filter(c => CONTRACT_STATUSES.SIGNED.includes((c.status || '').toUpperCase())).length,
+    approved: safeContracts.filter(c => CONTRACT_STATUSES.APPROVED.includes((c.status || '').toUpperCase())).length,
+    pending: safeContracts.filter(c => CONTRACT_STATUSES.PENDING.includes((c.status || '').toUpperCase())).length,
+    rejected: safeContracts.filter(c => CONTRACT_STATUSES.REJECTED.includes((c.status || '').toUpperCase())).length,
+  };
+
+  const filtered = safeContracts.filter(c => {
+    if (!c) return false;
     const s = (c.status || '').toUpperCase();
-    const matchesFilter = filter === 'all' || 
-      (filter === 'signed' && CONTRACT_STATUSES.SIGNED.includes(s)) ||
-      (filter === 'approved' && CONTRACT_STATUSES.APPROVED.includes(s)) ||
-      (filter === 'pending' && CONTRACT_STATUSES.PENDING.includes(s)) ||
-      (filter === 'rejected' && CONTRACT_STATUSES.REJECTED.includes(s));
 
-    const matchesSearch = !search || 
-      (c.contract_number || '').toLowerCase().includes(search.toLowerCase()) ||
-      (c.client_name || '').toLowerCase().includes(search.toLowerCase()) ||
-      (c.upya_id || '').toLowerCase().includes(search.toLowerCase());
+    // Quick tab filter
+    if (quickFilter === 'signed' && !CONTRACT_STATUSES.SIGNED.includes(s)) return false;
+    if (quickFilter === 'approved' && !CONTRACT_STATUSES.APPROVED.includes(s)) return false;
+    if (quickFilter === 'pending' && !CONTRACT_STATUSES.PENDING.includes(s)) return false;
+    if (quickFilter === 'rejected' && !CONTRACT_STATUSES.REJECTED.includes(s)) return false;
 
-    return matchesFilter && matchesSearch;
+    // Advanced search filters
+    const searchLow = filters.search.toLowerCase();
+    const searchMatch = !filters.search || (
+      (c.contract_number || '').toLowerCase().includes(searchLow) ||
+      (c.client_name || '').toLowerCase().includes(searchLow) ||
+      (c.upya_id || '').toLowerCase().includes(searchLow)
+    );
+
+    const statusMatch = filters.status === 'all' || 
+      (filters.status === 'signed' && CONTRACT_STATUSES.SIGNED.includes(s)) ||
+      (filters.status === 'approved' && CONTRACT_STATUSES.APPROVED.includes(s)) ||
+      (filters.status === 'pending' && CONTRACT_STATUSES.PENDING.includes(s)) ||
+      (filters.status === 'rejected' && CONTRACT_STATUSES.REJECTED.includes(s));
+
+    const productMatch = !filters.product || (c.product_name || c.device || '').toLowerCase() === filters.product.toLowerCase();
+
+    return searchMatch && statusMatch && productMatch;
   });
 
   return (
     <div className="space-y-8">
-      <div className="flex items-center justify-between">
-        <div>
-          <PageHeader title="Contratos" subtitle={`${contracts.length} deals registrados`} />
-        </div>
-        <div className="flex items-center gap-4">
-          <div className="relative group">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-600 transition-colors" size={18} />
-            <input 
-              type="text"
-              placeholder="Buscar por contrato o cliente..."
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-              className="pl-12 pr-6 py-4 bg-white border border-slate-100 rounded-2xl font-bold text-slate-800 focus:border-blue-600 outline-none transition-all shadow-sm w-80 text-sm"
-            />
-          </div>
-          <div className="flex bg-white p-1.5 rounded-2xl border border-slate-100 shadow-sm gap-1">
-            {[
-              { id: 'all', label: 'Todos' },
-              { id: 'signed', label: 'Firmados' },
-              { id: 'approved', label: 'Aprobados' },
-              { id: 'pending', label: 'Pendientes' },
-              { id: 'rejected', label: 'No Aprobados' }
-            ].map(f => (
-              <button 
-                key={f.id} 
-                onClick={() => setFilter(f.id)}
-                className={`px-6 py-2.5 rounded-xl font-black text-[12px] uppercase tracking-widest transition-all ${filter === f.id ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/30' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-50'}`}
-              >
-                {f.label}
-              </button>
-            ))}
-          </div>
-          {session?.tenantId !== 'c-romel' && (
+      <PageHeader 
+        title="Contratos" 
+        subtitle={`${filtered.length} deals registrados`} 
+        action={
+          session?.tenantId !== 'c-romel' && (
             <button 
               onClick={onNew}
-              className="flex items-center gap-3 bg-blue-600 hover:bg-blue-700 text-white px-8 py-4 rounded-[20px] font-black text-sm uppercase tracking-widest shadow-xl shadow-blue-600/20 transition-all active:scale-95"
+              className="flex items-center gap-3 bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl shadow-blue-600/20 transition-all active:scale-95"
             >
-              <Plus size={18} />
-              Nuevo Contrato
+              <Plus size={16} /> Nuevo Contrato
             </button>
-          )}
+          )
+        }
+      />
+
+      {/* Quick Filter Tabs */}
+      <div className="flex flex-wrap items-center gap-3">
+        <button
+          onClick={() => { setQuickFilter('all'); setFilters({ ...filters, status: 'all' }); }}
+          className={`flex items-center gap-2 px-5 py-3 rounded-2xl font-black text-xs uppercase tracking-widest transition-all ${
+            quickFilter === 'all' ? 'bg-slate-900 text-white shadow-lg shadow-slate-900/20' : 'bg-white text-slate-600 border border-slate-100 hover:bg-slate-50'
+          }`}
+        >
+          <span>Todos los Contratos</span>
+          <span className={`px-2 py-0.5 rounded-full text-[10px] ${quickFilter === 'all' ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-700'}`}>{counts.total}</span>
+        </button>
+
+        <button
+          onClick={() => { setQuickFilter('signed'); setFilters({ ...filters, status: 'signed' }); }}
+          className={`flex items-center gap-2 px-5 py-3 rounded-2xl font-black text-xs uppercase tracking-widest transition-all ${
+            quickFilter === 'signed' ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/20' : 'bg-white text-slate-600 border border-slate-100 hover:bg-slate-50'
+          }`}
+        >
+          <span>Firmados</span>
+          <span className={`px-2 py-0.5 rounded-full text-[10px] ${quickFilter === 'signed' ? 'bg-white/20 text-white' : 'bg-blue-50 text-blue-700'}`}>{counts.signed}</span>
+        </button>
+
+        <button
+          onClick={() => { setQuickFilter('approved'); setFilters({ ...filters, status: 'approved' }); }}
+          className={`flex items-center gap-2 px-5 py-3 rounded-2xl font-black text-xs uppercase tracking-widest transition-all ${
+            quickFilter === 'approved' ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-600/20' : 'bg-white text-slate-600 border border-slate-100 hover:bg-slate-50'
+          }`}
+        >
+          <span>Aprobados</span>
+          <span className={`px-2 py-0.5 rounded-full text-[10px] ${quickFilter === 'approved' ? 'bg-white/20 text-white' : 'bg-emerald-50 text-emerald-700'}`}>{counts.approved}</span>
+        </button>
+
+        <button
+          onClick={() => { setQuickFilter('pending'); setFilters({ ...filters, status: 'pending' }); }}
+          className={`flex items-center gap-2 px-5 py-3 rounded-2xl font-black text-xs uppercase tracking-widest transition-all ${
+            quickFilter === 'pending' ? 'bg-amber-600 text-white shadow-lg shadow-amber-600/20' : 'bg-white text-slate-600 border border-slate-100 hover:bg-slate-50'
+          }`}
+        >
+          <span>Pendientes</span>
+          <span className={`px-2 py-0.5 rounded-full text-[10px] ${quickFilter === 'pending' ? 'bg-white/20 text-white' : 'bg-amber-50 text-amber-700'}`}>{counts.pending}</span>
+        </button>
+
+        <button
+          onClick={() => { setQuickFilter('rejected'); setFilters({ ...filters, status: 'rejected' }); }}
+          className={`flex items-center gap-2 px-5 py-3 rounded-2xl font-black text-xs uppercase tracking-widest transition-all ${
+            quickFilter === 'rejected' ? 'bg-rose-600 text-white shadow-lg shadow-rose-600/20' : 'bg-white text-slate-600 border border-slate-100 hover:bg-slate-50'
+          }`}
+        >
+          <span>No Aprobados</span>
+          <span className={`px-2 py-0.5 rounded-full text-[10px] ${quickFilter === 'rejected' ? 'bg-white/20 text-white' : 'bg-rose-50 text-rose-700'}`}>{counts.rejected}</span>
+        </button>
+      </div>
+
+      {/* Advanced Filter Bar Grid */}
+      <div className="bg-white p-5 rounded-[28px] border border-slate-100 shadow-sm grid grid-cols-1 md:grid-cols-5 gap-4 items-end">
+        <div className="flex flex-col gap-1.5 md:col-span-2">
+          <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Búsqueda por Contrato / Cliente</label>
+          <div className="relative">
+            <input 
+              type="text" 
+              className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-10 pr-4 py-2.5 text-xs font-bold outline-none focus:border-blue-600 focus:bg-white transition-all" 
+              placeholder="Buscar por contrato o cliente..." 
+              value={filters.search} 
+              onChange={e => setFilters({...filters, search: e.target.value})} 
+            />
+            <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+          </div>
+        </div>
+
+        <div className="flex flex-col gap-1.5">
+          <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Estado de Contrato</label>
+          <select 
+            className="w-full bg-slate-50 border border-slate-200 text-slate-800 rounded-xl px-4 py-2.5 text-xs font-bold outline-none focus:border-blue-600 focus:bg-white transition-all"
+            value={filters.status} 
+            onChange={e => setFilters({...filters, status: e.target.value})}
+          >
+            <option value="all">Todos los estados</option>
+            <option value="signed">Firmados</option>
+            <option value="approved">Aprobados</option>
+            <option value="pending">Pendientes</option>
+            <option value="rejected">No Aprobados</option>
+          </select>
+        </div>
+
+        <div className="flex flex-col gap-1.5">
+          <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Producto</label>
+          <select 
+            className="w-full bg-slate-50 border border-slate-200 text-slate-800 rounded-xl px-4 py-2.5 text-xs font-bold outline-none focus:border-blue-600 focus:bg-white transition-all"
+            value={filters.product} 
+            onChange={e => setFilters({...filters, product: e.target.value})}
+          >
+            <option value="">Todos los productos</option>
+            {uniqueProducts.map(p => (
+              <option key={p} value={p}>{p}</option>
+            ))}
+          </select>
+        </div>
+
+        <div>
+          <button 
+            onClick={() => { setQuickFilter('all'); setFilters({ search: '', status: 'all', product: '', plan: '' }); }}
+            className="w-full bg-slate-100 hover:bg-slate-200 text-slate-700 py-2.5 rounded-xl font-bold text-xs transition-all flex items-center justify-center gap-2"
+          >
+            <RefreshCw size={14} /> Limpiar Filtros
+          </button>
         </div>
       </div>
 
@@ -1606,46 +1832,151 @@ const FAILED_STATUSES = ['FAILED', 'FALLADO', 'REJECTED', 'CANCELED', 'RECHAZADO
 const UNASSIGNED_STATUSES = ['UNASSIGNED', 'NO ASIGNADO', 'PENDING_ASSIGNMENT', 'PENDIENTE', 'UNASSIGNED_PAYMENT'];
 const FINAL_STATUSES = [...ACCEPTED_STATUSES]; // Solo los aceptados son finales/bloqueados ahora
 
-const PaymentsView = ({ payments, onEdit, onCreate, session }) => {
-  const [filter, setFilter] = useState('all');
-  
-  const filtered = payments.filter(p => {
+const PaymentsView = ({ payments = [], onEdit, onCreate, session }) => {
+  const [filters, setFilters] = useState({
+    search: '',
+    status: 'all',
+    method: ''
+  });
+  const [quickFilter, setQuickFilter] = useState('all');
+
+  const safePayments = Array.isArray(payments) ? payments : [];
+
+  const uniqueMethods = [...new Set(safePayments.map(p => p.payment_method || p.method).filter(Boolean))].sort();
+
+  const counts = {
+    total: safePayments.length,
+    accepted: safePayments.filter(p => ACCEPTED_STATUSES.includes((p.status || '').toUpperCase())).length,
+    unassigned: safePayments.filter(p => UNASSIGNED_STATUSES.includes((p.status || '').toUpperCase())).length,
+    failed: safePayments.filter(p => FAILED_STATUSES.includes((p.status || '').toUpperCase())).length,
+  };
+
+  const filtered = safePayments.filter(p => {
+    if (!p) return false;
     const s = (p.status || '').toUpperCase();
-    if (filter === 'all') return true;
-    if (filter === 'accepted') return ACCEPTED_STATUSES.includes(s);
-    if (filter === 'unassigned') return UNASSIGNED_STATUSES.includes(s);
-    if (filter === 'failed') return FAILED_STATUSES.includes(s);
-    return true;
+
+    // Quick tab filter
+    if (quickFilter === 'accepted' && !ACCEPTED_STATUSES.includes(s)) return false;
+    if (quickFilter === 'unassigned' && !UNASSIGNED_STATUSES.includes(s)) return false;
+    if (quickFilter === 'failed' && !FAILED_STATUSES.includes(s)) return false;
+
+    // Advanced search filters
+    const searchLow = filters.search.toLowerCase();
+    const searchMatch = !filters.search || (
+      (p.client_name || '').toLowerCase().includes(searchLow) ||
+      (p.contract_id || '').toLowerCase().includes(searchLow) ||
+      (p.id || '').toString().toLowerCase().includes(searchLow) ||
+      (p.reference || '').toLowerCase().includes(searchLow)
+    );
+
+    const statusMatch = filters.status === 'all' || 
+      (filters.status === 'accepted' && ACCEPTED_STATUSES.includes(s)) ||
+      (filters.status === 'unassigned' && UNASSIGNED_STATUSES.includes(s)) ||
+      (filters.status === 'failed' && FAILED_STATUSES.includes(s));
+
+    const methodMatch = !filters.method || (p.payment_method || p.method || '').toLowerCase() === filters.method.toLowerCase();
+
+    return searchMatch && statusMatch && methodMatch;
   });
 
   return (
     <div className="space-y-8">
-      <div className="flex justify-between items-end">
-        <PageHeader title="Pagos" subtitle={`${filtered.length} transacciones registradas`} />
-        <div className="flex gap-2 bg-slate-100 p-1.5 rounded-2xl mb-10">
-          {[
-            { id: 'all', label: 'Todos' },
-            { id: 'accepted', label: 'Aceptados' },
-            { id: 'unassigned', label: 'No Asignados' },
-            { id: 'failed', label: 'Fallados' }
-          ].map(f => (
+      <PageHeader 
+        title="Pagos" 
+        subtitle={`${filtered.length} transacciones registradas`} 
+        action={
+          session?.tenantId !== 'c-romel' && (
             <button 
-              key={f.id} 
-              onClick={() => setFilter(f.id)} 
-              className={`px-6 py-2.5 rounded-xl text-[12px] font-black uppercase tracking-widest transition-all ${filter === f.id ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
+              onClick={onCreate} 
+              className="flex items-center gap-3 bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl shadow-blue-600/20 transition-all active:scale-95"
             >
-              {f.label}
+              <Plus size={16} /> Nuevo Pago
             </button>
-          ))}
-        </div>
+          )
+        }
+      />
+
+      {/* Quick Filter Tabs */}
+      <div className="flex flex-wrap items-center gap-3">
+        <button
+          onClick={() => { setQuickFilter('all'); setFilters({ ...filters, status: 'all' }); }}
+          className={`flex items-center gap-2 px-5 py-3 rounded-2xl font-black text-xs uppercase tracking-widest transition-all ${
+            quickFilter === 'all' ? 'bg-slate-900 text-white shadow-lg shadow-slate-900/20' : 'bg-white text-slate-600 border border-slate-100 hover:bg-slate-50'
+          }`}
+        >
+          <span>Todos los Pagos</span>
+          <span className={`px-2 py-0.5 rounded-full text-[10px] ${quickFilter === 'all' ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-700'}`}>{counts.total}</span>
+        </button>
+
+        <button
+          onClick={() => { setQuickFilter('accepted'); setFilters({ ...filters, status: 'accepted' }); }}
+          className={`flex items-center gap-2 px-5 py-3 rounded-2xl font-black text-xs uppercase tracking-widest transition-all ${
+            quickFilter === 'accepted' ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-600/20' : 'bg-white text-slate-600 border border-slate-100 hover:bg-slate-50'
+          }`}
+        >
+          <span>Aceptados</span>
+          <span className={`px-2 py-0.5 rounded-full text-[10px] ${quickFilter === 'accepted' ? 'bg-white/20 text-white' : 'bg-emerald-50 text-emerald-700'}`}>{counts.accepted}</span>
+        </button>
+
+        <button
+          onClick={() => { setQuickFilter('unassigned'); setFilters({ ...filters, status: 'unassigned' }); }}
+          className={`flex items-center gap-2 px-5 py-3 rounded-2xl font-black text-xs uppercase tracking-widest transition-all ${
+            quickFilter === 'unassigned' ? 'bg-amber-600 text-white shadow-lg shadow-amber-600/20' : 'bg-white text-slate-600 border border-slate-100 hover:bg-slate-50'
+          }`}
+        >
+          <span>No Asignados</span>
+          <span className={`px-2 py-0.5 rounded-full text-[10px] ${quickFilter === 'unassigned' ? 'bg-white/20 text-white' : 'bg-amber-50 text-amber-700'}`}>{counts.unassigned}</span>
+        </button>
+
+        <button
+          onClick={() => { setQuickFilter('failed'); setFilters({ ...filters, status: 'failed' }); }}
+          className={`flex items-center gap-2 px-5 py-3 rounded-2xl font-black text-xs uppercase tracking-widest transition-all ${
+            quickFilter === 'failed' ? 'bg-rose-600 text-white shadow-lg shadow-rose-600/20' : 'bg-white text-slate-600 border border-slate-100 hover:bg-slate-50'
+          }`}
+        >
+          <span>Fallados</span>
+          <span className={`px-2 py-0.5 rounded-full text-[10px] ${quickFilter === 'failed' ? 'bg-white/20 text-white' : 'bg-rose-50 text-rose-700'}`}>{counts.failed}</span>
+        </button>
       </div>
 
-      <div className="flex justify-end mb-4">
-        {session?.tenantId !== 'c-romel' && (
-          <button onClick={onCreate} className="flex items-center gap-2 bg-blue-600 text-white px-8 py-4 rounded-2xl font-black uppercase tracking-widest text-[12px] shadow-lg shadow-blue-600/20 hover:scale-105 transition-all">
-            <Plus size={16} /> Nuevo Pago
+      {/* Advanced Filter Bar Grid */}
+      <div className="bg-white p-5 rounded-[28px] border border-slate-100 shadow-sm grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+        <div className="flex flex-col gap-1.5 md:col-span-2">
+          <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Búsqueda por Cliente / Contrato / ID</label>
+          <div className="relative">
+            <input 
+              type="text" 
+              className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-10 pr-4 py-2.5 text-xs font-bold outline-none focus:border-blue-600 focus:bg-white transition-all" 
+              placeholder="Buscar pago..." 
+              value={filters.search} 
+              onChange={e => setFilters({...filters, search: e.target.value})} 
+            />
+            <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+          </div>
+        </div>
+
+        <div className="flex flex-col gap-1.5">
+          <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Estado de Pago</label>
+          <select 
+            className="w-full bg-slate-50 border border-slate-200 text-slate-800 rounded-xl px-4 py-2.5 text-xs font-bold outline-none focus:border-blue-600 focus:bg-white transition-all"
+            value={filters.status} 
+            onChange={e => setFilters({...filters, status: e.target.value})}
+          >
+            <option value="all">Todos los estados</option>
+            <option value="accepted">Aceptados</option>
+            <option value="unassigned">No Asignados</option>
+            <option value="failed">Fallados</option>
+          </select>
+        </div>
+
+        <div>
+          <button 
+            onClick={() => { setQuickFilter('all'); setFilters({ search: '', status: 'all', method: '' }); }}
+            className="w-full bg-slate-100 hover:bg-slate-200 text-slate-700 py-2.5 rounded-xl font-bold text-xs transition-all flex items-center justify-center gap-2"
+          >
+            <RefreshCw size={14} /> Limpiar Filtros
           </button>
-        )}
+        </div>
       </div>
 
       <Table 
@@ -4106,12 +4437,37 @@ const OrganizationView = ({ structure, session, refreshData }) => {
   );
 };
 
-const ActionsView = ({ onNavigate, incompleteActions }) => {
-  const [searchQuery, setSearchQuery] = useState('');
-  
-  const filteredActions = incompleteActions.filter(item => 
-    item.clientName.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+const ActionsView = ({ onNavigate, incompleteActions = [] }) => {
+  const [filters, setFilters] = useState({
+    search: '',
+    status: 'all'
+  });
+  const [quickFilter, setQuickFilter] = useState('all');
+
+  const safeActions = Array.isArray(incompleteActions) ? incompleteActions : [];
+
+  const counts = {
+    total: safeActions.length,
+    pending: safeActions.filter(a => (a.status || '').toLowerCase().includes('incomplet') || (a.status || '').toLowerCase().includes('proceso') || (a.status || '').toLowerCase().includes('pendiente')).length,
+    completed: safeActions.filter(a => (a.status || '').toLowerCase().includes('complet') || (a.status || '').toLowerCase().includes('aprob')).length
+  };
+
+  const filteredActions = safeActions.filter(item => {
+    if (!item) return false;
+    const s = (item.status || '').toLowerCase();
+
+    if (quickFilter === 'pending' && (!s.includes('incomplet') && !s.includes('proceso') && !s.includes('pendiente'))) return false;
+    if (quickFilter === 'completed' && (!s.includes('complet') && !s.includes('aprob'))) return false;
+
+    const searchLow = filters.search.toLowerCase();
+    const searchMatch = !filters.search || (
+      (item.clientName || '').toLowerCase().includes(searchLow) ||
+      (item.device || '').toLowerCase().includes(searchLow) ||
+      (item.date || '').toLowerCase().includes(searchLow)
+    );
+
+    return searchMatch;
+  });
 
   return (
     <div className="space-y-10 max-w-6xl mx-auto">
@@ -4119,9 +4475,6 @@ const ActionsView = ({ onNavigate, incompleteActions }) => {
       <div>
         <div className="flex items-center gap-3 mb-6">
           <h2 className="text-2xl font-black text-slate-800 tracking-tight">Opciones de Registro</h2>
-          <button className="p-2 border border-slate-200 rounded-xl hover:bg-slate-50 hover:border-slate-300 text-slate-400 transition-colors bg-white shadow-sm">
-            <RefreshCw size={16} />
-          </button>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-2xl">
           <button onClick={() => onNavigate('Nuevo Cliente')} className="bg-white hover:bg-slate-50 hover:border-blue-200 hover:shadow-md transition-all p-6 rounded-[24px] flex items-center gap-3 md:gap-5 text-slate-800 text-left border border-slate-100 shadow-sm group">
@@ -4134,21 +4487,68 @@ const ActionsView = ({ onNavigate, incompleteActions }) => {
       </div>
 
       {/* Incomplete actions Section */}
-      <div>
-        <div className="flex flex-col md:flex-row md:items-center justify-between mb-6 pb-4 border-b border-slate-100 gap-4">
-          <h2 className="text-2xl font-black text-slate-800 tracking-tight">Registros de Ventas</h2>
-          <div className="relative">
-            <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
-            <input 
-              type="text" 
-              placeholder="Buscar por cliente..." 
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-11 pr-5 py-3 w-full md:w-80 bg-slate-50 border-2 border-slate-100 rounded-xl font-bold text-slate-800 focus:border-blue-600 outline-none transition-all text-sm"
-            />
+      <div className="space-y-6">
+        <PageHeader title="Registros de Ventas" subtitle={`${filteredActions.length} registros en historial`} />
+
+        {/* Quick Filter Tabs */}
+        <div className="flex flex-wrap items-center gap-3">
+          <button
+            onClick={() => { setQuickFilter('all'); }}
+            className={`flex items-center gap-2 px-5 py-3 rounded-2xl font-black text-xs uppercase tracking-widest transition-all ${
+              quickFilter === 'all' ? 'bg-slate-900 text-white shadow-lg shadow-slate-900/20' : 'bg-white text-slate-600 border border-slate-100 hover:bg-slate-50'
+            }`}
+          >
+            <span>Todas las Ventas</span>
+            <span className={`px-2 py-0.5 rounded-full text-[10px] ${quickFilter === 'all' ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-700'}`}>{counts.total}</span>
+          </button>
+
+          <button
+            onClick={() => { setQuickFilter('pending'); }}
+            className={`flex items-center gap-2 px-5 py-3 rounded-2xl font-black text-xs uppercase tracking-widest transition-all ${
+              quickFilter === 'pending' ? 'bg-amber-600 text-white shadow-lg shadow-amber-600/20' : 'bg-white text-slate-600 border border-slate-100 hover:bg-slate-50'
+            }`}
+          >
+            <span>En Proceso / Incompletas</span>
+            <span className={`px-2 py-0.5 rounded-full text-[10px] ${quickFilter === 'pending' ? 'bg-white/20 text-white' : 'bg-amber-50 text-amber-700'}`}>{counts.pending}</span>
+          </button>
+
+          <button
+            onClick={() => { setQuickFilter('completed'); }}
+            className={`flex items-center gap-2 px-5 py-3 rounded-2xl font-black text-xs uppercase tracking-widest transition-all ${
+              quickFilter === 'completed' ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-600/20' : 'bg-white text-slate-600 border border-slate-100 hover:bg-slate-50'
+            }`}
+          >
+            <span>Completadas</span>
+            <span className={`px-2 py-0.5 rounded-full text-[10px] ${quickFilter === 'completed' ? 'bg-white/20 text-white' : 'bg-emerald-50 text-emerald-700'}`}>{counts.completed}</span>
+          </button>
+        </div>
+
+        {/* Advanced Filter Bar Grid */}
+        <div className="bg-white p-5 rounded-[28px] border border-slate-100 shadow-sm grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+          <div className="flex flex-col gap-1.5 md:col-span-2">
+            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Búsqueda por Cliente / Dispositivo</label>
+            <div className="relative">
+              <input 
+                type="text" 
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-10 pr-4 py-2.5 text-xs font-bold outline-none focus:border-blue-600 focus:bg-white transition-all" 
+                placeholder="Buscar cliente o equipo..." 
+                value={filters.search} 
+                onChange={e => setFilters({...filters, search: e.target.value})} 
+              />
+              <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+            </div>
+          </div>
+
+          <div>
+            <button 
+              onClick={() => { setQuickFilter('all'); setFilters({ search: '', status: 'all' }); }}
+              className="w-full bg-slate-100 hover:bg-slate-200 text-slate-700 py-2.5 rounded-xl font-bold text-xs transition-all flex items-center justify-center gap-2"
+            >
+              <RefreshCw size={14} /> Limpiar Filtros
+            </button>
           </div>
         </div>
-        
+
         <div className="bg-white rounded-[32px] border border-slate-100 shadow-sm overflow-hidden">
           <table className="w-full text-left border-collapse">
             <thead className="bg-slate-50/50">
@@ -4166,7 +4566,11 @@ const ActionsView = ({ onNavigate, incompleteActions }) => {
                   <td className="px-8 py-5 text-base font-medium text-slate-500">{item.date}</td>
                   <td className="px-8 py-5 text-base font-bold text-slate-800">{item.clientName}</td>
                   <td className="px-8 py-5 text-base font-medium text-slate-600">{item.device}</td>
-                  <td className="px-8 py-5 text-sm font-mono text-orange-500 bg-orange-50/50 rounded-lg inline-block my-3 ml-8 px-3 py-1 font-bold">{item.status}</td>
+                  <td className="px-8 py-5">
+                    <span className="text-xs font-mono text-amber-700 bg-amber-50 px-3 py-1.5 rounded-lg border border-amber-100 font-bold">
+                      {item.status}
+                    </span>
+                  </td>
                   <td className="px-8 py-5">
                     <div className="flex items-center justify-end gap-3">
                       <button onClick={() => onNavigate('Nuevo Cliente', item)} className="flex items-center gap-2 bg-slate-100 hover:bg-blue-600 hover:text-white hover:shadow-md text-blue-600 font-bold px-5 py-2.5 rounded-xl transition-all text-sm">
