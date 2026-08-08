@@ -1240,6 +1240,7 @@ app.put('/api/backoffice/trustonic-devices/:imei1', async (req, res) => {
 
 app.post('/api/backoffice/trustonic-actions', async (req, res) => {
   const { action, imei, tenantId, title, message, lockMessage, reason, comment } = req.body;
+  const targetTenant = tenantId || req.headers['x-tenant-id'] || 'tests';
   if (!imei) return res.status(400).json({ error: 'IMEI requerido' });
 
   try {
@@ -1249,41 +1250,41 @@ app.post('/api/backoffice/trustonic-actions', async (req, res) => {
 
     if (act === 'lock' || act === 'lock_message') {
       try {
-        apiResult = await trustonicApi.lockDevice(pool, tenantId, imei, lockMessage || 'Dispositivo bloqueado por falta de pago');
+        apiResult = await trustonicApi.lockDevice(pool, targetTenant, imei, lockMessage || 'Dispositivo bloqueado por falta de pago');
       } catch (err) {
         apiResult = { message: err.message };
       }
       newStatus = 'Bloqueado';
     } else if (act === 'unlock') {
       try {
-        apiResult = await trustonicApi.unlockDevice(pool, tenantId, imei);
+        apiResult = await trustonicApi.unlockDevice(pool, targetTenant, imei);
       } catch (err) {
         apiResult = { message: err.message };
       }
       newStatus = 'Activo';
     } else if (act === 'inhabilitar') {
       try {
-        apiResult = await trustonicApi.archiveDevice(pool, tenantId, imei);
+        apiResult = await trustonicApi.archiveDevice(pool, targetTenant, imei);
       } catch (err) {
         apiResult = { message: err.message };
       }
       newStatus = 'Inactivo';
     } else if (act === 'liberar') {
       try {
-        apiResult = await trustonicApi.releaseDevice(pool, tenantId, imei, reason || 'Liberación por fin de contrato');
+        apiResult = await trustonicApi.releaseDevice(pool, targetTenant, imei, reason || 'Liberación por fin de contrato');
       } catch (err) {
         apiResult = { message: err.message };
       }
       newStatus = 'Liberado';
     } else if (act === 'notificar') {
       try {
-        apiResult = await trustonicApi.notifyDevice(pool, tenantId, imei, title || 'Aviso Bantos', message || 'Por favor revise su cuenta', 'HEADSUP');
+        apiResult = await trustonicApi.notifyDevice(pool, targetTenant, imei, title || 'Aviso Bantos', message || 'Por favor revise su cuenta', 'HEADSUP');
       } catch (err) {
         apiResult = { message: err.message };
       }
     } else if (act === 'pin_unlock') {
       try {
-        apiResult = await trustonicApi.pinUnlockDevice(pool, tenantId, imei);
+        apiResult = await trustonicApi.pinUnlockDevice(pool, targetTenant, imei);
       } catch (err) {
         apiResult = { message: err.message };
       }
@@ -1304,7 +1305,7 @@ app.post('/api/backoffice/trustonic-actions', async (req, res) => {
     await pool.query(
       `INSERT INTO trustonic_logs (imei1, tenant_id, operation_date, operation_type, status, comment) 
        VALUES (?, ?, NOW(), ?, ?, ?)`,
-      [imei, tenantId || 'c-romel', `Acción Ejecutada: ${action.toUpperCase()}`, newStatus || 'Completado', logComment]
+      [imei, targetTenant, `Acción Ejecutada: ${action.toUpperCase()}`, newStatus || 'Completado', logComment]
     );
 
     res.json({ success: true, action, imei, status: newStatus, result: apiResult });
