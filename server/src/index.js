@@ -1288,6 +1288,20 @@ app.post('/api/backoffice/trustonic-actions', async (req, res) => {
       } catch (err) {
         apiResult = { message: err.message };
       }
+    } else if (act === 'report_stolen') {
+      try {
+        apiResult = await trustonicApi.reportStolenDevice(pool, targetTenant, imei, 'REPORT');
+      } catch (err) {
+        apiResult = { message: err.message };
+      }
+      newStatus = 'Robado';
+    } else if (act === 'transfer_tenant') {
+      const { targetTenantId } = req.body;
+      try {
+        apiResult = await trustonicApi.transferDevice(pool, targetTenant, imei, targetTenantId);
+      } catch (err) {
+        apiResult = { message: err.message };
+      }
     } else {
       return res.status(400).json({ error: 'Acción de Trustonic no válida' });
     }

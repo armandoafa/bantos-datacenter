@@ -3176,10 +3176,12 @@ const TrustonicActionModal = ({ isOpen, onClose, device, actionType, onConfirm, 
   const [title, setTitle] = useState('Aviso Bantos');
   const [message, setMessage] = useState('Estimado cliente, por favor póngase al día con su cuota.');
   const [reason, setReason] = useState('End of Tenure');
+  const [targetTenantId, setTargetTenantId] = useState('');
 
   useEffect(() => {
     if (isOpen) {
       setComment('');
+      setTargetTenantId('');
       if (actionType === 'lock') setLockMessage('Dispositivo bloqueado por falta de pago');
       if (actionType === 'lock_message') setLockMessage('Favor de comunicarse para regularizar su cuenta.');
       if (actionType === 'notificar') {
@@ -3201,6 +3203,8 @@ const TrustonicActionModal = ({ isOpen, onClose, device, actionType, onConfirm, 
       case 'notificar': return { name: 'Enviar Notificación', icon: Bell, color: 'text-blue-600', bg: 'bg-blue-50' };
       case 'pin_unlock': return { name: 'PIN Unlock', icon: KeyRound, color: 'text-cyan-600', bg: 'bg-cyan-50' };
       case 'lock_message': return { name: 'Mensaje de Bloqueo', icon: MessageSquare, color: 'text-purple-600', bg: 'bg-purple-50' };
+      case 'report_stolen': return { name: 'Reportar Robo (Theft)', icon: ShieldAlert, color: 'text-red-600', bg: 'bg-red-50' };
+      case 'transfer_tenant': return { name: 'Transferir a otro Tenant', icon: RefreshCw, color: 'text-violet-600', bg: 'bg-violet-50' };
       default: return { name: 'Ejecutar Acción', icon: ShieldCheck, color: 'text-blue-600', bg: 'bg-blue-50' };
     }
   };
@@ -3217,7 +3221,8 @@ const TrustonicActionModal = ({ isOpen, onClose, device, actionType, onConfirm, 
       lockMessage,
       title,
       message,
-      reason
+      reason,
+      targetTenantId
     });
   };
 
@@ -3285,6 +3290,20 @@ const TrustonicActionModal = ({ isOpen, onClose, device, actionType, onConfirm, 
                 className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs font-bold outline-none focus:border-blue-600 focus:bg-white transition-all"
                 value={reason}
                 onChange={e => setReason(e.target.value)}
+              />
+            </div>
+          )}
+
+          {actionType === 'transfer_tenant' && (
+            <div>
+              <label className="block text-[10px] font-black uppercase text-slate-400 tracking-widest mb-1.5 ml-1">ID del Tenant Destino</label>
+              <input 
+                type="text" 
+                required
+                placeholder="Ejemplo: sotelo, tests, c-romel..."
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs font-bold outline-none focus:border-blue-600 focus:bg-white transition-all"
+                value={targetTenantId}
+                onChange={e => setTargetTenantId(e.target.value)}
               />
             </div>
           )}
@@ -3744,6 +3763,18 @@ const TrustonicDevicesView = ({ data, onSync, syncing, onEdit, onCreate, session
                           className="w-full px-3.5 py-2 flex items-center gap-2.5 hover:bg-purple-50 text-slate-700 hover:text-purple-600 transition-colors"
                         >
                           <MessageSquare size={14} className="text-purple-500" /> Lock Message
+                        </button>
+                        <button 
+                          onClick={() => handleOpenActionModal('report_stolen', d)} 
+                          className="w-full px-3.5 py-2 flex items-center gap-2.5 hover:bg-red-50 text-slate-700 hover:text-red-600 transition-colors"
+                        >
+                          <ShieldAlert size={14} className="text-red-500" /> Reportar Robo
+                        </button>
+                        <button 
+                          onClick={() => handleOpenActionModal('transfer_tenant', d)} 
+                          className="w-full px-3.5 py-2 flex items-center gap-2.5 hover:bg-violet-50 text-slate-700 hover:text-violet-600 transition-colors"
+                        >
+                          <RefreshCw size={14} className="text-violet-500" /> Transferir Tenant
                         </button>
                       </div>
                     </div>
