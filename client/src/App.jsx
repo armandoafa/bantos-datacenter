@@ -2960,6 +2960,10 @@ const TrustonicDevicesView = ({ data, onSync, syncing, onEdit, onCreate, session
     const modelMatch = !filters.model || (d.model || '').toLowerCase().includes(filters.model.toLowerCase());
 
     return serviceMatch && imeiMatch && statusMatch && brandMatch && modelMatch;
+  }).sort((a, b) => {
+    const tA = a.last_change ? new Date(a.last_change).getTime() : 0;
+    const tB = b.last_change ? new Date(b.last_change).getTime() : 0;
+    return tB - tA;
   });
 
   return (
