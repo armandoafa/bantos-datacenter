@@ -5115,6 +5115,28 @@ const App = () => {
     } catch (e) { console.error(e); }
   }, [session, activeScope]);
 
+  // Reset state on tenant switch to ensure clean multi-tenant isolation
+  useEffect(() => {
+    if (session?.tenantId) {
+      setData({ 
+        clients: [], 
+        contracts: [], 
+        inventory: [], 
+        payments: [], 
+        products: [], 
+        paymentPlans: [], 
+        orgStructure: [], 
+        actions: [], 
+        audit: [], 
+        dataCollections: [], 
+        trustonic: { devices: [], summary: [] }, 
+        trustonicLogs: [], 
+        users: [] 
+      });
+      refreshData();
+    }
+  }, [session?.tenantId]);
+
   useEffect(() => { refreshData(); }, [view, refreshData]);
 
   const handleAddInventory = async (productName, imeiValue) => {
