@@ -2925,10 +2925,14 @@ const TrustonicDevicesView = ({ data, onSync, syncing, onEdit, onCreate, session
       const s = (d.service || '').toLowerCase();
       return s.includes('pospago') || s.includes('postpago') || s.includes('postpaid');
     }).length,
+    liberado: normalizedDevices.filter(d => {
+      const st = (d.status || '').toLowerCase();
+      return st.includes('liber') || st.includes('releas');
+    }).length,
     inventario: normalizedDevices.filter(d => {
       const s = (d.service || '').toLowerCase();
       const st = (d.status || '').toLowerCase();
-      return s.includes('inventario') || st.includes('inactivo') || st.includes('inactive');
+      return s.includes('inventario') || st.includes('inactivo') || st.includes('inactive') || st.includes('idle');
     }).length,
   };
 
@@ -2946,16 +2950,27 @@ const TrustonicDevicesView = ({ data, onSync, syncing, onEdit, onCreate, session
   const filteredDevices = normalizedDevices.filter(d => {
     const searchService = filters.service.toLowerCase();
     const deviceService = (d.service || '').toLowerCase();
+    const deviceStatus = (d.status || '').toLowerCase();
     const deviceImei1 = (d.imei1 || '').toLowerCase();
     const deviceImei2 = (d.imei2 || '').toLowerCase();
     
     const isPostpagoMatch = searchService === 'pospago' && (deviceService.includes('pospago') || deviceService.includes('postpago') || deviceService.includes('postpaid'));
     const isPrepagoMatch = searchService === 'prepago' && (deviceService.includes('prepago') || deviceService.includes('prepaid'));
-    const isInventarioMatch = searchService === 'inventario' && (deviceService.includes('inventario') || (d.status || '').toLowerCase().includes('inactivo') || (d.status || '').toLowerCase().includes('inactive'));
+    const isLiberadoServiceMatch = searchService === 'liberado' && (deviceStatus.includes('liber') || deviceStatus.includes('releas'));
+    const isInventarioMatch = searchService === 'inventario' && (deviceService.includes('inventario') || deviceStatus.includes('inactivo') || deviceStatus.includes('inactive') || deviceStatus.includes('idle'));
     
-    const serviceMatch = !filters.service || isPostpagoMatch || isPrepagoMatch || isInventarioMatch || deviceService.includes(searchService);
+    const serviceMatch = !filters.service || isPostpagoMatch || isPrepagoMatch || isLiberadoServiceMatch || isInventarioMatch || deviceService.includes(searchService);
     const imeiMatch = !filters.imei || deviceImei1.includes(filters.imei.toLowerCase()) || deviceImei2.includes(filters.imei.toLowerCase());
-    const statusMatch = !filters.status || (d.status || '').toLowerCase() === filters.status.toLowerCase();
+
+    const statusMatch = !filters.status || (
+      filters.status === 'Liberado' ? (deviceStatus.includes('liber') || deviceStatus.includes('releas')) :
+      filters.status === 'Bloqueado' ? (deviceStatus.includes('bloq') || deviceStatus.includes('lock')) :
+      filters.status === 'Activo' ? (deviceStatus.includes('activ') || deviceStatus.includes('active') || deviceStatus.includes('finan')) :
+      filters.status === 'Inactivo' ? (deviceStatus.includes('inact') || deviceStatus.includes('idle')) :
+      filters.status === 'Listo para su uso' ? (deviceStatus.includes('listo') || deviceStatus.includes('ready')) :
+      deviceStatus.includes(filters.status.toLowerCase())
+    );
+
     const brandMatch = !filters.brand || (d.brand || '').toLowerCase().includes(filters.brand.toLowerCase());
     const modelMatch = !filters.model || (d.model || '').toLowerCase().includes(filters.model.toLowerCase());
 
@@ -2965,6 +2980,35 @@ const TrustonicDevicesView = ({ data, onSync, syncing, onEdit, onCreate, session
     const tB = b.last_change ? new Date(b.last_change).getTime() : 0;
     return tB - tA;
   });
+
+  const renderStatusBadge = (statusStr) => {
+    const st = (statusStr || '').toLowerCase();
+    let label = statusStr || 'Desconocido';
+    let colorClass = 'bg-amber-100 text-amber-700';
+
+    if (st.includes('liber') || st.includes('releas')) {
+      label = 'Liberado';
+      colorClass = 'bg-slate-100 text-slate-700';
+    } else if (st.includes('bloq') || st.includes('lock')) {
+      label = 'Bloqueado';
+      colorClass = 'bg-rose-100 text-rose-700';
+    } else if (st.includes('activ') || st.includes('active') || st.includes('finan')) {
+      label = 'Activo';
+      colorClass = 'bg-emerald-100 text-emerald-700';
+    } else if (st.includes('listo') || st.includes('ready')) {
+      label = 'Listo para su uso';
+      colorClass = 'bg-blue-100 text-blue-700';
+    } else if (st.includes('inact') || st.includes('idle') || st.includes('inven')) {
+      label = 'Inactivo';
+      colorClass = 'bg-amber-100 text-amber-700';
+    }
+
+    return (
+      <span className={`px-3.5 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest ${colorClass}`}>
+        {label}
+      </span>
+    );
+  };
 
   return (
     <div className="space-y-8">
@@ -3024,6 +3068,16 @@ const TrustonicDevicesView = ({ data, onSync, syncing, onEdit, onCreate, session
         </button>
 
         <button
+          onClick={() => setFilters({ ...filters, service: 'Liberado' })}
+          className={`flex items-center gap-2 px-5 py-3 rounded-2xl font-black text-xs uppercase tracking-widest transition-all ${
+            filters.service === 'Liberado' ? 'bg-teal-600 text-white shadow-lg shadow-teal-600/20' : 'bg-white text-slate-600 border border-slate-100 hover:bg-slate-50'
+          }`}
+        >
+          <span>Liberados</span>
+          <span className={`px-2 py-0.5 rounded-full text-[10px] ${filters.service === 'Liberado' ? 'bg-white/20 text-white' : 'bg-teal-50 text-teal-700'}`}>{counts.liberado}</span>
+        </button>
+
+        <button
           onClick={() => setFilters({ ...filters, service: 'Inventario' })}
           className={`flex items-center gap-2 px-5 py-3 rounded-2xl font-black text-xs uppercase tracking-widest transition-all ${
             filters.service === 'Inventario' ? 'bg-amber-600 text-white shadow-lg shadow-amber-600/20' : 'bg-white text-slate-600 border border-slate-100 hover:bg-slate-50'
@@ -3060,6 +3114,7 @@ const TrustonicDevicesView = ({ data, onSync, syncing, onEdit, onCreate, session
             <option value="">Todos los servicios</option>
             <option value="Prepago">Prepago</option>
             <option value="Pospago">Pospago</option>
+            <option value="Liberado">Liberados</option>
             <option value="Inventario">Inventario</option>
           </select>
         </div>
@@ -3122,15 +3177,7 @@ const TrustonicDevicesView = ({ data, onSync, syncing, onEdit, onCreate, session
               </span>
             </td>
             <td className="px-8 py-5">
-              <span className={`px-3.5 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest ${
-                d.status === 'Activo' ? 'bg-emerald-100 text-emerald-700' : 
-                d.status === 'Bloqueado' ? 'bg-rose-100 text-rose-700' : 
-                d.status === 'Liberado' ? 'bg-slate-100 text-slate-700' :
-                d.status === 'Listo para su uso' ? 'bg-blue-100 text-blue-700' :
-                'bg-amber-100 text-amber-700'
-              }`}>
-                {d.status || 'Desconocido'}
-              </span>
+              {renderStatusBadge(d.status)}
             </td>
             <td className="px-8 py-5 font-black text-sm uppercase text-slate-800">{d.brand || '—'}</td>
             <td className="px-8 py-5 text-slate-600 font-bold text-sm">{d.model || '—'}</td>
