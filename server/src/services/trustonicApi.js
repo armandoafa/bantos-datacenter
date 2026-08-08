@@ -4,19 +4,24 @@ import { scrapeTrustonic } from './trustonic.js';
 const DEFAULT_API_KEY = 'CMPltSM90eh05BMA99cLACoKVkxSLBls0z1A335Mv6YKxjUOOi+eTGHZLHw4o0DazdEBlXhMgA2A/dwk9xW+dw==';
 const defaultClient = new TrustonicClient(DEFAULT_API_KEY);
 
-export async function getTrustonicClientForTenant(pool, tenantId) {
-    if (!tenantId || !pool) return defaultClient;
+export async function getTrustonicClientInfo(pool, tenantId) {
+    if (!tenantId || !pool) return { client: defaultClient, hasCustomKey: false, domain: 'default' };
     try {
         const [rows] = await pool.query('SELECT trustonic_api_key, trustonic_domain FROM tenants WHERE tenant_id = ?', [tenantId]);
         if (rows.length > 0 && rows[0].trustonic_api_key && rows[0].trustonic_api_key.trim()) {
             const apiKey = rows[0].trustonic_api_key.trim();
             const domain = rows[0].trustonic_domain ? rows[0].trustonic_domain.trim() : tenantId;
-            return new TrustonicClient(apiKey, domain);
+            return { client: new TrustonicClient(apiKey, domain), hasCustomKey: true, domain };
         }
     } catch (e) {
         console.warn(`>>> [Trustonic] Fallback a cliente default para tenant ${tenantId}:`, e.message);
     }
-    return defaultClient;
+    return { client: defaultClient, hasCustomKey: false, domain: 'default' };
+}
+
+export async function getTrustonicClientForTenant(pool, tenantId) {
+    const info = await getTrustonicClientInfo(pool, tenantId);
+    return info.client;
 }
 
 export async function getTrustonicToken(pool = null, tenantId = null) {
@@ -60,19 +65,24 @@ function parseTrustonicDate(dateStr) {
     }
 }
 
-// Función para sincronizar los movimientos en la base de datos
+// Función para sincronizar los movimientos y dispositivos en la base de datos
 export async function syncMovements(pool, tenantId) {
     let devices = [];
-    let source = 'API';
-    const c = await getTrustonicClientForTenant(pool, tenantId);
+    let source = 'API Oficial Trustonic (Tenant API-Key)';
+    const info = await getTrustonicClientInfo(pool, tenantId);
+    const c = info.client;
 
     try {
+        console.log(`>>> [Trustonic Sync] Consultando API con ${info.hasCustomKey ? 'API-Key del Tenant (' + info.domain + ')' : 'API-Key Default'}...`);
         const res = await c.query.getServiceInfo('DeviceFinancing').catch(() => c.request({ method: 'GET', url: '/query/service?serviceName=DeviceFinancing' }));
         devices = res.deviceResponseList || res.items || res || [];
+        if (!Array.isArray(devices) && typeof devices === 'object') {
+            devices = Object.values(devices).find(val => Array.isArray(val)) || [];
+        }
     } catch (error) {
-        console.warn('>>> [Trustonic API] Usando captura optimizada de portal:', error.message);
+        console.warn('>>> [Trustonic API] Error en API directa, usando captura optimizada de portal:', error.message);
         try {
-            devices = await scrapeTrustonic('itdevelopment', 'Alika2012.', 'bantos-msp', false);
+            devices = await scrapeTrustonic('itdevelopment', 'Alika2012.', info.domain || 'bantos-msp', false);
             source = 'Portal Web (Ultrarrápido)';
         } catch (scrapeError) {
             return { success: false, message: 'Error en sincronización: ' + scrapeError.message };
@@ -85,18 +95,23 @@ export async function syncMovements(pool, tenantId) {
 
     let syncedCount = 0;
     for (const d of devices) {
-        const imei1 = d.imei1;
-        const status = d.status;
-        const lastChange = parseTrustonicDate(d.lastChange || d.last_change);
-        const lastConn = parseTrustonicDate(d.lastConnection || d.last_connection);
+        const imei1 = d.imei1 || d.imei || d.deviceUid;
+        if (!imei1) continue;
+        const imei2 = d.imei2 || null;
+        const status = d.status || d.deviceStatus || 'Activo';
+        const service = d.service || d.serviceName || 'Prepago';
+        const brand = d.brand || d.make || '—';
+        const model = d.model || '—';
+        const lastChange = parseTrustonicDate(d.lastChange || d.last_change || d.lastChangeDate);
+        const lastConn = parseTrustonicDate(d.lastConnection || d.last_connection || d.lastConnectionDate);
         const deviceTenant = d.scraped_tenant_id || tenantId;
         
         await pool.query(
             `INSERT INTO trustonic_devices (imei1, imei2, tenant_id, service, status, brand, model, last_change, last_connection) 
              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) 
              ON DUPLICATE KEY UPDATE 
-             status=VALUES(status), last_change=VALUES(last_change), last_connection=VALUES(last_connection)`,
-            [imei1, d.imei2 || null, deviceTenant, d.service, status, d.brand, d.model, lastChange, lastConn]
+             service=VALUES(service), status=VALUES(status), brand=VALUES(brand), model=VALUES(model), last_change=VALUES(last_change), last_connection=VALUES(last_connection)`,
+            [imei1, imei2, deviceTenant, service, status, brand, model, lastChange, lastConn]
         );
 
         await pool.query(
@@ -106,15 +121,15 @@ export async function syncMovements(pool, tenantId) {
                 imei1, 
                 deviceTenant, 
                 lastChange || new Date(), 
-                d.operation_type || 'Actualización de Estado (Sync)', 
+                d.operation_type || 'Actualización de Estado (Sync API)', 
                 status, 
-                d.comment || d.cause || null
+                d.comment || d.cause || `Sincronizado vía ${source}`
             ]
         );
         syncedCount++;
     }
 
-    return { success: true, count: syncedCount, source: source === 'API' ? 'API' : 'Portal' };
+    return { success: true, count: syncedCount, source: info.hasCustomKey ? `API-Key del Tenant (${info.domain})` : source };
 }
 
 export async function lockDevice(pool, tenantId, imei, lockMessage = '') {
