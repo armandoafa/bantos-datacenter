@@ -3734,12 +3734,12 @@ const TrustonicDevicesView = ({ data, onSync, syncing, onEdit, onCreate, session
                         >
                           <Unlock size={14} className="text-emerald-500" /> UnLock (Desbloquear)
                         </button>
-                        <button 
+                        {/* <button 
                           onClick={() => handleOpenActionModal('inhabilitar', d)} 
                           className="w-full px-3.5 py-2 flex items-center gap-2.5 hover:bg-amber-50 text-slate-700 hover:text-amber-600 transition-colors"
                         >
                           <Ban size={14} className="text-amber-500" /> Inhabilitar
-                        </button>
+                        </button> */}
                         <button 
                           onClick={() => handleOpenActionModal('liberar', d)} 
                           className="w-full px-3.5 py-2 flex items-center gap-2.5 hover:bg-indigo-50 text-slate-700 hover:text-indigo-600 transition-colors"
