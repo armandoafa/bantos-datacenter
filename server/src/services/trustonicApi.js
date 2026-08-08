@@ -74,16 +74,16 @@ export async function syncMovements(pool, tenantId) {
 
     try {
         console.log(`>>> [Trustonic Sync] Consultando API con ${info.hasCustomKey ? 'API-Key del Tenant (' + info.domain + ')' : 'API-Key Default'}...`);
-        const res = await c.query.getServiceInfo('DeviceFinancing').catch(() => c.request({ method: 'GET', url: '/query/service?serviceName=DeviceFinancing' }));
-        devices = res.deviceResponseList || res.items || res || [];
-        if (!Array.isArray(devices) && typeof devices === 'object') {
-            devices = Object.values(devices).find(val => Array.isArray(val)) || [];
+        const res = await c.query.getServiceInfo('deviceFinancing').catch(() => c.request({ method: 'GET', url: '/query/service?serviceName=deviceFinancing' }));
+        devices = res.deviceResponseList || res.items || [];
+        if (!Array.isArray(devices) || devices.length === 0) {
+            throw new Error('ServiceInfo devolvió resumen o estructura sin lista directa de dispositivos');
         }
     } catch (error) {
-        console.warn('>>> [Trustonic API] Error en API directa, usando captura optimizada de portal:', error.message);
+        console.warn('>>> [Trustonic API] Usando captura ultrarrápida multipágina de portal:', error.message);
         try {
             devices = await scrapeTrustonic('itdevelopment', 'Alika2012.', info.domain || 'bantos-msp', false);
-            source = 'Portal Web (Ultrarrápido)';
+            source = 'Portal Web (Multipágina)';
         } catch (scrapeError) {
             return { success: false, message: 'Error en sincronización: ' + scrapeError.message };
         }

@@ -21,51 +21,70 @@ export async function scrapeTrustonic(username, password, domain, deepAudit = fa
         await page.waitForNavigation({ waitUntil: 'domcontentloaded' }).catch(() => {});
         
         // Navegar a la lista de smartphones
-        await page.goto('https://portal.cloud.trustonic.com/smartphones', { waitUntil: 'domcontentloaded' });
-        await page.waitForSelector('.ant-table-row', { timeout: 8000 }).catch(() => {});
+        await page.goto('https://portal.cloud.trustonic.com/smartphones', { waitUntil: 'networkidle2' });
+        await new Promise(r => setTimeout(r, 4000));
         
-        // Obtener lista de IMEIs y sus selectores de icono de "Ojo"
-        const devicesBasic = await page.evaluate(() => {
-            const tables = Array.from(document.querySelectorAll('table'));
-            const devicesTable = tables.find(t => t.innerText.includes('IMEI') && !t.innerText.includes('Total'));
-            if (!devicesTable) return [];
-            
-            const headers = Array.from(devicesTable.querySelectorAll('th')).map(th => th.innerText.trim().toLowerCase());
-            
-            // Buscar índices de columnas dinámicamente
-            const tenantIdx = headers.findIndex(h => h.includes('tenant'));
-            const imei1Idx = headers.findIndex(h => h.includes('imei') || h.includes('sn') || h.includes('uid'));
-            const imei2Idx = headers.findIndex(h => h.includes('imei2'));
-            const serviceIdx = headers.findIndex(h => h.includes('service') || h.includes('servicio'));
-            const statusIdx = headers.findIndex(h => h.includes('state') || h.includes('status') || h.includes('estado'));
-            const brandIdx = headers.findIndex(h => h.includes('brand') || h.includes('marca'));
-            const modelIdx = headers.findIndex(h => h.includes('model') || h.includes('modelo'));
-            const lastChangeIdx = headers.findIndex(h => h.includes('changed') || h.includes('change') || h.includes('cambio') || h.includes('último cambio'));
-            const lastConnIdx = headers.findIndex(h => h.includes('checkin') || h.includes('connection') || h.includes('conexión'));
+        let allDevices = [];
+        let pageNum = 1;
 
-            const rows = Array.from(devicesTable.querySelectorAll('.ant-table-row'));
-            return rows.map((row, index) => {
-                const cols = Array.from(row.querySelectorAll('td'));
-                return {
-                    index,
-                    scraped_tenant_id: tenantIdx !== -1 ? cols[tenantIdx]?.innerText.trim() : null,
-                    imei1: imei1Idx !== -1 ? cols[imei1Idx]?.innerText.trim() : null,
-                    imei2: imei2Idx !== -1 ? cols[imei2Idx]?.innerText.trim() : null,
-                    service: serviceIdx !== -1 ? cols[serviceIdx]?.innerText.trim() : null,
-                    status: statusIdx !== -1 ? cols[statusIdx]?.innerText.trim() : null,
-                    brand: brandIdx !== -1 ? cols[brandIdx]?.innerText.trim() : null,
-                    model: modelIdx !== -1 ? cols[modelIdx]?.innerText.trim() : null,
-                    last_change: lastChangeIdx !== -1 ? cols[lastChangeIdx]?.innerText.trim() : null,
-                    last_connection: lastConnIdx !== -1 ? cols[lastConnIdx]?.innerText.trim() : null
-                };
-            }).filter(d => d.imei1 && /^\d+$/.test(d.imei1));
-        });
+        while (true) {
+            const pageDevices = await page.evaluate(() => {
+                const tables = Array.from(document.querySelectorAll('table'));
+                const devicesTable = tables.find(t => {
+                    const ths = Array.from(t.querySelectorAll('th'));
+                    return ths.some(th => th.innerText.includes('IMEI'));
+                });
+                if (!devicesTable) return [];
+                
+                const headers = Array.from(devicesTable.querySelectorAll('th')).map(th => th.innerText.trim().toLowerCase());
+                
+                const tenantIdx = headers.findIndex(h => h.includes('tenant'));
+                const imei1Idx = headers.findIndex(h => h.includes('imei') || h.includes('sn') || h.includes('uid'));
+                const imei2Idx = headers.findIndex(h => h.includes('imei2'));
+                const serviceIdx = headers.findIndex(h => h.includes('service') || h.includes('servicio'));
+                const statusIdx = headers.findIndex(h => h.includes('state') || h.includes('status') || h.includes('estado'));
+                const brandIdx = headers.findIndex(h => h.includes('brand') || h.includes('marca'));
+                const modelIdx = headers.findIndex(h => h.includes('model') || h.includes('modelo'));
+                const lastChangeIdx = headers.findIndex(h => h.includes('changed') || h.includes('change') || h.includes('cambio') || h.includes('último cambio'));
+                const lastConnIdx = headers.findIndex(h => h.includes('checkin') || h.includes('connection') || h.includes('conexión'));
 
-        console.log(`>>> [Trustonic] Se obtuvieron ${devicesBasic.length} dispositivos desde la tabla.`);
+                const rows = Array.from(devicesTable.querySelectorAll('.ant-table-row'));
+                return rows.map((row, index) => {
+                    const cols = Array.from(row.querySelectorAll('td'));
+                    return {
+                        index,
+                        scraped_tenant_id: tenantIdx !== -1 ? cols[tenantIdx]?.innerText.trim() : null,
+                        imei1: imei1Idx !== -1 ? cols[imei1Idx]?.innerText.trim() : null,
+                        imei2: imei2Idx !== -1 ? cols[imei2Idx]?.innerText.trim() : null,
+                        service: serviceIdx !== -1 ? cols[serviceIdx]?.innerText.trim() : null,
+                        status: statusIdx !== -1 ? cols[statusIdx]?.innerText.trim() : null,
+                        brand: brandIdx !== -1 ? cols[brandIdx]?.innerText.trim() : null,
+                        model: modelIdx !== -1 ? cols[modelIdx]?.innerText.trim() : null,
+                        last_change: lastChangeIdx !== -1 ? cols[lastChangeIdx]?.innerText.trim() : null,
+                        last_connection: lastConnIdx !== -1 ? cols[lastConnIdx]?.innerText.trim() : null
+                    };
+                }).filter(d => d.imei1 && /^\d+$/.test(d.imei1));
+            });
+
+            allDevices = allDevices.concat(pageDevices);
+
+            const hasNext = await page.evaluate(() => {
+                const nextBtn = document.querySelector('.ant-pagination-next:not(.ant-pagination-disabled)');
+                return !!nextBtn;
+            });
+
+            if (!hasNext) break;
+
+            await page.click('.ant-pagination-next:not(.ant-pagination-disabled)');
+            await new Promise(r => setTimeout(r, 1200));
+            pageNum++;
+        }
+
+        console.log(`>>> [Trustonic] Se obtuvieron ${allDevices.length} dispositivos en total en ${pageNum} página(s).`);
 
         if (!deepAudit) {
             await browser.close();
-            return devicesBasic;
+            return allDevices;
         }
 
         const finalDevices = [];
