@@ -1,17 +1,33 @@
 import { TrustonicClient } from '../../modules/trustonic-api-client/index.js';
 import { scrapeTrustonic } from './trustonic.js';
 
-const API_KEY = 'CMPltSM90eh05BMA99cLACoKVkxSLBls0z1A335Mv6YKxjUOOi+eTGHZLHw4o0DazdEBlXhMgA2A/dwk9xW+dw==';
-const client = new TrustonicClient(API_KEY);
+const DEFAULT_API_KEY = 'CMPltSM90eh05BMA99cLACoKVkxSLBls0z1A335Mv6YKxjUOOi+eTGHZLHw4o0DazdEBlXhMgA2A/dwk9xW+dw==';
+const defaultClient = new TrustonicClient(DEFAULT_API_KEY);
 
-export async function getTrustonicToken() {
-    return await client.authorize();
+export async function getTrustonicClientForTenant(pool, tenantId) {
+    if (!tenantId || !pool) return defaultClient;
+    try {
+        const [rows] = await pool.query('SELECT trustonic_api_key, trustonic_domain FROM tenants WHERE tenant_id = ?', [tenantId]);
+        if (rows.length > 0 && rows[0].trustonic_api_key && rows[0].trustonic_api_key.trim()) {
+            const apiKey = rows[0].trustonic_api_key.trim();
+            const domain = rows[0].trustonic_domain ? rows[0].trustonic_domain.trim() : tenantId;
+            return new TrustonicClient(apiKey, domain);
+        }
+    } catch (e) {
+        console.warn(`>>> [Trustonic] Fallback a cliente default para tenant ${tenantId}:`, e.message);
+    }
+    return defaultClient;
 }
 
-export async function validateDevice(imei) {
+export async function getTrustonicToken(pool = null, tenantId = null) {
+    const c = await getTrustonicClientForTenant(pool, tenantId);
+    return await c.authorize();
+}
+
+export async function validateDevice(imei, pool = null, tenantId = null) {
     try {
-        const response = await client.query.getDeviceInfo(imei);
-        // La API v2 retorna { "deviceResponseList": [ ... ] }
+        const c = await getTrustonicClientForTenant(pool, tenantId);
+        const response = await c.query.getDeviceInfo(imei);
         if (response && response.deviceResponseList && response.deviceResponseList.length > 0) {
             return { success: true, device: response.deviceResponseList[0] };
         }
@@ -31,7 +47,6 @@ function parseTrustonicDate(dateStr) {
             'ene': 0, 'feb': 1, 'mar': 2, 'abr': 3, 'may': 4, 'jun': 5,
             'jul': 6, 'ago': 7, 'sep': 8, 'oct': 9, 'nov': 10, 'dic': 11
         };
-        // Format: "may 13, 2026 15:28"
         const regex = /([a-z]{3})\s+(\d{1,2}),\s+(\d{4})\s+(\d{1,2}):(\d{2})/;
         const match = dateStr.toLowerCase().match(regex);
         if (match) {
@@ -39,7 +54,7 @@ function parseTrustonicDate(dateStr) {
             const month = months[monthStr];
             return new Date(year, month, day, hour, min);
         }
-        return new Date(dateStr); // Intento fallback nativo
+        return new Date(dateStr);
     } catch (e) {
         return null;
     }
@@ -49,14 +64,14 @@ function parseTrustonicDate(dateStr) {
 export async function syncMovements(pool, tenantId) {
     let devices = [];
     let source = 'API';
+    const c = await getTrustonicClientForTenant(pool, tenantId);
 
     try {
-        const res = await client.query.getServiceInfo('DeviceFinancing').catch(() => client.request({ method: 'GET', url: '/query/service?serviceName=DeviceFinancing' }));
+        const res = await c.query.getServiceInfo('DeviceFinancing').catch(() => c.request({ method: 'GET', url: '/query/service?serviceName=DeviceFinancing' }));
         devices = res.deviceResponseList || res.items || res || [];
     } catch (error) {
         console.warn('>>> [Trustonic API] Usando captura optimizada de portal:', error.message);
         try {
-            // Sincronizar usando el dominio consolidado bantos-msp en modo ultrarrápido (sin inspeccionar historial uno por uno)
             devices = await scrapeTrustonic('itdevelopment', 'Alika2012.', 'bantos-msp', false);
             source = 'Portal Web (Ultrarrápido)';
         } catch (scrapeError) {
@@ -76,7 +91,6 @@ export async function syncMovements(pool, tenantId) {
         const lastConn = parseTrustonicDate(d.lastConnection || d.last_connection);
         const deviceTenant = d.scraped_tenant_id || tenantId;
         
-        // 1. Actualizar tabla maestra (Estado actual siempre se sobreescribe)
         await pool.query(
             `INSERT INTO trustonic_devices (imei1, imei2, tenant_id, service, status, brand, model, last_change, last_connection) 
              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) 
@@ -85,7 +99,6 @@ export async function syncMovements(pool, tenantId) {
             [imei1, d.imei2 || null, deviceTenant, d.service, status, d.brand, d.model, lastChange, lastConn]
         );
 
-        // 2. Registrar movimiento (Solo si no existe ya para ese IMEI y fecha)
         await pool.query(
             `INSERT IGNORE INTO trustonic_logs (imei1, tenant_id, operation_date, operation_type, status, comment) 
              VALUES (?, ?, ?, ?, ?, ?)`,
@@ -104,26 +117,32 @@ export async function syncMovements(pool, tenantId) {
     return { success: true, count: syncedCount, source: source === 'API' ? 'API' : 'Portal' };
 }
 
-export async function lockDevice(imei, lockMessage = '') {
-    return await client.device.lock(imei, lockMessage);
+export async function lockDevice(pool, tenantId, imei, lockMessage = '') {
+    const c = await getTrustonicClientForTenant(pool, tenantId);
+    return await c.device.lock(imei, lockMessage);
 }
 
-export async function unlockDevice(imei) {
-    return await client.device.unlock(imei);
+export async function unlockDevice(pool, tenantId, imei) {
+    const c = await getTrustonicClientForTenant(pool, tenantId);
+    return await c.device.unlock(imei);
 }
 
-export async function archiveDevice(imei) {
-    return await client.device.archive(imei);
+export async function archiveDevice(pool, tenantId, imei) {
+    const c = await getTrustonicClientForTenant(pool, tenantId);
+    return await c.device.archive(imei);
 }
 
-export async function releaseDevice(imei, reason = 'End of Tenure') {
-    return await client.device.release(imei, reason);
+export async function releaseDevice(pool, tenantId, imei, reason = 'End of Tenure') {
+    const c = await getTrustonicClientForTenant(pool, tenantId);
+    return await c.device.release(imei, reason);
 }
 
-export async function notifyDevice(imei, title = '', message = '', type = 'HEADSUP') {
-    return await client.device.notify(imei, title, message, type);
+export async function notifyDevice(pool, tenantId, imei, title = '', message = '', type = 'HEADSUP') {
+    const c = await getTrustonicClientForTenant(pool, tenantId);
+    return await c.device.notify(imei, title, message, type);
 }
 
-export async function pinUnlockDevice(imei) {
-    return await client.device.pinUnlock(imei);
+export async function pinUnlockDevice(pool, tenantId, imei) {
+    const c = await getTrustonicClientForTenant(pool, tenantId);
+    return await c.device.pinUnlock(imei);
 }

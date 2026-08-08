@@ -133,7 +133,7 @@ function App() {
   // --- TENANT CRUD ---
   const openNewTenantModal = () => {
     setEditingTenant(null);
-    setTenantForm({ tenant_id: '', company_name: '', status: 'active' });
+    setTenantForm({ tenant_id: '', company_name: '', status: 'active', trustonic_api_key: '', trustonic_domain: '' });
     setShowTenantModal(true);
   };
 
@@ -142,7 +142,9 @@ function App() {
     setTenantForm({
       tenant_id: t.tenant_id,
       company_name: t.company_name || '',
-      status: t.status || 'active'
+      status: t.status || 'active',
+      trustonic_api_key: t.trustonic_api_key || '',
+      trustonic_domain: t.trustonic_domain || ''
     });
     setShowTenantModal(true);
   };
@@ -672,6 +674,24 @@ function App() {
                   <option value="active">Activo</option>
                   <option value="suspended">Suspendido / Deshabilitado</option>
                 </select>
+              </div>
+              <div className="form-group">
+                <label>API Key de Trustonic (Opcional)</label>
+                <input 
+                  type="text" 
+                  placeholder="Ingresa la API Key de Trustonic del tenant..."
+                  value={tenantForm.trustonic_api_key}
+                  onChange={e => setTenantForm({ ...tenantForm, trustonic_api_key: e.target.value })}
+                />
+              </div>
+              <div className="form-group">
+                <label>Dominio / Tenant ID Trustonic (Opcional)</label>
+                <input 
+                  type="text" 
+                  placeholder="Ej: tests, bantos-prod..."
+                  value={tenantForm.trustonic_domain}
+                  onChange={e => setTenantForm({ ...tenantForm, trustonic_domain: e.target.value })}
+                />
               </div>
               <div className="modal-footer" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div>

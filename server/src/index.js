@@ -1249,41 +1249,41 @@ app.post('/api/backoffice/trustonic-actions', async (req, res) => {
 
     if (act === 'lock' || act === 'lock_message') {
       try {
-        apiResult = await trustonicApi.lockDevice(imei, lockMessage || 'Dispositivo bloqueado por falta de pago');
+        apiResult = await trustonicApi.lockDevice(pool, tenantId, imei, lockMessage || 'Dispositivo bloqueado por falta de pago');
       } catch (err) {
         apiResult = { message: err.message };
       }
       newStatus = 'Bloqueado';
     } else if (act === 'unlock') {
       try {
-        apiResult = await trustonicApi.unlockDevice(imei);
+        apiResult = await trustonicApi.unlockDevice(pool, tenantId, imei);
       } catch (err) {
         apiResult = { message: err.message };
       }
       newStatus = 'Activo';
     } else if (act === 'inhabilitar') {
       try {
-        apiResult = await trustonicApi.archiveDevice(imei);
+        apiResult = await trustonicApi.archiveDevice(pool, tenantId, imei);
       } catch (err) {
         apiResult = { message: err.message };
       }
       newStatus = 'Inactivo';
     } else if (act === 'liberar') {
       try {
-        apiResult = await trustonicApi.releaseDevice(imei, reason || 'Liberación por fin de contrato');
+        apiResult = await trustonicApi.releaseDevice(pool, tenantId, imei, reason || 'Liberación por fin de contrato');
       } catch (err) {
         apiResult = { message: err.message };
       }
       newStatus = 'Liberado';
     } else if (act === 'notificar') {
       try {
-        apiResult = await trustonicApi.notifyDevice(imei, title || 'Aviso Bantos', message || 'Por favor revise su cuenta', 'HEADSUP');
+        apiResult = await trustonicApi.notifyDevice(pool, tenantId, imei, title || 'Aviso Bantos', message || 'Por favor revise su cuenta', 'HEADSUP');
       } catch (err) {
         apiResult = { message: err.message };
       }
     } else if (act === 'pin_unlock') {
       try {
-        apiResult = await trustonicApi.pinUnlockDevice(imei);
+        apiResult = await trustonicApi.pinUnlockDevice(pool, tenantId, imei);
       } catch (err) {
         apiResult = { message: err.message };
       }
@@ -2494,7 +2494,7 @@ app.get('/api/superadmin/tenants/stats', async (req, res) => {
   try {
     const [rows] = await pool.query(`
       SELECT 
-        t.id, t.tenant_id, t.company_name, t.status, t.created_at,
+        t.id, t.tenant_id, t.company_name, t.status, t.created_at, t.trustonic_api_key, t.trustonic_domain,
         (SELECT COUNT(*) FROM inventory WHERE tenant_id = t.tenant_id) AS devices_count,
         (SELECT COUNT(*) FROM payment_plans WHERE tenant_id = t.tenant_id) AS plans_count,
         (SELECT COUNT(*) FROM contract_history WHERE tenant_id = t.tenant_id) AS contracts_count,
@@ -2508,14 +2508,14 @@ app.get('/api/superadmin/tenants/stats', async (req, res) => {
 });
 
 app.post('/api/superadmin/tenants', async (req, res) => {
-  const { tenant_id, company_name, status } = req.body;
+  const { tenant_id, company_name, status, trustonic_api_key, trustonic_domain } = req.body;
   if (!tenant_id) {
     return res.status(400).json({ error: 'tenant_id es requerido.' });
   }
   try {
     await pool.query(
-      'INSERT INTO tenants (tenant_id, company_name, status) VALUES (?, ?, ?)',
-      [tenant_id, company_name || null, status || 'active']
+      'INSERT INTO tenants (tenant_id, company_name, status, trustonic_api_key, trustonic_domain) VALUES (?, ?, ?, ?, ?)',
+      [tenant_id, company_name || null, status || 'active', trustonic_api_key || null, trustonic_domain || null]
     );
     res.json({ success: true, message: 'Tenant registrado con éxito.' });
   } catch (e) {
@@ -2525,11 +2525,11 @@ app.post('/api/superadmin/tenants', async (req, res) => {
 
 app.put('/api/superadmin/tenants/:tenantId', async (req, res) => {
   const { tenantId } = req.params;
-  const { company_name, status } = req.body;
+  const { company_name, status, trustonic_api_key, trustonic_domain } = req.body;
   try {
     await pool.query(
-      'UPDATE tenants SET company_name = ?, status = ? WHERE tenant_id = ?',
-      [company_name || null, status || 'active', tenantId]
+      'UPDATE tenants SET company_name = ?, status = ?, trustonic_api_key = ?, trustonic_domain = ? WHERE tenant_id = ?',
+      [company_name || null, status || 'active', trustonic_api_key || null, trustonic_domain || null, tenantId]
     );
     res.json({ success: true, message: 'Tenant actualizado con éxito.' });
   } catch (e) {
