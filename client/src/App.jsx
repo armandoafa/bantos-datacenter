@@ -7,7 +7,7 @@ import {
   ChevronDown, ChevronRight, Database, Building2, Globe, MapPin, Store, Edit, X, Trash2,
   BookOpen, Zap, CheckSquare, MessageSquare, ListTodo, ClipboardCheck,
   Upload, PenTool, Send, AlertCircle, Printer, Activity, Menu, Calendar,
-  FileSpreadsheet, Check, Eye, EyeOff, MoreVertical, Lock, Unlock, Ban, CheckCircle2, Bell, KeyRound
+  FileSpreadsheet, Check, Eye, EyeOff, MoreVertical, Lock, Unlock, Ban, CheckCircle2, Bell, KeyRound, ShieldAlert
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import axios from 'axios';
