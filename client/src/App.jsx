@@ -3205,6 +3205,8 @@ const TrustonicActionModal = ({ isOpen, onClose, device, actionType, onConfirm, 
       case 'lock_message': return { name: 'Mensaje de Bloqueo', icon: MessageSquare, color: 'text-purple-600', bg: 'bg-purple-50' };
       case 'report_stolen': return { name: 'Reportar Robo (Theft)', icon: ShieldAlert, color: 'text-red-600', bg: 'bg-red-50' };
       case 'transfer_tenant': return { name: 'Transferir a otro Tenant', icon: RefreshCw, color: 'text-violet-600', bg: 'bg-violet-50' };
+      case 'activate': return { name: 'Activate (Activar Servicio)', icon: Zap, color: 'text-emerald-600', bg: 'bg-emerald-50' };
+      case 'deactivate': return { name: 'Deactivate (Desactivar Servicio)', icon: Ban, color: 'text-amber-600', bg: 'bg-amber-50' };
       default: return { name: 'Ejecutar Acción', icon: ShieldCheck, color: 'text-blue-600', bg: 'bg-blue-50' };
     }
   };
@@ -3775,6 +3777,18 @@ const TrustonicDevicesView = ({ data, onSync, syncing, onEdit, onCreate, session
                           className="w-full px-3.5 py-2 flex items-center gap-2.5 hover:bg-violet-50 text-slate-700 hover:text-violet-600 transition-colors"
                         >
                           <RefreshCw size={14} className="text-violet-500" /> Transferir Tenant
+                        </button>
+                        <button 
+                          onClick={() => handleOpenActionModal('activate', d)} 
+                          className="w-full px-3.5 py-2 flex items-center gap-2.5 hover:bg-emerald-50 text-slate-700 hover:text-emerald-600 transition-colors"
+                        >
+                          <Zap size={14} className="text-emerald-500" /> Activate (Activar)
+                        </button>
+                        <button 
+                          onClick={() => handleOpenActionModal('deactivate', d)} 
+                          className="w-full px-3.5 py-2 flex items-center gap-2.5 hover:bg-amber-50 text-slate-700 hover:text-amber-600 transition-colors"
+                        >
+                          <Ban size={14} className="text-amber-500" /> Deactivate (Desactivar)
                         </button>
                       </div>
                     </div>

@@ -171,3 +171,13 @@ export async function transferDevice(pool, tenantId, imei, targetTenantId) {
     const c = await getTrustonicClientForTenant(pool, tenantId);
     return await c.device.transferDevices(targetTenantId, imei);
 }
+
+export async function activateDevice(pool, tenantId, imei, serviceName = 'Prepago') {
+    const c = await getTrustonicClientForTenant(pool, tenantId);
+    return await c.device.uploadDevices([{ deviceUid: imei, serviceName, imei1: imei }]);
+}
+
+export async function deactivateDevice(pool, tenantId, imei) {
+    const c = await getTrustonicClientForTenant(pool, tenantId);
+    return await c.device.archive(imei);
+}

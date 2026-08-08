@@ -1302,6 +1302,21 @@ app.post('/api/backoffice/trustonic-actions', async (req, res) => {
       } catch (err) {
         apiResult = { message: err.message };
       }
+    } else if (act === 'activate') {
+      const { serviceName } = req.body;
+      try {
+        apiResult = await trustonicApi.activateDevice(pool, targetTenant, imei, serviceName || 'Prepago');
+      } catch (err) {
+        apiResult = { message: err.message };
+      }
+      newStatus = 'Activo';
+    } else if (act === 'deactivate') {
+      try {
+        apiResult = await trustonicApi.deactivateDevice(pool, targetTenant, imei);
+      } catch (err) {
+        apiResult = { message: err.message };
+      }
+      newStatus = 'Inactivo';
     } else {
       return res.status(400).json({ error: 'Acción de Trustonic no válida' });
     }
