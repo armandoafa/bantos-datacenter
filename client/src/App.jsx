@@ -5031,23 +5031,7 @@ const App = () => {
     { section: 'Estructura', items: [ { id: 'setup-system', label: 'Sincronización', icon: RefreshCw }, { id: 'setup-messaging', label: 'Mensajería', icon: Mail }, { id: 'setup-config', label: 'Sistema', icon: Settings2 } ]},
   ];
 
-  const filteredNavItems = (session?.tenantId === 'c-romel' || session?.tenantId === 'C-ROMEL')
-    ? [
-        { section: 'Operación', items: [
-          { id: 'manage-contracts', label: 'Contratos', icon: FileText },
-          { id: 'manage-payments', label: 'Pagos', icon: CreditCard },
-          { id: 'trustonic-menu', label: 'Trustonic', icon: Smartphone, children: [
-            { id: 'manage-trustonic', label: 'Dispositivos', icon: Smartphone },
-            { id: 'manage-trustonic-logs', label: 'Movimientos', icon: Activity },
-          ]},
-        ]},
-        { section: 'Estructura', items: [
-          { id: 'setup-system', label: 'Sincronización', icon: RefreshCw },
-          { id: 'setup-org', label: 'Organización', icon: Building2 },
-          { id: 'setup-users', label: 'Usuarios', icon: Users },
-        ]}
-      ]
-    : navItems;
+  const filteredNavItems = navItems;
 
   return (
     <div className="flex min-h-dvh bg-slate-50 font-sans text-slate-800">
