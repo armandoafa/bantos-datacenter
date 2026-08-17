@@ -1,0 +1,468 @@
+eas build -p android --profile preview --local
+(node:424094) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+The field "cli.appVersionSource" is not set, but it will be required in the future. Learn more
+Resolved "preview" environment for the build. Learn more
+No environment variables with visibility "Plain text" and "Sensitive" found for the "preview" environment on EAS.
+
+The field "cli.appVersionSource" is not set, but it will be required in the future. Learn more
+✔ Using remote Android credentials (Expo server)
+✔ Using Keystore from configuration: Build Credentials ss4HhPpWa3 (default)
+✔ Computed project fingerprint
+(node:424362) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+ANDROID_NDK_HOME environment variable was not specified, continuing build without NDK
+[SETUP_WORKINGDIR] Preparing workingdir /tmp/armandoafa/eas-build-local-nodejs/9391a6bd-ea80-45c6-8b02-db22a641b901
+[START_BUILD] Starting build
+  "job": {
+    "type": "managed",
+    "platform": "android",
+    "projectRootDirectory": "bantos-mobile",
+    "projectArchive": {
+      "type": "PATH",
+      "path": "/tmp/armandoafa/eas-cli-nodejs/3f9ad77e-f893-4a85-b049-56ebf2110116.tar.gz"
+    },
+    "builderEnvironment": {
+      "env": {}
+    },
+    "cache": {
+      "disabled": false,
+      "paths": [],
+      "clear": false
+    },
+    "updates": {},
+    "buildType": "apk",
+    "username": "armandoafa",
+    "experimental": {},
+    "mode": "build",
+    "triggeredBy": "EAS_CLI",
+    "appId": "0e8c500e-77dc-4c48-8d27-3f6a95757140",
+    "initiatingUserId": "8b4744d7-710b-411c-8443-1194c19b1e69"
+  }
+Local build, skipping project archive refresh
+[READ_EAS_JSON] Using eas.json:
+[READ_EAS_JSON] {
+  "cli": {
+    "version": ">= 10.2.0"
+  },
+  "build": {
+    "development": {
+      "developmentClient": true,
+      "distribution": "internal",
+      "android": {
+        "buildType": "apk"
+      }
+    },
+    "preview": {
+      "distribution": "internal",
+      "android": {
+        "buildType": "apk"
+      }
+    },
+    "production": {
+      "android": {
+        "buildType": "app-bundle"
+      }
+    }
+  },
+  "submit": {
+    "production": {}
+  }
+}
+
+[READ_PACKAGE_JSON] Using package.json:
+[READ_PACKAGE_JSON] {
+  "name": "bantos-mobile",
+  "version": "1.0.0",
+  "main": "index.js",
+  "dependencies": {
+    "@react-navigation/native": "^7.3.0",
+    "@react-navigation/native-stack": "^7.17.2",
+    "axios": "^1.17.0",
+    "babel-preset-expo": "~56.0.0",
+    "expo": "~56.0.9",
+    "expo-secure-store": "~56.0.4",
+    "expo-status-bar": "~56.0.4",
+    "lucide-react-native": "^1.17.0",
+    "nativewind": "^4.2.5",
+    "react": "19.2.3",
+    "react-native": "0.85.3",
+    "react-native-safe-area-context": "~5.7.0",
+    "react-native-screens": "4.25.2",
+    "react-native-signature-canvas": "^5.0.2",
+    "react-native-svg": "15.15.4",
+    "react-native-webview": "13.16.1"
+  },
+  "scripts": {
+    "start": "expo start",
+    "android": "expo start --android",
+    "ios": "expo start --ios",
+    "web": "expo start --web"
+  },
+  "private": true,
+  "devDependencies": {
+    "tailwindcss": "^3.3.2"
+  }
+}
+[INSTALL_DEPENDENCIES] Running "npm ci --include=dev" in /tmp/armandoafa/eas-build-local-nodejs/9391a6bd-ea80-45c6-8b02-db22a641b901/build/bantos-mobile directory
+[INSTALL_DEPENDENCIES] npm warn ERESOLVE overriding peer dependency
+[INSTALL_DEPENDENCIES] npm warn While resolving: expo-modules-core@56.0.15
+[INSTALL_DEPENDENCIES] npm warn Found: react-native-worklets@0.9.1
+[INSTALL_DEPENDENCIES] npm warn node_modules/react-native-worklets
+[INSTALL_DEPENDENCIES] npm warn   peer react-native-worklets@"0.9.x" from react-native-reanimated@4.4.1
+[INSTALL_DEPENDENCIES] npm warn   node_modules/react-native-reanimated
+[INSTALL_DEPENDENCIES] npm warn     peer react-native-reanimated@">=3.6.2" from react-native-css-interop@0.2.5
+[INSTALL_DEPENDENCIES] npm warn     node_modules/react-native-css-interop
+[INSTALL_DEPENDENCIES] npm warn
+[INSTALL_DEPENDENCIES] npm warn Could not resolve dependency:
+[INSTALL_DEPENDENCIES] npm warn peerOptional react-native-worklets@"^0.7.4 || ^0.8.0" from expo-modules-core@56.0.15
+[INSTALL_DEPENDENCIES] npm warn node_modules/expo-modules-core
+[INSTALL_DEPENDENCIES] npm warn   expo-modules-core@"~56.0.15" from expo@56.0.9
+[INSTALL_DEPENDENCIES] npm warn   node_modules/expo
+[INSTALL_DEPENDENCIES] npm warn
+[INSTALL_DEPENDENCIES] npm warn Conflicting peer dependency: react-native-worklets@0.8.3
+[INSTALL_DEPENDENCIES] npm warn node_modules/react-native-worklets
+[INSTALL_DEPENDENCIES] npm warn   peerOptional react-native-worklets@"^0.7.4 || ^0.8.0" from expo-modules-core@56.0.15
+[INSTALL_DEPENDENCIES] npm warn   node_modules/expo-modules-core
+[INSTALL_DEPENDENCIES] npm warn     expo-modules-core@"~56.0.15" from expo@56.0.9
+[INSTALL_DEPENDENCIES] npm warn     node_modules/expo
+[INSTALL_DEPENDENCIES] npm warn deprecated uuid@7.0.3: uuid@10 and below is no longer supported.  For ESM codebases, update to uuid@latest.  For CommonJS codebases, use uuid@11 (but be aware this version will likely be deprecated in 2028).
+[INSTALL_DEPENDENCIES] added 603 packages, and audited 604 packages in 13s
+[INSTALL_DEPENDENCIES] 69 packages are looking for funding
+[INSTALL_DEPENDENCIES]   run `npm fund` for details
+[INSTALL_DEPENDENCIES] 10 moderate severity vulnerabilities
+[INSTALL_DEPENDENCIES] 
+[INSTALL_DEPENDENCIES] To address issues that do not require attention, run:
+[INSTALL_DEPENDENCIES]   npm audit fix
+[INSTALL_DEPENDENCIES] 
+[INSTALL_DEPENDENCIES] To address all issues (including breaking changes), run:
+[INSTALL_DEPENDENCIES]   npm audit fix --force
+[INSTALL_DEPENDENCIES] 
+[INSTALL_DEPENDENCIES] Run `npm audit` for details.
+The NODE_ENV environment variable is required but was not specified. Ensure the project is bundled with Expo CLI or NODE_ENV is set.
+Proceeding without mode-specific .env
+[READ_APP_CONFIG] Using app configuration:
+[READ_APP_CONFIG] {
+  "name": "bantos-mobile",
+  "slug": "bantos-mobile",
+  "version": "1.0.0",
+  "orientation": "portrait",
+  "icon": "./assets/icon.png",
+  "userInterfaceStyle": "light",
+  "ios": {
+    "supportsTablet": true
+  },
+  "android": {
+    "adaptiveIcon": {
+      "backgroundColor": "#E6F4FE",
+      "foregroundImage": "./assets/android-icon-foreground.png",
+      "backgroundImage": "./assets/android-icon-background.png",
+      "monochromeImage": "./assets/android-icon-monochrome.png"
+    },
+    "package": "com.bantos.pos"
+  },
+  "web": {
+    "favicon": "./assets/favicon.png"
+  },
+  "plugins": [
+    "expo-secure-store"
+  ],
+  "extra": {
+    "eas": {
+      "projectId": "0e8c500e-77dc-4c48-8d27-3f6a95757140"
+    }
+  },
+  "sdkVersion": "56.0.0",
+  "platforms": [
+    "ios",
+    "android"
+  ]
+}
+[RUN_EXPO_DOCTOR] Running "expo doctor"
+[RUN_EXPO_DOCTOR] Running 21 checks on your project...
+[RUN_EXPO_DOCTOR] 21/21 checks passed. No issues detected!
+[PREBUILD] - Creating native directory (./android)
+[PREBUILD] ✔ Created native directory
+[PREBUILD] - Updating package.json
+[PREBUILD] ✔ Updated package.json
+[PREBUILD] - Running prebuild
+[PREBUILD] » android: userInterfaceStyle: Install expo-system-ui in your project to enable this feature.
+[PREBUILD] - Running prebuild
+[PREBUILD] ✔ Finished prebuild
+[PREBUILD] Running "npm install --include=dev" in /tmp/armandoafa/eas-build-local-nodejs/9391a6bd-ea80-45c6-8b02-db22a641b901/build/bantos-mobile directory
+[PREBUILD] npm warn ERESOLVE overriding peer dependency
+[PREBUILD] npm warn While resolving: expo-modules-core@56.0.15
+[PREBUILD] npm warn Found: react-native-worklets@0.9.1
+[PREBUILD] npm warn node_modules/react-native-worklets
+[PREBUILD] npm warn   peer react-native-worklets@"0.9.x" from react-native-reanimated@4.4.1
+[PREBUILD] npm warn   node_modules/react-native-reanimated
+[PREBUILD] npm warn     peer react-native-reanimated@">=3.6.2" from react-native-css-interop@0.2.5
+[PREBUILD] npm warn     node_modules/react-native-css-interop
+[PREBUILD] npm warn
+[PREBUILD] npm warn Could not resolve dependency:
+[PREBUILD] npm warn peerOptional react-native-worklets@"^0.7.4 || ^0.8.0" from expo-modules-core@56.0.15
+[PREBUILD] npm warn node_modules/expo-modules-core
+[PREBUILD] npm warn   expo-modules-core@"~56.0.15" from expo@56.0.9
+[PREBUILD] npm warn   node_modules/expo
+[PREBUILD] npm warn
+[PREBUILD] npm warn Conflicting peer dependency: react-native-worklets@0.8.3
+[PREBUILD] npm warn node_modules/react-native-worklets
+[PREBUILD] npm warn   peerOptional react-native-worklets@"^0.7.4 || ^0.8.0" from expo-modules-core@56.0.15
+[PREBUILD] npm warn   node_modules/expo-modules-core
+[PREBUILD] npm warn     expo-modules-core@"~56.0.15" from expo@56.0.9
+[PREBUILD] npm warn     node_modules/expo
+[PREBUILD] up to date, audited 604 packages in 2s
+[PREBUILD] 69 packages are looking for funding
+[PREBUILD]   run `npm fund` for details
+[PREBUILD] 10 moderate severity vulnerabilities
+[PREBUILD] 
+[PREBUILD] To address issues that do not require attention, run:
+[PREBUILD]   npm audit fix
+[PREBUILD] 
+[PREBUILD] To address all issues (including breaking changes), run:
+[PREBUILD]   npm audit fix --force
+[PREBUILD] 
+[PREBUILD] Run `npm audit` for details.
+[RESTORE_CACHE] Local builds do not support restoring cache
+[PREPARE_CREDENTIALS] Writing secrets to the project's directory
+[PREPARE_CREDENTIALS] Injecting signing config into build.gradle
+[PREPARE_CREDENTIALS] Signing config injected
+[EAGER_BUNDLE] Starting Metro Bundler
+[EAGER_BUNDLE] Android Bundled 1403ms index.js (3042 modules)
+[EAGER_BUNDLE] Writing bundle output to: /tmp/hm3p0kufukl/index.js
+[EAGER_BUNDLE] Copying 19 asset files
+[EAGER_BUNDLE] Done writing bundle output
+[RUN_GRADLEW] Running 'gradlew :app:assembleRelease' in /tmp/armandoafa/eas-build-local-nodejs/9391a6bd-ea80-45c6-8b02-db22a641b901/build/bantos-mobile/android
+[RUN_GRADLEW] > Task :expo-gradle-plugin:expo-autolinking-plugin-shared:checkKotlinGradlePluginConfigurationErrors SKIPPED
+[RUN_GRADLEW] > Task :gradle-plugin:settings-plugin:checkKotlinGradlePluginConfigurationErrors SKIPPED
+[RUN_GRADLEW] > Task :gradle-plugin:shared:checkKotlinGradlePluginConfigurationErrors SKIPPED
+[RUN_GRADLEW] > Task :expo-gradle-plugin:expo-autolinking-settings-plugin:checkKotlinGradlePluginConfigurationErrors SKIPPED
+[RUN_GRADLEW] > Task :gradle-plugin:settings-plugin:pluginDescriptors
+[RUN_GRADLEW] > Task :expo-gradle-plugin:expo-autolinking-settings-plugin:pluginDescriptors
+[RUN_GRADLEW] > Task :expo-gradle-plugin:expo-autolinking-settings-plugin:processResources
+[RUN_GRADLEW] > Task :gradle-plugin:settings-plugin:processResources
+[RUN_GRADLEW] > Task :gradle-plugin:shared:processResources NO-SOURCE
+[RUN_GRADLEW] > Task :expo-gradle-plugin:expo-autolinking-plugin-shared:processResources NO-SOURCE
+[RUN_GRADLEW] > Task :gradle-plugin:shared:compileKotlin FAILED
+[RUN_GRADLEW] e: Daemon compilation failed: null
+[RUN_GRADLEW] java.lang.Exception
+[RUN_GRADLEW] 	at org.jetbrains.kotlin.daemon.common.CompileService$CallResult$Error.get(CompileService.kt:69)
+[RUN_GRADLEW] 	at org.jetbrains.kotlin.daemon.common.CompileService$CallResult$Error.get(CompileService.kt:65)
+[RUN_GRADLEW] 	at org.jetbrains.kotlin.compilerRunner.GradleKotlinCompilerWork.compileWithDaemon(GradleKotlinCompilerWork.kt:240)
+[RUN_GRADLEW] 	at org.jetbrains.kotlin.compilerRunner.GradleKotlinCompilerWork.compileWithDaemonOrFallbackImpl(GradleKotlinCompilerWork.kt:159)
+[RUN_GRADLEW] at org.jetbrains.kotlin.compilerRunner.GradleKotlinCompilerWork.run(GradleKotlinCompilerWork.kt:111)
+[RUN_GRADLEW] 	at org.jetbrains.kotlin.compilerRunner.GradleCompilerRunnerWithWorkers$GradleKotlinCompilerWorkAction.execute(GradleCompilerRunnerWithWorkers.kt:76)
+[RUN_GRADLEW] 	at org.gradle.workers.internal.DefaultWorkerServer.execute(DefaultWorkerServer.java:68)
+[RUN_GRADLEW] 	at org.gradle.workers.internal.NoIsolationWorkerFactory$1$1.create(NoIsolationWorkerFactory.java:64)
+[RUN_GRADLEW] 	at org.gradle.workers.internal.NoIsolationWorkerFactory$1$1.create(NoIsolationWorkerFactory.java:61)
+[RUN_GRADLEW] 	at org.gradle.internal.classloader.ClassLoaderUtils.executeInClassloader(ClassLoaderUtils.java:102)
+[RUN_GRADLEW] 	at org.gradle.workers.internal.NoIsolationWorkerFactory$1.lambda$execute$0(NoIsolationWorkerFactory.java:61)
+[RUN_GRADLEW] at org.gradle.workers.internal.AbstractWorker$1.call(AbstractWorker.java:44)
+[RUN_GRADLEW] 	at org.gradle.workers.internal.AbstractWorker$1.call(AbstractWorker.java:41)
+[RUN_GRADLEW] 	at org.gradle.internal.operations.DefaultBuildOperationRunner$CallableBuildOperationWorker.execute(DefaultBuildOperationRunner.java:209)
+[RUN_GRADLEW] 	at org.gradle.internal.operations.DefaultBuildOperationRunner$CallableBuildOperationWorker.execute(DefaultBuildOperationRunner.java:204)
+[RUN_GRADLEW] 	at org.gradle.internal.operations.DefaultBuildOperationRunner$2.execute(DefaultBuildOperationRunner.java:66)
+[RUN_GRADLEW] 	at org.gradle.internal.operations.DefaultBuildOperationRunner$2.execute(DefaultBuildOperationRunner.java:59)
+[RUN_GRADLEW] 	at org.gradle.internal.operations.DefaultBuildOperationRunner.execute(DefaultBuildOperationRunner.java:166)
+[RUN_GRADLEW] at org.gradle.internal.operations.DefaultBuildOperationRunner.execute(DefaultBuildOperationRunner.java:59)
+[RUN_GRADLEW] 	at org.gradle.internal.operations.DefaultBuildOperationRunner.call(DefaultBuildOperationRunner.java:53)
+[RUN_GRADLEW] 	at org.gradle.workers.internal.AbstractWorker.executeWrappedInBuildOperation(AbstractWorker.java:41)
+[RUN_GRADLEW] 	at org.gradle.workers.internal.NoIsolationWorkerFactory$1.execute(NoIsolationWorkerFactory.java:58)
+[RUN_GRADLEW] 	at org.gradle.workers.internal.DefaultWorkerExecutor.lambda$submitWork$0(DefaultWorkerExecutor.java:176)
+[RUN_GRADLEW] 	at java.base/java.util.concurrent.FutureTask.run(FutureTask.java:264)
+[RUN_GRADLEW] 	at org.gradle.internal.work.DefaultConditionalExecutionQueue$ExecutionRunner.runExecution(DefaultConditionalExecutionQueue.java:194)
+[RUN_GRADLEW] at org.gradle.internal.work.DefaultConditionalExecutionQueue$ExecutionRunner.access$700(DefaultConditionalExecutionQueue.java:127)
+[RUN_GRADLEW] 	at org.gradle.internal.work.DefaultConditionalExecutionQueue$ExecutionRunner$1.run(DefaultConditionalExecutionQueue.java:169)
+[RUN_GRADLEW] 	at org.gradle.internal.Factories$1.create(Factories.java:30)
+[RUN_GRADLEW] 	at org.gradle.internal.work.DefaultWorkerLeaseService.lambda$withLocksAcquired$0(DefaultWorkerLeaseService.java:269)
+[RUN_GRADLEW] 	at org.gradle.internal.work.ResourceLockStatistics$1.measure(ResourceLockStatistics.java:42)
+[RUN_GRADLEW] 	at org.gradle.internal.work.DefaultWorkerLeaseService.withLocksAcquired(DefaultWorkerLeaseService.java:267)
+[RUN_GRADLEW] 	at org.gradle.internal.work.DefaultWorkerLeaseService.withLocks(DefaultWorkerLeaseService.java:259)
+[RUN_GRADLEW] 	at org.gradle.internal.work.DefaultWorkerLeaseService.runAsWorkerThread(DefaultWorkerLeaseService.java:127)
+[RUN_GRADLEW] 	at org.gradle.internal.work.DefaultWorkerLeaseService.runAsWorkerThread(DefaultWorkerLeaseService.java:132)
+[RUN_GRADLEW] 	at org.gradle.internal.work.DefaultConditionalExecutionQueue$ExecutionRunner.runBatch(DefaultConditionalExecutionQueue.java:164)
+[RUN_GRADLEW] at org.gradle.internal.work.DefaultConditionalExecutionQueue$ExecutionRunner.run(DefaultConditionalExecutionQueue.java:133)
+[RUN_GRADLEW] 	at java.base/java.util.concurrent.Executors$RunnableAdapter.call(Executors.java:539)
+[RUN_GRADLEW] 	at java.base/java.util.concurrent.FutureTask.run(FutureTask.java:264)
+[RUN_GRADLEW] 	at org.gradle.internal.concurrent.ExecutorPolicy$CatchAndRecordFailures.onExecute(ExecutorPolicy.java:64)
+[RUN_GRADLEW] 	at org.gradle.internal.concurrent.AbstractManagedExecutor$1.run(AbstractManagedExecutor.java:47)
+[RUN_GRADLEW] 	at java.base/java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1136)
+[RUN_GRADLEW] 	at java.base/java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:635)
+[RUN_GRADLEW] 	at java.base/java.lang.Thread.run(Thread.java:840)
+[RUN_GRADLEW] Caused by: java.io.FileNotFoundException: /home/armandoafa/.gradle/caches/9.3.1/transforms/bf737e11669edafe0c2073062c950e21/transformed/kotlin-stdlib-2_1_20_jar-snapshot.bin (No such file or directory)
+[RUN_GRADLEW] 	at java.base/java.io.FileInputStream.open0(Native Method)
+[RUN_GRADLEW] 	at java.base/java.io.FileInputStream.open(FileInputStream.java:216)
+[RUN_GRADLEW] 	at java.base/java.io.FileInputStream.<init>(FileInputStream.java:157)
+[RUN_GRADLEW] 	at org.jetbrains.kotlin.incremental.storage.ExternalizersKt.loadFromFile(externalizers.kt:184)
+[RUN_GRADLEW] 	at org.jetbrains.kotlin.incremental.classpathDiff.CachedClasspathSnapshotSerializer.load$lambda$1$lambda$0(ClasspathSnapshotSerializer.kt:44)
+[RUN_GRADLEW] 	at org.jetbrains.kotlin.incremental.classpathDiff.InMemoryCacheWithEviction.computeIfAbsent$lambda$5$lambda$2(InMemoryCacheWithEviction.kt:73)
+[RUN_GRADLEW] at org.jetbrains.kotlin.incremental.classpathDiff.InMemoryCacheWithEviction.computeIfAbsent$lambda$5$lambda$3(InMemoryCacheWithEviction.kt:72)
+[RUN_GRADLEW] 	at java.base/java.util.concurrent.ConcurrentHashMap.computeIfAbsent(ConcurrentHashMap.java:1708)
+[RUN_GRADLEW] 	at org.jetbrains.kotlin.incremental.classpathDiff.InMemoryCacheWithEviction.computeIfAbsent(InMemoryCacheWithEviction.kt:72)
+[RUN_GRADLEW] 	at org.jetbrains.kotlin.incremental.classpathDiff.CachedClasspathSnapshotSerializer.load(ClasspathSnapshotSerializer.kt:42)
+[RUN_GRADLEW] 	at org.jetbrains.kotlin.incremental.classpathDiff.ClasspathSnapshotShrinkerKt.shrinkAndSaveClasspathSnapshot(ClasspathSnapshotShrinker.kt:282)
+[RUN_GRADLEW] 	at org.jetbrains.kotlin.incremental.IncrementalJvmCompilerRunner.performWorkAfterCompilation(IncrementalJvmCompilerRunner.kt:478)
+[RUN_GRADLEW] 	at org.jetbrains.kotlin.incremental.IncrementalJvmCompilerRunner.performWorkAfterCompilation(IncrementalJvmCompilerRunner.kt:75)
+[RUN_GRADLEW] 	at org.jetbrains.kotlin.incremental.IncrementalCompilerRunner.compileImpl(IncrementalCompilerRunner.kt:433)
+[RUN_GRADLEW] 	at org.jetbrains.kotlin.incremental.IncrementalCompilerRunner.compileNonIncrementally(IncrementalCompilerRunner.kt:310)
+[RUN_GRADLEW] 	at org.jetbrains.kotlin.incremental.IncrementalCompilerRunner.compile(IncrementalCompilerRunner.kt:137)
+[RUN_GRADLEW] 	at org.jetbrains.kotlin.daemon.CompileServiceImplBase.execIncrementalCompiler(CompileServiceImpl.kt:678)
+[RUN_GRADLEW] 	at org.jetbrains.kotlin.daemon.CompileServiceImplBase.access$execIncrementalCompiler(CompileServiceImpl.kt:92)
+[RUN_GRADLEW] 	at org.jetbrains.kotlin.daemon.CompileServiceImpl.compile(CompileServiceImpl.kt:1805)
+[RUN_GRADLEW] 	at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke0(Native Method)
+[RUN_GRADLEW] 	at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke(NativeMethodAccessorImpl.java:77)
+[RUN_GRADLEW] 	at java.base/jdk.internal.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:43)
+[RUN_GRADLEW] 	at java.base/java.lang.reflect.Method.invoke(Method.java:569)
+[RUN_GRADLEW] 	at java.rmi/sun.rmi.server.UnicastServerRef.dispatch(UnicastServerRef.java:360)
+[RUN_GRADLEW] 	at java.rmi/sun.rmi.transport.Transport$1.run(Transport.java:200)
+[RUN_GRADLEW] 	at java.rmi/sun.rmi.transport.Transport$1.run(Transport.java:197)
+[RUN_GRADLEW] 	at java.base/java.security.AccessController.doPrivileged(AccessController.java:712)
+[RUN_GRADLEW] 	at java.rmi/sun.rmi.transport.Transport.serviceCall(Transport.java:196)
+[RUN_GRADLEW] 	at java.rmi/sun.rmi.transport.tcp.TCPTransport.handleMessages(TCPTransport.java:587)
+[RUN_GRADLEW] 	at java.rmi/sun.rmi.transport.tcp.TCPTransport$ConnectionHandler.run0(TCPTransport.java:828)
+[RUN_GRADLEW] 	at java.rmi/sun.rmi.transport.tcp.TCPTransport$ConnectionHandler.lambda$run$0(TCPTransport.java:705)
+[RUN_GRADLEW] 	at java.base/java.security.AccessController.doPrivileged(AccessController.java:399)
+[RUN_GRADLEW] 	at java.rmi/sun.rmi.transport.tcp.TCPTransport$ConnectionHandler.run(TCPTransport.java:704)
+[RUN_GRADLEW] 	... 3 more
+[RUN_GRADLEW] > Task :expo-gradle-plugin:expo-autolinking-plugin-shared:compileKotlin FAILED
+[RUN_GRADLEW] e: Daemon compilation failed: null
+[RUN_GRADLEW] java.lang.Exception
+[RUN_GRADLEW] 	at org.jetbrains.kotlin.daemon.common.CompileService$CallResult$Error.get(CompileService.kt:69)
+[RUN_GRADLEW] 	at org.jetbrains.kotlin.daemon.common.CompileService$CallResult$Error.get(CompileService.kt:65)
+[RUN_GRADLEW] 	at org.jetbrains.kotlin.compilerRunner.GradleKotlinCompilerWork.compileWithDaemon(GradleKotlinCompilerWork.kt:240)
+[RUN_GRADLEW] 	at org.jetbrains.kotlin.compilerRunner.GradleKotlinCompilerWork.compileWithDaemonOrFallbackImpl(GradleKotlinCompilerWork.kt:159)
+[RUN_GRADLEW] 	at org.jetbrains.kotlin.compilerRunner.GradleKotlinCompilerWork.run(GradleKotlinCompilerWork.kt:111)
+[RUN_GRADLEW] 	at org.jetbrains.kotlin.compilerRunner.GradleCompilerRunnerWithWorkers$GradleKotlinCompilerWorkAction.execute(GradleCompilerRunnerWithWorkers.kt:76)
+[RUN_GRADLEW] 	at org.gradle.workers.internal.DefaultWorkerServer.execute(DefaultWorkerServer.java:68)
+[RUN_GRADLEW] at org.gradle.workers.internal.NoIsolationWorkerFactory$1$1.create(NoIsolationWorkerFactory.java:64)
+[RUN_GRADLEW] 	at org.gradle.workers.internal.NoIsolationWorkerFactory$1$1.create(NoIsolationWorkerFactory.java:61)
+[RUN_GRADLEW] 	at org.gradle.internal.classloader.ClassLoaderUtils.executeInClassloader(ClassLoaderUtils.java:102)
+[RUN_GRADLEW] 	at org.gradle.workers.internal.NoIsolationWorkerFactory$1.lambda$execute$0(NoIsolationWorkerFactory.java:61)
+[RUN_GRADLEW] 	at org.gradle.workers.internal.AbstractWorker$1.call(AbstractWorker.java:44)
+[RUN_GRADLEW] 	at org.gradle.workers.internal.AbstractWorker$1.call(AbstractWorker.java:41)
+[RUN_GRADLEW] 	at org.gradle.internal.operations.DefaultBuildOperationRunner$CallableBuildOperationWorker.execute(DefaultBuildOperationRunner.java:209)
+[RUN_GRADLEW] 	at org.gradle.internal.operations.DefaultBuildOperationRunner$CallableBuildOperationWorker.execute(DefaultBuildOperationRunner.java:204)
+[RUN_GRADLEW] 	at org.gradle.internal.operations.DefaultBuildOperationRunner$2.execute(DefaultBuildOperationRunner.java:66)
+[RUN_GRADLEW] 	at org.gradle.internal.operations.DefaultBuildOperationRunner$2.execute(DefaultBuildOperationRunner.java:59)
+[RUN_GRADLEW] 	at org.gradle.internal.operations.DefaultBuildOperationRunner.execute(DefaultBuildOperationRunner.java:166)
+[RUN_GRADLEW] 	at org.gradle.internal.operations.DefaultBuildOperationRunner.execute(DefaultBuildOperationRunner.java:59)
+[RUN_GRADLEW] 	at org.gradle.internal.operations.DefaultBuildOperationRunner.call(DefaultBuildOperationRunner.java:53)
+[RUN_GRADLEW] 	at org.gradle.workers.internal.AbstractWorker.executeWrappedInBuildOperation(AbstractWorker.java:41)
+[RUN_GRADLEW] 	at org.gradle.workers.internal.NoIsolationWorkerFactory$1.execute(NoIsolationWorkerFactory.java:58)
+[RUN_GRADLEW] 	at org.gradle.workers.internal.DefaultWorkerExecutor.lambda$submitWork$0(DefaultWorkerExecutor.java:176)
+[RUN_GRADLEW] 	at java.base/java.util.concurrent.FutureTask.run(FutureTask.java:264)
+[RUN_GRADLEW] 	at org.gradle.internal.work.DefaultConditionalExecutionQueue$ExecutionRunner.runExecution(DefaultConditionalExecutionQueue.java:194)
+[RUN_GRADLEW] 	at org.gradle.internal.work.DefaultConditionalExecutionQueue$ExecutionRunner.access$700(DefaultConditionalExecutionQueue.java:127)
+[RUN_GRADLEW] at org.gradle.internal.work.DefaultConditionalExecutionQueue$ExecutionRunner$1.run(DefaultConditionalExecutionQueue.java:169)
+[RUN_GRADLEW] 	at org.gradle.internal.Factories$1.create(Factories.java:30)
+[RUN_GRADLEW] 	at org.gradle.internal.work.DefaultWorkerLeaseService.lambda$withLocksAcquired$0(DefaultWorkerLeaseService.java:269)
+[RUN_GRADLEW] 	at org.gradle.internal.work.ResourceLockStatistics$1.measure(ResourceLockStatistics.java:42)
+[RUN_GRADLEW] 	at org.gradle.internal.work.DefaultWorkerLeaseService.withLocksAcquired(DefaultWorkerLeaseService.java:267)
+[RUN_GRADLEW] 	at org.gradle.internal.work.DefaultWorkerLeaseService.withLocks(DefaultWorkerLeaseService.java:259)
+[RUN_GRADLEW] 	at org.gradle.internal.work.DefaultWorkerLeaseService.runAsWorkerThread(DefaultWorkerLeaseService.java:127)
+[RUN_GRADLEW] 	at org.gradle.internal.work.DefaultWorkerLeaseService.runAsWorkerThread(DefaultWorkerLeaseService.java:132)
+[RUN_GRADLEW] 	at org.gradle.internal.work.DefaultConditionalExecutionQueue$ExecutionRunner.runBatch(DefaultConditionalExecutionQueue.java:164)
+[RUN_GRADLEW] 	at org.gradle.internal.work.DefaultConditionalExecutionQueue$ExecutionRunner.run(DefaultConditionalExecutionQueue.java:133)
+[RUN_GRADLEW] 	at java.base/java.util.concurrent.Executors$RunnableAdapter.call(Executors.java:539)
+[RUN_GRADLEW] 	at java.base/java.util.concurrent.FutureTask.run(FutureTask.java:264)
+[RUN_GRADLEW] 	at org.gradle.internal.concurrent.ExecutorPolicy$CatchAndRecordFailures.onExecute(ExecutorPolicy.java:64)
+[RUN_GRADLEW] 	at org.gradle.internal.concurrent.AbstractManagedExecutor$1.run(AbstractManagedExecutor.java:47)
+[RUN_GRADLEW] 	at java.base/java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1136)
+[RUN_GRADLEW] 	at java.base/java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:635)
+[RUN_GRADLEW] 	at java.base/java.lang.Thread.run(Thread.java:840)
+[RUN_GRADLEW] Caused by: java.io.FileNotFoundException: /home/armandoafa/.gradle/caches/9.3.1/transforms/af8b128debe22b9a0d00b06be1c8af76/transformed/kotlinx-serialization-json-jvm-1_6_3_jar-snapshot.bin (No such file or directory)
+[RUN_GRADLEW] 	at java.base/java.io.FileInputStream.open0(Native Method)
+[RUN_GRADLEW] 	at java.base/java.io.FileInputStream.open(FileInputStream.java:216)
+[RUN_GRADLEW] 	at java.base/java.io.FileInputStream.<init>(FileInputStream.java:157)
+[RUN_GRADLEW] 	at org.jetbrains.kotlin.incremental.storage.ExternalizersKt.loadFromFile(externalizers.kt:184)
+[RUN_GRADLEW] 	at org.jetbrains.kotlin.incremental.classpathDiff.CachedClasspathSnapshotSerializer.load$lambda$1$lambda$0(ClasspathSnapshotSerializer.kt:44)
+[RUN_GRADLEW] 	at org.jetbrains.kotlin.incremental.classpathDiff.InMemoryCacheWithEviction.computeIfAbsent$lambda$5$lambda$2(InMemoryCacheWithEviction.kt:73)
+[RUN_GRADLEW] 	at org.jetbrains.kotlin.incremental.classpathDiff.InMemoryCacheWithEviction.computeIfAbsent$lambda$5$lambda$3(InMemoryCacheWithEviction.kt:72)
+[RUN_GRADLEW] 	at java.base/java.util.concurrent.ConcurrentHashMap.computeIfAbsent(ConcurrentHashMap.java:1708)
+[RUN_GRADLEW] 	at org.jetbrains.kotlin.incremental.classpathDiff.InMemoryCacheWithEviction.computeIfAbsent(InMemoryCacheWithEviction.kt:72)
+[RUN_GRADLEW] 	at org.jetbrains.kotlin.incremental.classpathDiff.CachedClasspathSnapshotSerializer.load(ClasspathSnapshotSerializer.kt:42)
+[RUN_GRADLEW] 	at org.jetbrains.kotlin.incremental.classpathDiff.ClasspathSnapshotShrinkerKt.shrinkAndSaveClasspathSnapshot(ClasspathSnapshotShrinker.kt:282)
+[RUN_GRADLEW] 	at org.jetbrains.kotlin.incremental.IncrementalJvmCompilerRunner.performWorkAfterCompilation(IncrementalJvmCompilerRunner.kt:478)
+[RUN_GRADLEW] 	at org.jetbrains.kotlin.incremental.IncrementalJvmCompilerRunner.performWorkAfterCompilation(IncrementalJvmCompilerRunner.kt:75)
+[RUN_GRADLEW] 	at org.jetbrains.kotlin.incremental.IncrementalCompilerRunner.compileImpl(IncrementalCompilerRunner.kt:433)
+[RUN_GRADLEW] 	at org.jetbrains.kotlin.incremental.IncrementalCompilerRunner.compileNonIncrementally(IncrementalCompilerRunner.kt:310)
+[RUN_GRADLEW] 	at org.jetbrains.kotlin.incremental.IncrementalCompilerRunner.compile(IncrementalCompilerRunner.kt:137)
+[RUN_GRADLEW] 	at org.jetbrains.kotlin.daemon.CompileServiceImplBase.execIncrementalCompiler(CompileServiceImpl.kt:678)
+[RUN_GRADLEW] 	at org.jetbrains.kotlin.daemon.CompileServiceImplBase.access$execIncrementalCompiler(CompileServiceImpl.kt:92)
+[RUN_GRADLEW] 	at org.jetbrains.kotlin.daemon.CompileServiceImpl.compile(CompileServiceImpl.kt:1805)
+[RUN_GRADLEW] 	at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke0(Native Method)
+[RUN_GRADLEW] 	at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke(NativeMethodAccessorImpl.java:77)
+[RUN_GRADLEW] 	at java.base/jdk.internal.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:43)
+[RUN_GRADLEW] 	at java.base/java.lang.reflect.Method.invoke(Method.java:569)
+[RUN_GRADLEW] at java.rmi/sun.rmi.server.UnicastServerRef.dispatch(UnicastServerRef.java:360)
+[RUN_GRADLEW] 	at java.rmi/sun.rmi.transport.Transport$1.run(Transport.java:200)
+[RUN_GRADLEW] 	at java.rmi/sun.rmi.transport.Transport$1.run(Transport.java:197)
+[RUN_GRADLEW] 	at java.base/java.security.AccessController.doPrivileged(AccessController.java:712)
+[RUN_GRADLEW] 	at java.rmi/sun.rmi.transport.Transport.serviceCall(Transport.java:196)
+[RUN_GRADLEW] 	at java.rmi/sun.rmi.transport.tcp.TCPTransport.handleMessages(TCPTransport.java:587)
+[RUN_GRADLEW] 	at java.rmi/sun.rmi.transport.tcp.TCPTransport$ConnectionHandler.run0(TCPTransport.java:828)
+[RUN_GRADLEW] 	at java.rmi/sun.rmi.transport.tcp.TCPTransport$ConnectionHandler.lambda$run$0(TCPTransport.java:705)
+[RUN_GRADLEW] 	at java.base/java.security.AccessController.doPrivileged(AccessController.java:399)
+[RUN_GRADLEW] 	at java.rmi/sun.rmi.transport.tcp.TCPTransport$ConnectionHandler.run(TCPTransport.java:704)
+[RUN_GRADLEW] 	... 3 more
+[RUN_GRADLEW] [Incubating] Problems report is available at: file:///tmp/armandoafa/eas-build-local-nodejs/9391a6bd-ea80-45c6-8b02-db22a641b901/build/bantos-mobile/android/build/reports/problems/problems-report.html
+[RUN_GRADLEW] FAILURE: Build completed with 2 failures.
+[RUN_GRADLEW] 1: Task failed with an exception.
+[RUN_GRADLEW] -----------
+[RUN_GRADLEW] * What went wrong:
+[RUN_GRADLEW] Execution failed for task ':expo-gradle-plugin:expo-autolinking-plugin-shared:compileKotlin'.
+[RUN_GRADLEW] > A failure occurred while executing org.jetbrains.kotlin.compilerRunner.GradleCompilerRunnerWithWorkers$GradleKotlinCompilerWorkAction
+[RUN_GRADLEW]    > org/jetbrains/kotlin/util/UtilKt
+[RUN_GRADLEW] * Try:
+[RUN_GRADLEW] >
+[RUN_GRADLEW] Run with --stacktrace option to get the stack trace.
+[RUN_GRADLEW] > Run with --info or --debug option to get more log output.
+[RUN_GRADLEW] > Run with --scan to get full insights from a Build Scan (powered by Develocity).
+[RUN_GRADLEW] > Get more help at https://help.gradle.org.
+[RUN_GRADLEW] ==============================================================================
+[RUN_GRADLEW] 2: Task failed with an exception.
+[RUN_GRADLEW] -----------
+[RUN_GRADLEW] * What went wrong:
+[RUN_GRADLEW] Execution failed for task ':gradle-plugin:shared:compileKotlin'.
+[RUN_GRADLEW] > A failure occurred while executing org.jetbrains.kotlin.compilerRunner.GradleCompilerRunnerWithWorkers$GradleKotlinCompilerWorkAction
+[RUN_GRADLEW]    > org/jetbrains/kotlin/util/UtilKt
+[RUN_GRADLEW] * Try:
+[RUN_GRADLEW] > Run with --stacktrace option to get the stack trace.
+[RUN_GRADLEW] > Run with --info or --debug option to get more log output.
+[RUN_GRADLEW] > Run with --scan to get full insights from a Build Scan (powered by Develocity).
+[RUN_GRADLEW] > Get more help at https://help.gradle.org.
+[RUN_GRADLEW] ==============================================================================
+[RUN_GRADLEW] BUILD FAILED in 30s
+[RUN_GRADLEW] FAILURE: Build failed with an exception.
+[RUN_GRADLEW] * What went wrong:
+[RUN_GRADLEW] Projects for build ':' have not been registered yet.
+[RUN_GRADLEW] Deprecated Gradle features were used in this build, making it incompatible with Gradle 10.
+[RUN_GRADLEW] You can use '--warning-mode all' to show the individual deprecation warnings and determine if they come from your own scripts or plugins.
+[RUN_GRADLEW] For more on this, please refer to https://docs.gradle.org/9.3.1/userguide/command_line_interface.html#sec:command_line_warnings in the Gradle documentation.
+[RUN_GRADLEW] 6 actionable tasks: 6 executed
+[RUN_GRADLEW] Deprecated Gradle features were used in this build, making it incompatible with Gradle 10.
+[RUN_GRADLEW] You can use '--warning-mode all' to show the individual deprecation warnings and determine if they come from your own scripts or plugins.
+[RUN_GRADLEW] For more on this, please refer to https://docs.gradle.org/9.3.1/userguide/command_line_interface.html#sec:command_line_warnings in the Gradle documentation.
+[RUN_GRADLEW] * Try:
+[RUN_GRADLEW] > Run with --stacktrace option to get the stack trace.
+[RUN_GRADLEW] > Run with --info or --debug option to get more log output.
+[RUN_GRADLEW] > Run with --scan to get full insights from a Build Scan (powered by Develocity).
+[RUN_GRADLEW] > Get more help at https://help.gradle.org.
+[RUN_GRADLEW] BUILD FAILED in 30s
+[RUN_GRADLEW] Error: Gradle build failed with unknown error. See logs for the "Run gradlew" phase for more information.
+
+Build failed
+Gradle build failed with unknown error. See logs for the "Run gradlew" phase for more information.
+Error: Gradle build failed with unknown error. See logs for the "Run gradlew" phase for more information.
+    at resolveBuildPhaseErrorAsync (/home/armandoafa/.npm/_npx/10a5486bc8d8aa37/node_modules/@expo/build-tools/dist/buildErrors/detectError.js:61:12)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async BuildContext.handleBuildPhaseErrorAsync (/home/armandoafa/.npm/_npx/10a5486bc8d8aa37/node_modules/@expo/build-tools/dist/context.js:193:28)
+    at async BuildContext.runBuildPhase (/home/armandoafa/.npm/_npx/10a5486bc8d8aa37/node_modules/@expo/build-tools/dist/context.js:138:35)
+    at async buildAsync (/home/armandoafa/.npm/_npx/10a5486bc8d8aa37/node_modules/@expo/build-tools/dist/builders/android.js:141:5)
+    at async runBuilderWithHooksAsync (/home/armandoafa/.npm/_npx/10a5486bc8d8aa37/node_modules/@expo/build-tools/dist/builders/common.js:12:13)
+    at async Object.androidBuilder (/home/armandoafa/.npm/_npx/10a5486bc8d8aa37/node_modules/@expo/build-tools/dist/builders/android.js:31:16)
+    at async buildAndroidAsync (/home/armandoafa/.npm/_npx/10a5486bc8d8aa37/node_modules/eas-cli-local-build-plugin/dist/android.js:43:12)
+    at async buildAsync (/home/armandoafa/.npm/_npx/10a5486bc8d8aa37/node_modules/eas-cli-local-build-plugin/dist/build.js:54:29)
+    at async main (/home/armandoafa/.npm/_npx/10a5486bc8d8aa37/node_modules/eas-cli-local-build-plugin/dist/main.js:16:9)
+npx -y eas-cli-local-build-plugin@20.1.0 eyJqb2IiOnsidHlwZSI6Im1hbmFnZWQiLCJwbGF0Zm9ybSI6ImFuZHJvaWQiLCJwcm9qZWN0Um9vdERpcmVjdG9yeSI6ImJhbnRvcy1tb2JpbGUiLCJwcm9qZWN0QXJjaGl2ZSI6eyJ0eXBlIjoiUEFUSCIsInBhdGgiOiIvdG1wL2FybWFuZG9hZmEvZWFzLWNsaS1ub2RlanMvM2Y5YWQ3N2UtZjg5My00YTg1LWIwNDktNTZlYmYyMTEwMTE2LnRhci5neiJ9LCJidWlsZGVyRW52aXJvbm1lbnQiOnsiZW52Ijp7fX0sImNhY2hlIjp7ImRpc2FibGVkIjpmYWxzZSwicGF0aHMiOltdLCJjbGVhciI6ZmFsc2V9LCJzZWNyZXRzIjp7ImJ1aWxkQ3JlZGVudGlhbHMiOnsia2V5c3RvcmUiOnsiZGF0YUJhc2U2NCI6Ii91Mys3UUFBQUFJQUFBQUJBQUFBQVFBZ1pETXdOVFJtTUdOa09EZGpNMlkwTkdRMk5qSmhabUUyTTJVelltVTRNV0VBQUFHZXNuaksrUUFBQlFFd2dnVDlNQTRHQ2lzR0FRUUJLZ0lSQVFFRkFBU0NCT20yWVJjYW53VkJITStaMk81eVZSeXpySDJ5MWhGYjJmRlFkOFltd0lHcW1sT3dVdWRyNGNrZzFNZXhPbzdlYzQ3N1RoVnFpOExxSngvSTJIMHdCNHRESDlBZFNmdWcvWEVNWnJTbHJRNUhvVytEazZpVlhxOWI2V1h1dnJkUUk2TXliWUpXczg5QUpjWTlCby9oc09vY3NWOEtiRk1nYWZGemRYL2t1cVdKRCtTYXZZeFoxYysvRkhhclAvQ0ZDbFU4bFlnZkdrWHBWL21ONnFXMCtaWVRVRGZwMFpFOFp2ZmFhL3dZZjVIcjZBbmtHeWxGRjFzMHFGSElvU0ZqT0xFZUxObUExNGxyUVpXNUJ5OTdwbkdwVS9GaVUvbVc5VjRXeHNheTUwYWVEVy9vOS9IdkRoeUtlY3VkOGJCYkhvWm1OYkIyTlE3Ri9nK0tyTXErZG0zWklpUFkzelhNQWJNSFg5MSszRWdKOVVld2REOGNKTjZ0ZUtBa2dURmsySVA5UkY1TEhqd2tLQ1RDdmgxV2JCL3FCZjVDaGdDbzBzaVhkY1Q4SThLWFZwRjFMZ0JUZmxmUlVhTjlKaFFKb2dicnRWemtjd1VadUl5eG5jcDFiSHEvUVl1TE13Y1R0a2lQSnpSR3FJd056YjZqU2RqVCtwdVE5WUFTaEs0b0pjQ25JeEdGODNZNnlaWmdoOEhFa2NkV0wwNzdVeGp5cXoxNVJMM01mNk9GVXhBQXBRWWNTTGc4YVh1N2UvNGxORmVLa3NJQlRJMFVaTXVMYVpDaXNPaVd2bXpNT3owOW9FTG5Oei9VakltMGhScm4xMVlrTTFZV3NXakM4MktneGFlemtaM09qMSszSGZKUXN2N1NYZFcxTStMMmQxZ2pwb0h6Y0xGUDJhVUkxUVBwQmREY2cxUFFDcGlXelV3K1Fqc1MrY09abnUrVDVkKy9rNW9adWhnQjdBN0x0Y0F3cEcySmV1WjZKNkkrSFdoaUFmaW1iMkpwNitIejRGeHhoWlBkKzk5ejdOWVJVUmZjNlBwYUk0ejQ1SjNBRWpqUjVQWjVieWdCSlRZNEY5dURkdGsrQzZOQXNzTnplZkk5OThpQ3ZWMHF6T0Z5RHZsTTFsMC80dnltZnh6R3dwS2JBVTFZcW5rSFFqVEpSbFRJb0RRb3krVGJ2U2JwVmZzQ0RXS1NoeGVCSUJ3Umt4M0VuSU8wSEplUFBzbFNHdCt3a3lUZUVEUjJIU085ay9ab3lKN2tuVk5FbnplZ2k1SG1XQUJYdmJzbEQ0SWEyQXFxdk5EWkFxK3pJcDJKMGtpays4K0kxVzNNeml6WDFHeXZuMmUxMnkzQ2Q0VDRZcERJUzRHeDRxR2J2S2pWSmppZTNOWEdWZ2JGd1BzTUtTVmhETWR2cHVlTGpZaTRuWGdGTVNIWUp2N01sQ3JodnNRQUNVQ29ZSVM1Tzg3T3NnWkwxNkR2cmVDeGt3THNVd25hOG5DRVdwV3RvaEliMGNTWWVRdTgxbGpPanpQWElwdjkvMWtkODVOQXRDbVpHNi9reGRJTnA4aDErUVZUaXVJRk5TdWUvak5ZT3JQUndGRkJPUHg0cVNGdVhCTS9QZmFFc243dHk1akFQaVo4WDhRR0N4dklpUytoaTRVNW9CNSt6NG81QWwveWlpeThEck9aVDQwYTlsQWtnN3gzeExEaFAxVUxRWlM5NUl0eVJNNjZKM0Q2Y2hxckxLU01EWVk0MDFPV2pqd2V0RnhueElQRGFpNlNjVjdSSGJyQWtHd3c5eHM4OVUwL1JaUVhoNHFFQnduVXpZa0dCUXhPb3BqK0oxUXorWWNWaE9JWmEvUnNzSE8yUmpPR29PcDRsQk85T3MvdWJJNGNsU2ZXV3RLcVlJYUtEelh1L1JTc1I2UmIyeDl4UDM1WjJnM2RBemwvNHBpWGp2NkkvL1B2bmtBNmRVRkdDQlpPTXByVmRlUFhqb1M1RUpzNzU0YUpTNDRtdmlWbkI0b3ZwbVg1N3JpZGtRQTA4ZWRGcDU1eXBFUXU4NFY2czhzUXJEOVpUZlBQMDAyUC9CZ09YQUtvd1R3dVlOOUxreUJnazVjYm1hNEZvRjh2Mlk0TWhnbEdVR0c2NDBGMHRBQVVpSGtSZ2x3eGU0SUZiN2VRbFJTQ29BcGc5TllrZmh1azdDek4wYWptMWE1dXRRSGVGTytsblQ5Q0NtY1M1akU5bGdydDBxMEFBQUFCQUFWWUxqVXdPUUFBQXpJd2dnTXVNSUlDRnFBREFnRUNBZ2tBbitOcnpRNmFMdnN3RFFZSktvWklodmNOQVFFTEJRQXdSREVMTUFrR0ExVUVCaE1DVlZNeENUQUhCZ05WQkFnVEFERUpNQWNHQTFVRUJ4TUFNUWt3QndZRFZRUUtFd0F4Q1RBSEJnTlZCQXNUQURFSk1BY0dBMVVFQXhNQU1DQVhEVEkyTURZeE1ERTJOVGcwTVZvWUR6SXdOVE14TURJMk1UWTFPRFF4V2pCRU1Rc3dDUVlEVlFRR0V3SlZVekVKTUFjR0ExVUVDQk1BTVFrd0J3WURWUVFIRXdBeENUQUhCZ05WQkFvVEFERUpNQWNHQTFVRUN4TUFNUWt3QndZRFZRUURFd0F3Z2dFaU1BMEdDU3FHU0liM0RRRUJBUVVBQTRJQkR3QXdnZ0VLQW9JQkFRRGlzNEZNTW9NVk81a3JsK3ppTjJ0cTBSLzJhNWZoWWRkUXIxZzlLaXRHZm9Xbkp2ZXE5bHdnbGNNZk1JUmJ0SE1WQlJ5ZFY2L3JTd3JnUG1yOUFhZUFvdnFjc2pKV0s5WmFXRUd6S2cvbU13OC96UWczc3hadmhwbWVlSWZPL0R1SnhFQUs1RXhnUjVlbWtiSmI4R0JMc0VEYlY5RWxZZUhMVU9icXl6VVhETWVoaXByWEllZmc5UXZVVUpwYy82emU3SWZLekd4WW95ZzBpc2RDUWxES3hER1QyNnAyRTRNeW5YTE5tRmJSOTAzSzdXalFkdHJmZk1iZG0rZGJ2eXJPQ0syaEI1dlI2YnplZ1JZNllUalNWRGhtanQreDNtMUpLNHpXbHFxdFRPajVEc3NHKzE2TmJaYTJXUVlobUxaaHZvcUpZbXRXelYwTjh5WDdaV0p6QWdNQkFBR2pJVEFmTUIwR0ExVWREZ1FXQkJRZjhWblJreTdTLzRrUkgzKzl4ckhwNVFVcjBUQU5CZ2txaGtpRzl3MEJBUXNGQUFPQ0FRRUEwQS9BWVVhcTZlcnJyWHprS3RSWDBLN0tFRnRBVHJuWVVydWo4RVBQSW1DSG54NHRiNWtIRko4aSt6dXNUYkRwbGgwc3MvSWZtcEJZTkZIL01OQWl6TkVYZDlodHhxanF1azJIS21BMVlKWkl5dXlVOUwwVkRKdHIwZEppYUZLbS90OFZHbGlmN0l2N0s4dXFkeVk3WkNXWGZiM1pyQ0JTMEhpVWhhRWF3RmZuNGQ3cE4wQmpPWmQyYjluRFB5cEJDaUVETWtQaVh5OUJnU3U2U3ZNK2pwczZlay9saUU3czVOV3BEOUg3SkVqa05jbnljek9WYW9SS2RRdjFZemJQYUlLclROS0RMRWRab2xSSlRVMXpBaVNNbEovdUhsRHZONFFlYmc3YlNCQ1BZdHhNYzVyc2luaUR0V0tGZjB2cHIzSUZyM1huZXFmK2E1ZU0xNWhzYVo0eFFyMm9rZ21DZHNIaUxNelVzeXdRbmNpcSIsImtleXN0b3JlUGFzc3dvcmQiOiJlMjlmODM4OWViNGVmOTc2MmRlMjk2ZjRiZDQ4YzM4ZiIsImtleUFsaWFzIjoiZDMwNTRmMGNkODdjM2Y0NGQ2NjJhZmE2M2UzYmU4MWEiLCJrZXlQYXNzd29yZCI6Ijg2ZmIyNzU0MWY4YTk0Y2Q4ZDc5ZTRkNGZmNDhjYTdlIn19fSwidXBkYXRlcyI6e30sImJ1aWxkVHlwZSI6ImFwayIsInVzZXJuYW1lIjoiYXJtYW5kb2FmYSIsImV4cGVyaW1lbnRhbCI6e30sIm1vZGUiOiJidWlsZCIsInRyaWdnZXJlZEJ5IjoiRUFTX0NMSSIsImFwcElkIjoiMGU4YzUwMGUtNzdkYy00YzQ4LThkMjctM2Y2YTk1NzU3MTQwIiwiaW5pdGlhdGluZ1VzZXJJZCI6IjhiNDc0NGQ3LTcxMGItNDExYy04NDQzLTExOTRjMTliMWU2OSJ9LCJtZXRhZGF0YSI6eyJ0cmFja2luZ0NvbnRleHQiOnsidHJhY2tpbmdfaWQiOiJhMTAzNTlmMC00Mjk0LTQ5MzktYTMzYy1jNzQyNzc2NmI1YTMiLCJwbGF0Zm9ybSI6ImFuZHJvaWQiLCJzZGtfdmVyc2lvbiI6IjU2LjAuMCIsImFjY291bnRfaWQiOiIxMzc2OGMxOS1kMjVhLTQwNGUtOTI1NC0xNmIxZmY4YjM0NDUiLCJwcm9qZWN0X2lkIjoiMGU4YzUwMGUtNzdkYy00YzQ4LThkMjctM2Y2YTk1NzU3MTQwIiwicHJvamVjdF90eXBlIjoibWFuYWdlZCIsImRldl9jbGllbnQiOmZhbHNlLCJub193YWl0IjpmYWxzZSwicnVuX2Zyb21fY2kiOmZhbHNlLCJsb2NhbCI6dHJ1ZX0sImFwcEJ1aWxkVmVyc2lvbiI6IjEiLCJhcHBWZXJzaW9uIjoiMS4wLjAiLCJjbGlWZXJzaW9uIjoiMjAuMS4wIiwid29ya2Zsb3ciOiJtYW5hZ2VkIiwiY3JlZGVudGlhbHNTb3VyY2UiOiJyZW1vdGUiLCJzZGtWZXJzaW9uIjoiNTYuMC4wIiwiZmluZ2VycHJpbnRIYXNoIjoiZmEwY2M0OWM1MWExMWExNDdjMzljYjhmZjljNWFkNjU4MGQwNTFiMSIsInJlYWN0TmF0aXZlVmVyc2lvbiI6IjAuODUuMyIsImV4cG9QYWNrYWdlVmVyc2lvbiI6IjU2LjAuOSIsImRpc3RyaWJ1dGlvbiI6ImludGVybmFsIiwiYXBwTmFtZSI6ImJhbnRvcy1tb2JpbGUiLCJhcHBJZGVudGlmaWVyIjoiY29tLmJhbnRvcy5wb3MiLCJidWlsZFByb2ZpbGUiOiJwcmV2aWV3IiwiZ2l0Q29tbWl0SGFzaCI6IjhkOWMzYTkwYzBkMzAwMDY0MTcyODNiMjcwZDY4ZDdjM2QzMDllY2YiLCJnaXRDb21taXRNZXNzYWdlIjoiY2hvcmU6IHNuYXBzaG90IG9mIHN0YWJsZSBWUFMgc3RhdGUiLCJpc0dpdFdvcmtpbmdUcmVlRGlydHkiOnRydWUsInVzZXJuYW1lIjoiYXJtYW5kb2FmYSIsInJ1bldpdGhOb1dhaXRGbGFnIjpmYWxzZSwicnVuRnJvbUNJIjpmYWxzZSwiZGV2ZWxvcG1lbnRDbGllbnQiOmZhbHNlLCJyZXF1aXJlZFBhY2thZ2VNYW5hZ2VyIjoibnBtIiwic2ltdWxhdG9yIjpmYWxzZX19 exited with non-zero code: 1
+    Error: build command failed.

@@ -1,0 +1,1222 @@
+{
+	"info": {
+		"_postman_id": "1f44f507-f366-4c05-a088-885127d70081",
+		"name": "Domiciliación",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "13460005"
+	},
+	"item": [
+		{
+			"name": "customers",
+			"item": [
+				{
+					"name": "List Customers",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"function getPath(url) {",
+									"    var pathRegex = /.+?\\:\\/\\/.+?(\\/.+?)(?:#|\\?|$)/;",
+									"    var result = url.match(pathRegex);",
+									"    return result && result.length > 1 ? result[1] : ''; ",
+									"}",
+									" ",
+									"function getQueryString(url) {",
+									"    var arrSplit = url.split('?');",
+									"    return arrSplit.length > 1 ? url.substring(url.indexOf('?')+1) : ''; ",
+									"}",
+									"",
+									"var _requestData;",
+									"var _requestPath;",
+									" ",
+									"function getAuthHeader(httpMethod, requestUrl, _requestBody) {",
+									"    var CLIENT_KEY = '';",
+									"   var hash = '';",
+									"   var SECRET_KEY = CryptoJS.enc.Hex.stringify(CryptoJS.SHA512(hash));",
+									"   var AUTH_TYPE = 'DynamiCore';",
+									"   var requestBody = '';",
+									"   var requestPath = getPath(requestUrl);",
+									"   _requestPath = requestPath;",
+									"   var queryString = getQueryString(requestUrl);",
+									"   if (httpMethod == 'GET' || !_requestBody) {",
+									"        requestBody = '';",
+									"    } else {",
+									"        requestBody = JSON.stringify(JSON.parse(_requestBody) );",
+									"//JSON.stringify(_requestBody).replace(\"\\\\n\",\"\").replace('\\\\\"',\"\\\"\");",
+									"    }   ",
+									"",
+									"    var timestamp = new Date().getTime(); ",
+									"    var requestData = [timestamp,httpMethod, requestPath, queryString, requestBody].join(\"\");",
+									"    requestData = requestData.trim();",
+									"    _requestData = requestData;",
+									"         ",
+									"    var hmacDigest = CryptoJS.enc.Hex.stringify(CryptoJS.HmacSHA256(requestData, SECRET_KEY));",
+									"    var authHeader = AUTH_TYPE + ' ' + CLIENT_KEY + ':'+ timestamp + \":\"  + hmacDigest;",
+									"    return authHeader;",
+									"}",
+									" ",
+									"postman.setEnvironmentVariable('hmacAuth', getAuthHeader(request['method'], request['url'], request['data']));",
+									"postman.setEnvironmentVariable('hmac_d',_requestData);",
+									"postman.setEnvironmentVariable('hmac_path',_requestPath);",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {},
+								"requests": {}
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "{{hmacAuth}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "https://api.dynamicore.io/marketplace/apps/belvo/customers",
+							"protocol": "https",
+							"host": [
+								"api",
+								"dynamicore",
+								"io"
+							],
+							"path": [
+								"marketplace",
+								"apps",
+								"belvo",
+								"customers"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Retrieve Customers",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"function getPath(url) {",
+									"    var pathRegex = /.+?\\:\\/\\/.+?(\\/.+?)(?:#|\\?|$)/;",
+									"    var result = url.match(pathRegex);",
+									"    return result && result.length > 1 ? result[1] : ''; ",
+									"}",
+									" ",
+									"function getQueryString(url) {",
+									"    var arrSplit = url.split('?');",
+									"    return arrSplit.length > 1 ? url.substring(url.indexOf('?')+1) : ''; ",
+									"}",
+									"",
+									"var _requestData;",
+									"var _requestPath;",
+									" ",
+									"function getAuthHeader(httpMethod, requestUrl, _requestBody) {",
+									"    var CLIENT_KEY = '';",
+									"   var hash = '';",
+									"   var SECRET_KEY = CryptoJS.enc.Hex.stringify(CryptoJS.SHA512(hash));",
+									"   var AUTH_TYPE = 'DynamiCore';",
+									"   var requestBody = '';",
+									"   var requestPath = getPath(requestUrl);",
+									"   _requestPath = requestPath;",
+									"   var queryString = getQueryString(requestUrl);",
+									"   if (httpMethod == 'GET' || !_requestBody) {",
+									"        requestBody = '';",
+									"    } else {",
+									"        requestBody = JSON.stringify(JSON.parse(_requestBody) );",
+									"//JSON.stringify(_requestBody).replace(\"\\\\n\",\"\").replace('\\\\\"',\"\\\"\");",
+									"    }   ",
+									"",
+									"    var timestamp = new Date().getTime(); ",
+									"    var requestData = [timestamp,httpMethod, requestPath, queryString, requestBody].join(\"\");",
+									"    requestData = requestData.trim();",
+									"    _requestData = requestData;",
+									"         ",
+									"    var hmacDigest = CryptoJS.enc.Hex.stringify(CryptoJS.HmacSHA256(requestData, SECRET_KEY));",
+									"    var authHeader = AUTH_TYPE + ' ' + CLIENT_KEY + ':'+ timestamp + \":\"  + hmacDigest;",
+									"    return authHeader;",
+									"}",
+									" ",
+									"postman.setEnvironmentVariable('hmacAuth', getAuthHeader(request['method'], request['url'], request['data']));",
+									"postman.setEnvironmentVariable('hmac_d',_requestData);",
+									"postman.setEnvironmentVariable('hmac_path',_requestPath);",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {},
+								"requests": {}
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "{{hmacAuth}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "https://api.dynamicore.io/marketplace/apps/belvo/customers",
+							"protocol": "https",
+							"host": [
+								"api",
+								"dynamicore",
+								"io"
+							],
+							"path": [
+								"marketplace",
+								"apps",
+								"belvo",
+								"customers"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Create Customer",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"function getPath(url) {",
+									"    var pathRegex = /.+?\\:\\/\\/.+?(\\/.+?)(?:#|\\?|$)/;",
+									"    var result = url.match(pathRegex);",
+									"    return result && result.length > 1 ? result[1] : ''; ",
+									"}",
+									" ",
+									"function getQueryString(url) {",
+									"    var arrSplit = url.split('?');",
+									"    return arrSplit.length > 1 ? url.substring(url.indexOf('?')+1) : ''; ",
+									"}",
+									"",
+									"var _requestData;",
+									"var _requestPath;",
+									" ",
+									"function getAuthHeader(httpMethod, requestUrl, _requestBody) {",
+									"    var CLIENT_KEY = '';",
+									"   var hash = '';",
+									"   var SECRET_KEY = CryptoJS.enc.Hex.stringify(CryptoJS.SHA512(hash));",
+									"   var AUTH_TYPE = 'DynamiCore';",
+									"   var requestBody = '';",
+									"   var requestPath = getPath(requestUrl);",
+									"   _requestPath = requestPath;",
+									"   var queryString = getQueryString(requestUrl);",
+									"   if (httpMethod == 'GET' || !_requestBody) {",
+									"        requestBody = '';",
+									"    } else {",
+									"        requestBody = JSON.stringify(JSON.parse(_requestBody) );",
+									"//JSON.stringify(_requestBody).replace(\"\\\\n\",\"\").replace('\\\\\"',\"\\\"\");",
+									"    }   ",
+									"",
+									"    var timestamp = new Date().getTime(); ",
+									"    var requestData = [timestamp,httpMethod, requestPath, queryString, requestBody].join(\"\");",
+									"    requestData = requestData.trim();",
+									"    _requestData = requestData;",
+									"         ",
+									"    var hmacDigest = CryptoJS.enc.Hex.stringify(CryptoJS.HmacSHA256(requestData, SECRET_KEY));",
+									"    var authHeader = AUTH_TYPE + ' ' + CLIENT_KEY + ':'+ timestamp + \":\"  + hmacDigest;",
+									"    return authHeader;",
+									"}",
+									" ",
+									"postman.setEnvironmentVariable('hmacAuth', getAuthHeader(request['method'], request['url'], request['data']));",
+									"postman.setEnvironmentVariable('hmac_d',_requestData);",
+									"postman.setEnvironmentVariable('hmac_path',_requestPath);",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {},
+								"requests": {}
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "{{hmacAuth}}",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"firstname\": \"Roger\",\n    \"lastname\": \"Díaz Viamonte\",\n    \"email\": \"rogerdv0009@gmail.com\",\n    \"documentType\": \"mx_curp\",\n    \"documentNumber\": 1212323242,\n    \"phoneNumber\": \"+53 54803162\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "https://api.dynamicore.io/marketplace/apps/belvo/customers",
+							"protocol": "https",
+							"host": [
+								"api",
+								"dynamicore",
+								"io"
+							],
+							"path": [
+								"marketplace",
+								"apps",
+								"belvo",
+								"customers"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Customer Update",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"function getPath(url) {",
+									"    var pathRegex = /.+?\\:\\/\\/.+?(\\/.+?)(?:#|\\?|$)/;",
+									"    var result = url.match(pathRegex);",
+									"    return result && result.length > 1 ? result[1] : ''; ",
+									"}",
+									" ",
+									"function getQueryString(url) {",
+									"    var arrSplit = url.split('?');",
+									"    return arrSplit.length > 1 ? url.substring(url.indexOf('?')+1) : ''; ",
+									"}",
+									"",
+									"var _requestData;",
+									"var _requestPath;",
+									" ",
+									"function getAuthHeader(httpMethod, requestUrl, _requestBody) {",
+									"    var CLIENT_KEY = '';",
+									"   var hash = '';",
+									"   var SECRET_KEY = CryptoJS.enc.Hex.stringify(CryptoJS.SHA512(hash));",
+									"   var AUTH_TYPE = 'DynamiCore';",
+									"   var requestBody = '';",
+									"   var requestPath = getPath(requestUrl);",
+									"   _requestPath = requestPath;",
+									"   var queryString = getQueryString(requestUrl);",
+									"   if (httpMethod == 'GET' || !_requestBody) {",
+									"        requestBody = '';",
+									"    } else {",
+									"        requestBody = JSON.stringify(JSON.parse(_requestBody) );",
+									"//JSON.stringify(_requestBody).replace(\"\\\\n\",\"\").replace('\\\\\"',\"\\\"\");",
+									"    }   ",
+									"",
+									"    var timestamp = new Date().getTime(); ",
+									"    var requestData = [timestamp,httpMethod, requestPath, queryString, requestBody].join(\"\");",
+									"    requestData = requestData.trim();",
+									"    _requestData = requestData;",
+									"         ",
+									"    var hmacDigest = CryptoJS.enc.Hex.stringify(CryptoJS.HmacSHA256(requestData, SECRET_KEY));",
+									"    var authHeader = AUTH_TYPE + ' ' + CLIENT_KEY + ':'+ timestamp + \":\"  + hmacDigest;",
+									"    return authHeader;",
+									"}",
+									" ",
+									"postman.setEnvironmentVariable('hmacAuth', getAuthHeader(request['method'], request['url'], request['data']));",
+									"postman.setEnvironmentVariable('hmac_d',_requestData);",
+									"postman.setEnvironmentVariable('hmac_path',_requestPath);",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {},
+								"requests": {}
+							}
+						}
+					],
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "{{hmacAuth}}",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"firstname\": \"Roger\",\n    \"lastname\": \"Díaz Viamonte\",\n    \"email\": \"rogerdv0009@gmail.com\",\n    \"documentType\": \"mx_curp\",\n    \"documentNumber\": 1212323242,\n    \"phoneNumber\": \"+53 54803162\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "https://api.dynamicore.io/marketplace/apps/belvo/customers_update",
+							"protocol": "https",
+							"host": [
+								"api",
+								"dynamicore",
+								"io"
+							],
+							"path": [
+								"marketplace",
+								"apps",
+								"belvo",
+								"customers_update"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "aggreement",
+			"item": [
+				{
+					"name": "Generate Agreement",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"function getPath(url) {",
+									"    var pathRegex = /.+?\\:\\/\\/.+?(\\/.+?)(?:#|\\?|$)/;",
+									"    var result = url.match(pathRegex);",
+									"    return result && result.length > 1 ? result[1] : ''; ",
+									"}",
+									" ",
+									"function getQueryString(url) {",
+									"    var arrSplit = url.split('?');",
+									"    return arrSplit.length > 1 ? url.substring(url.indexOf('?')+1) : ''; ",
+									"}",
+									"",
+									"var _requestData;",
+									"var _requestPath;",
+									" ",
+									"function getAuthHeader(httpMethod, requestUrl, _requestBody) {",
+									"    var CLIENT_KEY = '';",
+									"   var hash = '';",
+									"   var SECRET_KEY = CryptoJS.enc.Hex.stringify(CryptoJS.SHA512(hash));",
+									"   var AUTH_TYPE = 'DynamiCore';",
+									"   var requestBody = '';",
+									"   var requestPath = getPath(requestUrl);",
+									"   _requestPath = requestPath;",
+									"   var queryString = getQueryString(requestUrl);",
+									"   if (httpMethod == 'GET' || !_requestBody) {",
+									"        requestBody = '';",
+									"    } else {",
+									"        requestBody = JSON.stringify(JSON.parse(_requestBody) );",
+									"//JSON.stringify(_requestBody).replace(\"\\\\n\",\"\").replace('\\\\\"',\"\\\"\");",
+									"    }   ",
+									"",
+									"    var timestamp = new Date().getTime(); ",
+									"    var requestData = [timestamp,httpMethod, requestPath, queryString, requestBody].join(\"\");",
+									"    requestData = requestData.trim();",
+									"    _requestData = requestData;",
+									"         ",
+									"    var hmacDigest = CryptoJS.enc.Hex.stringify(CryptoJS.HmacSHA256(requestData, SECRET_KEY));",
+									"    var authHeader = AUTH_TYPE + ' ' + CLIENT_KEY + ':'+ timestamp + \":\"  + hmacDigest;",
+									"    return authHeader;",
+									"}",
+									" ",
+									"postman.setEnvironmentVariable('hmacAuth', getAuthHeader(request['method'], request['url'], request['data']));",
+									"postman.setEnvironmentVariable('hmac_d',_requestData);",
+									"postman.setEnvironmentVariable('hmac_path',_requestPath);",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {},
+								"requests": {}
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "{{hmacAuth}}",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"payment_method_id\": \"adisviads12321\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "https://api.dynamicore.io/marketplace/apps/belvo/belvo/agreement_generate",
+							"protocol": "https",
+							"host": [
+								"api",
+								"dynamicore",
+								"io"
+							],
+							"path": [
+								"marketplace",
+								"apps",
+								"belvo",
+								"belvo",
+								"agreement_generate"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Confirm agreements",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"function getPath(url) {",
+									"    var pathRegex = /.+?\\:\\/\\/.+?(\\/.+?)(?:#|\\?|$)/;",
+									"    var result = url.match(pathRegex);",
+									"    return result && result.length > 1 ? result[1] : ''; ",
+									"}",
+									" ",
+									"function getQueryString(url) {",
+									"    var arrSplit = url.split('?');",
+									"    return arrSplit.length > 1 ? url.substring(url.indexOf('?')+1) : ''; ",
+									"}",
+									"",
+									"var _requestData;",
+									"var _requestPath;",
+									" ",
+									"function getAuthHeader(httpMethod, requestUrl, _requestBody) {",
+									"    var CLIENT_KEY = '';",
+									"   var hash = '';",
+									"   var SECRET_KEY = CryptoJS.enc.Hex.stringify(CryptoJS.SHA512(hash));",
+									"   var AUTH_TYPE = 'DynamiCore';",
+									"   var requestBody = '';",
+									"   var requestPath = getPath(requestUrl);",
+									"   _requestPath = requestPath;",
+									"   var queryString = getQueryString(requestUrl);",
+									"   if (httpMethod == 'GET' || !_requestBody) {",
+									"        requestBody = '';",
+									"    } else {",
+									"        requestBody = JSON.stringify(JSON.parse(_requestBody) );",
+									"//JSON.stringify(_requestBody).replace(\"\\\\n\",\"\").replace('\\\\\"',\"\\\"\");",
+									"    }   ",
+									"",
+									"    var timestamp = new Date().getTime(); ",
+									"    var requestData = [timestamp,httpMethod, requestPath, queryString, requestBody].join(\"\");",
+									"    requestData = requestData.trim();",
+									"    _requestData = requestData;",
+									"         ",
+									"    var hmacDigest = CryptoJS.enc.Hex.stringify(CryptoJS.HmacSHA256(requestData, SECRET_KEY));",
+									"    var authHeader = AUTH_TYPE + ' ' + CLIENT_KEY + ':'+ timestamp + \":\"  + hmacDigest;",
+									"    return authHeader;",
+									"}",
+									" ",
+									"postman.setEnvironmentVariable('hmacAuth', getAuthHeader(request['method'], request['url'], request['data']));",
+									"postman.setEnvironmentVariable('hmac_d',_requestData);",
+									"postman.setEnvironmentVariable('hmac_path',_requestPath);",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {},
+								"requests": {}
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "{{hmacAuth}}",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"agreement_id\": \"1271612gf1\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "https://api.dynamicore.io/marketplace/apps/belvo/agreement_confirm",
+							"protocol": "https",
+							"host": [
+								"api",
+								"dynamicore",
+								"io"
+							],
+							"path": [
+								"marketplace",
+								"apps",
+								"belvo",
+								"agreement_confirm"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "payments methods",
+			"item": [
+				{
+					"name": "List Payments",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"function getPath(url) {",
+									"    var pathRegex = /.+?\\:\\/\\/.+?(\\/.+?)(?:#|\\?|$)/;",
+									"    var result = url.match(pathRegex);",
+									"    return result && result.length > 1 ? result[1] : ''; ",
+									"}",
+									" ",
+									"function getQueryString(url) {",
+									"    var arrSplit = url.split('?');",
+									"    return arrSplit.length > 1 ? url.substring(url.indexOf('?')+1) : ''; ",
+									"}",
+									"",
+									"var _requestData;",
+									"var _requestPath;",
+									" ",
+									"function getAuthHeader(httpMethod, requestUrl, _requestBody) {",
+									"    var CLIENT_KEY = '';",
+									"   var hash = '';",
+									"   var SECRET_KEY = CryptoJS.enc.Hex.stringify(CryptoJS.SHA512(hash));",
+									"   var AUTH_TYPE = 'DynamiCore';",
+									"   var requestBody = '';",
+									"   var requestPath = getPath(requestUrl);",
+									"   _requestPath = requestPath;",
+									"   var queryString = getQueryString(requestUrl);",
+									"   if (httpMethod == 'GET' || !_requestBody) {",
+									"        requestBody = '';",
+									"    } else {",
+									"        requestBody = JSON.stringify(JSON.parse(_requestBody) );",
+									"//JSON.stringify(_requestBody).replace(\"\\\\n\",\"\").replace('\\\\\"',\"\\\"\");",
+									"    }   ",
+									"",
+									"    var timestamp = new Date().getTime(); ",
+									"    var requestData = [timestamp,httpMethod, requestPath, queryString, requestBody].join(\"\");",
+									"    requestData = requestData.trim();",
+									"    _requestData = requestData;",
+									"         ",
+									"    var hmacDigest = CryptoJS.enc.Hex.stringify(CryptoJS.HmacSHA256(requestData, SECRET_KEY));",
+									"    var authHeader = AUTH_TYPE + ' ' + CLIENT_KEY + ':'+ timestamp + \":\"  + hmacDigest;",
+									"    return authHeader;",
+									"}",
+									" ",
+									"postman.setEnvironmentVariable('hmacAuth', getAuthHeader(request['method'], request['url'], request['data']));",
+									"postman.setEnvironmentVariable('hmac_d',_requestData);",
+									"postman.setEnvironmentVariable('hmac_path',_requestPath);",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {},
+								"requests": {}
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "{{hmacAuth}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "https://api.dynamicore.io/marketplace/apps/belvo/payments_methods",
+							"protocol": "https",
+							"host": [
+								"api",
+								"dynamicore",
+								"io"
+							],
+							"path": [
+								"marketplace",
+								"apps",
+								"belvo",
+								"payments_methods"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Retrieve Payments",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"function getPath(url) {",
+									"    var pathRegex = /.+?\\:\\/\\/.+?(\\/.+?)(?:#|\\?|$)/;",
+									"    var result = url.match(pathRegex);",
+									"    return result && result.length > 1 ? result[1] : ''; ",
+									"}",
+									" ",
+									"function getQueryString(url) {",
+									"    var arrSplit = url.split('?');",
+									"    return arrSplit.length > 1 ? url.substring(url.indexOf('?')+1) : ''; ",
+									"}",
+									"",
+									"var _requestData;",
+									"var _requestPath;",
+									" ",
+									"function getAuthHeader(httpMethod, requestUrl, _requestBody) {",
+									"    var CLIENT_KEY = '';",
+									"   var hash = '';",
+									"   var SECRET_KEY = CryptoJS.enc.Hex.stringify(CryptoJS.SHA512(hash));",
+									"   var AUTH_TYPE = 'DynamiCore';",
+									"   var requestBody = '';",
+									"   var requestPath = getPath(requestUrl);",
+									"   _requestPath = requestPath;",
+									"   var queryString = getQueryString(requestUrl);",
+									"   if (httpMethod == 'GET' || !_requestBody) {",
+									"        requestBody = '';",
+									"    } else {",
+									"        requestBody = JSON.stringify(JSON.parse(_requestBody) );",
+									"//JSON.stringify(_requestBody).replace(\"\\\\n\",\"\").replace('\\\\\"',\"\\\"\");",
+									"    }   ",
+									"",
+									"    var timestamp = new Date().getTime(); ",
+									"    var requestData = [timestamp,httpMethod, requestPath, queryString, requestBody].join(\"\");",
+									"    requestData = requestData.trim();",
+									"    _requestData = requestData;",
+									"         ",
+									"    var hmacDigest = CryptoJS.enc.Hex.stringify(CryptoJS.HmacSHA256(requestData, SECRET_KEY));",
+									"    var authHeader = AUTH_TYPE + ' ' + CLIENT_KEY + ':'+ timestamp + \":\"  + hmacDigest;",
+									"    return authHeader;",
+									"}",
+									" ",
+									"postman.setEnvironmentVariable('hmacAuth', getAuthHeader(request['method'], request['url'], request['data']));",
+									"postman.setEnvironmentVariable('hmac_d',_requestData);",
+									"postman.setEnvironmentVariable('hmac_path',_requestPath);",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {},
+								"requests": {}
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "{{hmacAuth}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "https://api.dynamicore.io/marketplace/apps/belvo/payments_methods_detail?payment_id=wqueqyeyqtt12561235621",
+							"protocol": "https",
+							"host": [
+								"api",
+								"dynamicore",
+								"io"
+							],
+							"path": [
+								"marketplace",
+								"apps",
+								"belvo",
+								"payments_methods_detail"
+							],
+							"query": [
+								{
+									"key": "payment_id",
+									"value": "wqueqyeyqtt12561235621"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Create Payments",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"function getPath(url) {",
+									"    var pathRegex = /.+?\\:\\/\\/.+?(\\/.+?)(?:#|\\?|$)/;",
+									"    var result = url.match(pathRegex);",
+									"    return result && result.length > 1 ? result[1] : ''; ",
+									"}",
+									" ",
+									"function getQueryString(url) {",
+									"    var arrSplit = url.split('?');",
+									"    return arrSplit.length > 1 ? url.substring(url.indexOf('?')+1) : ''; ",
+									"}",
+									"",
+									"var _requestData;",
+									"var _requestPath;",
+									" ",
+									"function getAuthHeader(httpMethod, requestUrl, _requestBody) {",
+									"    var CLIENT_KEY = '';",
+									"   var hash = '';",
+									"   var SECRET_KEY = CryptoJS.enc.Hex.stringify(CryptoJS.SHA512(hash));",
+									"   var AUTH_TYPE = 'DynamiCore';",
+									"   var requestBody = '';",
+									"   var requestPath = getPath(requestUrl);",
+									"   _requestPath = requestPath;",
+									"   var queryString = getQueryString(requestUrl);",
+									"   if (httpMethod == 'GET' || !_requestBody) {",
+									"        requestBody = '';",
+									"    } else {",
+									"        requestBody = JSON.stringify(JSON.parse(_requestBody) );",
+									"//JSON.stringify(_requestBody).replace(\"\\\\n\",\"\").replace('\\\\\"',\"\\\"\");",
+									"    }   ",
+									"",
+									"    var timestamp = new Date().getTime(); ",
+									"    var requestData = [timestamp,httpMethod, requestPath, queryString, requestBody].join(\"\");",
+									"    requestData = requestData.trim();",
+									"    _requestData = requestData;",
+									"         ",
+									"    var hmacDigest = CryptoJS.enc.Hex.stringify(CryptoJS.HmacSHA256(requestData, SECRET_KEY));",
+									"    var authHeader = AUTH_TYPE + ' ' + CLIENT_KEY + ':'+ timestamp + \":\"  + hmacDigest;",
+									"    return authHeader;",
+									"}",
+									" ",
+									"postman.setEnvironmentVariable('hmacAuth', getAuthHeader(request['method'], request['url'], request['data']));",
+									"postman.setEnvironmentVariable('hmac_d',_requestData);",
+									"postman.setEnvironmentVariable('hmac_path',_requestPath);",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {},
+								"requests": {}
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "{{hmacAuth}}",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"accountNumber\": \"21312ewewr\",\n    \"accountType\": \"savings\",\n    \"bank\": \"BBVA\",\n    \"reference\": \"qwyetyqeuqu161827\",\n    \"customerId\": \"126536712371\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "https://api.dynamicore.io/marketplace/apps/belvo/payments_methods",
+							"protocol": "https",
+							"host": [
+								"api",
+								"dynamicore",
+								"io"
+							],
+							"path": [
+								"marketplace",
+								"apps",
+								"belvo",
+								"payments_methods"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Deactive Payments Method",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"function getPath(url) {",
+									"    var pathRegex = /.+?\\:\\/\\/.+?(\\/.+?)(?:#|\\?|$)/;",
+									"    var result = url.match(pathRegex);",
+									"    return result && result.length > 1 ? result[1] : ''; ",
+									"}",
+									" ",
+									"function getQueryString(url) {",
+									"    var arrSplit = url.split('?');",
+									"    return arrSplit.length > 1 ? url.substring(url.indexOf('?')+1) : ''; ",
+									"}",
+									"",
+									"var _requestData;",
+									"var _requestPath;",
+									" ",
+									"function getAuthHeader(httpMethod, requestUrl, _requestBody) {",
+									"    var CLIENT_KEY = '';",
+									"   var hash = '';",
+									"   var SECRET_KEY = CryptoJS.enc.Hex.stringify(CryptoJS.SHA512(hash));",
+									"   var AUTH_TYPE = 'DynamiCore';",
+									"   var requestBody = '';",
+									"   var requestPath = getPath(requestUrl);",
+									"   _requestPath = requestPath;",
+									"   var queryString = getQueryString(requestUrl);",
+									"   if (httpMethod == 'GET' || !_requestBody) {",
+									"        requestBody = '';",
+									"    } else {",
+									"        requestBody = JSON.stringify(JSON.parse(_requestBody) );",
+									"//JSON.stringify(_requestBody).replace(\"\\\\n\",\"\").replace('\\\\\"',\"\\\"\");",
+									"    }   ",
+									"",
+									"    var timestamp = new Date().getTime(); ",
+									"    var requestData = [timestamp,httpMethod, requestPath, queryString, requestBody].join(\"\");",
+									"    requestData = requestData.trim();",
+									"    _requestData = requestData;",
+									"         ",
+									"    var hmacDigest = CryptoJS.enc.Hex.stringify(CryptoJS.HmacSHA256(requestData, SECRET_KEY));",
+									"    var authHeader = AUTH_TYPE + ' ' + CLIENT_KEY + ':'+ timestamp + \":\"  + hmacDigest;",
+									"    return authHeader;",
+									"}",
+									" ",
+									"postman.setEnvironmentVariable('hmacAuth', getAuthHeader(request['method'], request['url'], request['data']));",
+									"postman.setEnvironmentVariable('hmac_d',_requestData);",
+									"postman.setEnvironmentVariable('hmac_path',_requestPath);",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {},
+								"requests": {}
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "{{hmacAuth}}",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"payment_id\": \"98989121jhwqeq\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "https://api.dynamicore.io/marketplace/apps/belvo/payments_methods_deactive",
+							"protocol": "https",
+							"host": [
+								"api",
+								"dynamicore",
+								"io"
+							],
+							"path": [
+								"marketplace",
+								"apps",
+								"belvo",
+								"payments_methods_deactive"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "payments request",
+			"item": [
+				{
+					"name": "List Payments Requests",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									""
+								],
+								"type": "text/javascript",
+								"packages": {},
+								"requests": {}
+							}
+						},
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"function getPath(url) {",
+									"    var pathRegex = /.+?\\:\\/\\/.+?(\\/.+?)(?:#|\\?|$)/;",
+									"    var result = url.match(pathRegex);",
+									"    return result && result.length > 1 ? result[1] : ''; ",
+									"}",
+									" ",
+									"function getQueryString(url) {",
+									"    var arrSplit = url.split('?');",
+									"    return arrSplit.length > 1 ? url.substring(url.indexOf('?')+1) : ''; ",
+									"}",
+									"",
+									"var _requestData;",
+									"var _requestPath;",
+									" ",
+									"function getAuthHeader(httpMethod, requestUrl, _requestBody) {",
+									"    var CLIENT_KEY = '';",
+									"   var hash = '';",
+									"   var SECRET_KEY = CryptoJS.enc.Hex.stringify(CryptoJS.SHA512(hash));",
+									"   var AUTH_TYPE = 'DynamiCore';",
+									"   var requestBody = '';",
+									"   var requestPath = getPath(requestUrl);",
+									"   _requestPath = requestPath;",
+									"   var queryString = getQueryString(requestUrl);",
+									"   if (httpMethod == 'GET' || !_requestBody) {",
+									"        requestBody = '';",
+									"    } else {",
+									"        requestBody = JSON.stringify(JSON.parse(_requestBody) );",
+									"//JSON.stringify(_requestBody).replace(\"\\\\n\",\"\").replace('\\\\\"',\"\\\"\");",
+									"    }   ",
+									"",
+									"    var timestamp = new Date().getTime(); ",
+									"    var requestData = [timestamp,httpMethod, requestPath, queryString, requestBody].join(\"\");",
+									"    requestData = requestData.trim();",
+									"    _requestData = requestData;",
+									"         ",
+									"    var hmacDigest = CryptoJS.enc.Hex.stringify(CryptoJS.HmacSHA256(requestData, SECRET_KEY));",
+									"    var authHeader = AUTH_TYPE + ' ' + CLIENT_KEY + ':'+ timestamp + \":\"  + hmacDigest;",
+									"    return authHeader;",
+									"}",
+									" ",
+									"postman.setEnvironmentVariable('hmacAuth', getAuthHeader(request['method'], request['url'], request['data']));",
+									"postman.setEnvironmentVariable('hmac_d',_requestData);",
+									"postman.setEnvironmentVariable('hmac_path',_requestPath);",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {},
+								"requests": {}
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "{{hmacAuth}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "https://api.dynamicore.io/marketplace/apps/belvo/payments_requests",
+							"protocol": "https",
+							"host": [
+								"api",
+								"dynamicore",
+								"io"
+							],
+							"path": [
+								"marketplace",
+								"apps",
+								"belvo",
+								"payments_requests"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Retrieve Payments Requests",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"function getPath(url) {",
+									"    var pathRegex = /.+?\\:\\/\\/.+?(\\/.+?)(?:#|\\?|$)/;",
+									"    var result = url.match(pathRegex);",
+									"    return result && result.length > 1 ? result[1] : ''; ",
+									"}",
+									" ",
+									"function getQueryString(url) {",
+									"    var arrSplit = url.split('?');",
+									"    return arrSplit.length > 1 ? url.substring(url.indexOf('?')+1) : ''; ",
+									"}",
+									"",
+									"var _requestData;",
+									"var _requestPath;",
+									" ",
+									"function getAuthHeader(httpMethod, requestUrl, _requestBody) {",
+									"    var CLIENT_KEY = '';",
+									"   var hash = '';",
+									"   var SECRET_KEY = CryptoJS.enc.Hex.stringify(CryptoJS.SHA512(hash));",
+									"   var AUTH_TYPE = 'DynamiCore';",
+									"   var requestBody = '';",
+									"   var requestPath = getPath(requestUrl);",
+									"   _requestPath = requestPath;",
+									"   var queryString = getQueryString(requestUrl);",
+									"   if (httpMethod == 'GET' || !_requestBody) {",
+									"        requestBody = '';",
+									"    } else {",
+									"        requestBody = JSON.stringify(JSON.parse(_requestBody) );",
+									"//JSON.stringify(_requestBody).replace(\"\\\\n\",\"\").replace('\\\\\"',\"\\\"\");",
+									"    }   ",
+									"",
+									"    var timestamp = new Date().getTime(); ",
+									"    var requestData = [timestamp,httpMethod, requestPath, queryString, requestBody].join(\"\");",
+									"    requestData = requestData.trim();",
+									"    _requestData = requestData;",
+									"         ",
+									"    var hmacDigest = CryptoJS.enc.Hex.stringify(CryptoJS.HmacSHA256(requestData, SECRET_KEY));",
+									"    var authHeader = AUTH_TYPE + ' ' + CLIENT_KEY + ':'+ timestamp + \":\"  + hmacDigest;",
+									"    return authHeader;",
+									"}",
+									" ",
+									"postman.setEnvironmentVariable('hmacAuth', getAuthHeader(request['method'], request['url'], request['data']));",
+									"postman.setEnvironmentVariable('hmac_d',_requestData);",
+									"postman.setEnvironmentVariable('hmac_path',_requestPath);",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {},
+								"requests": {}
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "{{hmacAuth}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "https://api.dynamicore.io/marketplace/apps/belvo/payments_requests_detail?payment_id=wqueqyeyqtt12561235621",
+							"protocol": "https",
+							"host": [
+								"api",
+								"dynamicore",
+								"io"
+							],
+							"path": [
+								"marketplace",
+								"apps",
+								"belvo",
+								"payments_requests_detail"
+							],
+							"query": [
+								{
+									"key": "payment_id",
+									"value": "wqueqyeyqtt12561235621"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Cancel Payments Requests",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"function getPath(url) {",
+									"    var pathRegex = /.+?\\:\\/\\/.+?(\\/.+?)(?:#|\\?|$)/;",
+									"    var result = url.match(pathRegex);",
+									"    return result && result.length > 1 ? result[1] : ''; ",
+									"}",
+									" ",
+									"function getQueryString(url) {",
+									"    var arrSplit = url.split('?');",
+									"    return arrSplit.length > 1 ? url.substring(url.indexOf('?')+1) : ''; ",
+									"}",
+									"",
+									"var _requestData;",
+									"var _requestPath;",
+									" ",
+									"function getAuthHeader(httpMethod, requestUrl, _requestBody) {",
+									"    var CLIENT_KEY = '';",
+									"   var hash = '';",
+									"   var SECRET_KEY = CryptoJS.enc.Hex.stringify(CryptoJS.SHA512(hash));",
+									"   var AUTH_TYPE = 'DynamiCore';",
+									"   var requestBody = '';",
+									"   var requestPath = getPath(requestUrl);",
+									"   _requestPath = requestPath;",
+									"   var queryString = getQueryString(requestUrl);",
+									"   if (httpMethod == 'GET' || !_requestBody) {",
+									"        requestBody = '';",
+									"    } else {",
+									"        requestBody = JSON.stringify(JSON.parse(_requestBody) );",
+									"//JSON.stringify(_requestBody).replace(\"\\\\n\",\"\").replace('\\\\\"',\"\\\"\");",
+									"    }   ",
+									"",
+									"    var timestamp = new Date().getTime(); ",
+									"    var requestData = [timestamp,httpMethod, requestPath, queryString, requestBody].join(\"\");",
+									"    requestData = requestData.trim();",
+									"    _requestData = requestData;",
+									"         ",
+									"    var hmacDigest = CryptoJS.enc.Hex.stringify(CryptoJS.HmacSHA256(requestData, SECRET_KEY));",
+									"    var authHeader = AUTH_TYPE + ' ' + CLIENT_KEY + ':'+ timestamp + \":\"  + hmacDigest;",
+									"    return authHeader;",
+									"}",
+									" ",
+									"postman.setEnvironmentVariable('hmacAuth', getAuthHeader(request['method'], request['url'], request['data']));",
+									"postman.setEnvironmentVariable('hmac_d',_requestData);",
+									"postman.setEnvironmentVariable('hmac_path',_requestPath);",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {},
+								"requests": {}
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "{{hmacAuth}}",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"payment_id\": \"98989121jhwqeq\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "https://api.dynamicore.io/marketplace/apps/belvo/payments_requests_cancel",
+							"protocol": "https",
+							"host": [
+								"api",
+								"dynamicore",
+								"io"
+							],
+							"path": [
+								"marketplace",
+								"apps",
+								"belvo",
+								"payments_requests_cancel"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		}
+	]
+}

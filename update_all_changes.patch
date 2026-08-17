@@ -1,0 +1,875 @@
+diff --git a/client/src/App.jsx b/client/src/App.jsx
+index 7a108d0..e3a0573 100644
+--- a/client/src/App.jsx
++++ b/client/src/App.jsx
+@@ -1985,6 +1985,12 @@ const UsersView = ({ users, structure, session, refreshData }) => {
+                       <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-2">Usuario</label>
+                       <input name="username" required defaultValue={editingUser?.username || ''} className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl py-3 px-5 mt-1 font-bold outline-none focus:border-blue-600 transition-all" />
+                     </div>
++                    <div className="col-span-2">
++                      <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-2">
++                        Contraseña {editingUser?.id ? '(Dejar en blanco para no cambiar)' : ''}
++                      </label>
++                      <input name="password" type="password" placeholder={editingUser?.id ? "••••••••" : "Ingresa contraseña..."} required={!editingUser?.id} className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl py-3 px-5 mt-1 font-bold outline-none focus:border-blue-600 transition-all" />
++                    </div>
+                   </div>
+                   
+                   <div className="pt-4 border-t border-slate-100 space-y-4">
+@@ -2038,6 +2044,15 @@ const OrgTreeNode = ({ node, items, level = 0, onEdit, onDelete }) => {
+   };
+   const color = colors[node.type] || 'text-slate-400';
+ 
++  const childLabels = {
++    COUNTRY: 'Regiones',
++    REGION: 'Sucursales',
++    BRANCH: 'Tiendas',
++    SHOP: 'Agentes',
++    UNIT: 'Hijos'
++  };
++  const childLabel = childLabels[node.type] || 'Hijos';
++
+   return (
+     <div className="space-y-2">
+       <div 
+@@ -2069,7 +2084,7 @@ const OrgTreeNode = ({ node, items, level = 0, onEdit, onDelete }) => {
+ 
+         <div className="flex items-center gap-4 pr-2">
+           <div className="text-right shrink-0">
+-            <p className="text-[8px] font-black uppercase tracking-widest text-slate-300">Hijos</p>
++            <p className="text-[8px] font-black uppercase tracking-widest text-slate-300">{childLabel}</p>
+             <p className="text-[11px] font-black text-slate-700 leading-none mt-0.5">{children.length}</p>
+           </div>
+           <button onClick={() => onEdit(node)} className="p-2 hover:bg-blue-50 hover:text-blue-600 rounded-xl text-slate-400 transition-all"><Edit size={14} /></button>
+@@ -2913,7 +2928,7 @@ const App = () => {
+         
+         {!isRegistering ? (
+           <div className="space-y-4">
+-            <input id="u" type="text" placeholder="Usuario" defaultValue="armando.afa" className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl py-4 px-6 font-bold text-slate-800 outline-none focus:border-blue-600 transition-all" />
++            <input id="u" type="text" placeholder="Usuario" defaultValue="armando.bantoshub" className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl py-4 px-6 font-bold text-slate-800 outline-none focus:border-blue-600 transition-all" />
+             <input id="p" type="password" placeholder="Contraseña" defaultValue="123456!" className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl py-4 px-6 font-bold text-slate-800 outline-none focus:border-blue-600 transition-all" />
+             <input id="tid" type="text" placeholder="Tenant ID (ej. c-romel)" defaultValue="c-romel" className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl py-4 px-6 font-bold text-slate-800 outline-none focus:border-blue-600 transition-all" />
+             <button onClick={async (e) => { 
+diff --git a/server/brute_actions.mjs b/server/brute_actions.mjs
+index c2057d0..597daad 100644
+--- a/server/brute_actions.mjs
++++ b/server/brute_actions.mjs
+@@ -1,6 +1,6 @@
+ import axios from 'axios';
+ 
+-const username = 'armando.afa';
++const username = 'armando.bantoshub';
+ const password = '123456!';
+ const auth = { username, password };
+ 
+diff --git a/server/brute_actions_deep.mjs b/server/brute_actions_deep.mjs
+index c830581..c46f2a8 100644
+--- a/server/brute_actions_deep.mjs
++++ b/server/brute_actions_deep.mjs
+@@ -1,6 +1,6 @@
+ import axios from 'axios';
+ 
+-const username = 'armando.afa';
++const username = 'armando.bantoshub';
+ const password = '123456!';
+ const auth = { username, password };
+ 
+diff --git a/server/brute_deals.mjs b/server/brute_deals.mjs
+index c7983d4..906d1d0 100644
+--- a/server/brute_deals.mjs
++++ b/server/brute_deals.mjs
+@@ -1,6 +1,6 @@
+ import axios from 'axios';
+ 
+-const username = 'armando.afa';
++const username = 'armando.bantoshub';
+ const password = '123456!';
+ const auth = { username, password };
+ 
+diff --git a/server/brute_org.mjs b/server/brute_org.mjs
+index cbad217..7c077ca 100644
+--- a/server/brute_org.mjs
++++ b/server/brute_org.mjs
+@@ -1,6 +1,6 @@
+ import axios from 'axios';
+ 
+-const username = 'armando.afa';
++const username = 'armando.bantoshub';
+ const password = '123456!';
+ const auth = { username, password };
+ 
+diff --git a/server/check_contract.js b/server/check_contract.js
+index a48fae6..f26ff19 100644
+--- a/server/check_contract.js
++++ b/server/check_contract.js
+@@ -3,7 +3,7 @@ import dotenv from 'dotenv';
+ dotenv.config();
+ 
+ async function test() {
+-  const upya = new UpyaManageClient('armando.afa', '123456!');
++  const upya = new UpyaManageClient('armando.bantoshub', '123456!');
+   const res = await upya.dataClient.post('/data/search/contracts', { query: {}, limit: 1 });
+   console.log(JSON.stringify(res.data, null, 2));
+ }
+diff --git a/server/inspect_contract.mjs b/server/inspect_contract.mjs
+index 427a209..721483f 100644
+--- a/server/inspect_contract.mjs
++++ b/server/inspect_contract.mjs
+@@ -1,6 +1,6 @@
+ import UpyaManageClient from './modules/upya-api-client/src/index.js';
+ 
+-const username = 'armando.afa';
++const username = 'armando.bantoshub';
+ const password = '123456!';
+ 
+ async function test() {
+diff --git a/server/inspect_contract_events.mjs b/server/inspect_contract_events.mjs
+index c38b908..3f949ab 100644
+--- a/server/inspect_contract_events.mjs
++++ b/server/inspect_contract_events.mjs
+@@ -2,7 +2,7 @@ import UpyaManageClient from './modules/upya-api-client/src/index.js';
+ import dotenv from 'dotenv';
+ dotenv.config();
+ 
+-const username = process.env.UPYA_USER || 'armando.afa';
++const username = process.env.UPYA_USER || 'armando.bantoshub';
+ const password = process.env.UPYA_PASS || '123456!';
+ 
+ async function inspectContract() {
+diff --git a/server/inspect_deal.mjs b/server/inspect_deal.mjs
+index e72f746..6dab7c8 100644
+--- a/server/inspect_deal.mjs
++++ b/server/inspect_deal.mjs
+@@ -1,6 +1,6 @@
+ import UpyaManageClient from './modules/upya-api-client/src/index.js';
+ 
+-const username = 'armando.afa';
++const username = 'armando.bantoshub';
+ const password = '123456!';
+ 
+ async function test() {
+diff --git a/server/inspect_form_detail.mjs b/server/inspect_form_detail.mjs
+index 553e5df..88c23e9 100644
+--- a/server/inspect_form_detail.mjs
++++ b/server/inspect_form_detail.mjs
+@@ -2,7 +2,7 @@ import UpyaManageClient from './modules/upya-api-client/src/index.js';
+ import dotenv from 'dotenv';
+ dotenv.config();
+ 
+-const username = process.env.UPYA_USER || 'armando.afa';
++const username = process.env.UPYA_USER || 'armando.bantoshub';
+ const password = process.env.UPYA_PASS || '123456!';
+ 
+ async function inspectForms() {
+diff --git a/server/inspect_forms.mjs b/server/inspect_forms.mjs
+index 54f67e0..d69ecf2 100644
+--- a/server/inspect_forms.mjs
++++ b/server/inspect_forms.mjs
+@@ -2,7 +2,7 @@ import UpyaManageClient from './modules/upya-api-client/src/index.js';
+ import dotenv from 'dotenv';
+ dotenv.config();
+ 
+-const username = process.env.UPYA_USER || 'armando.afa';
++const username = process.env.UPYA_USER || 'armando.bantoshub';
+ const password = process.env.UPYA_PASS || '123456!';
+ 
+ async function inspectForms() {
+diff --git a/server/modules/upya-api-client/src/client.js b/server/modules/upya-api-client/src/client.js
+index 131b5aa..e1a13a4 100644
+--- a/server/modules/upya-api-client/src/client.js
++++ b/server/modules/upya-api-client/src/client.js
+@@ -1,35 +1,69 @@
+ import axios from 'axios';
+ 
+ class UpyaClient {
+-  constructor(username, password) {
++  constructor(username, password, tenantId = null) {
+     this.auth = {
+       username,
+       password,
+     };
++    this.tenantId = tenantId;
+ 
+-    const baseUrl = process.env.UPYA_BASE_URL || 'https://api.upya.io';
++    let baseUrl = process.env.UPYA_BASE_URL || 'https://api.upya.io';
++    if (!baseUrl.includes('/api/v1')) {
++      baseUrl = baseUrl.replace(/\/$/, '') + '/api/v1';
++    }
+     const dataUrl = baseUrl.replace('api.', 'data.');
+     const tokenUrl = baseUrl.replace('api.', 'tokenmgmt.api.');
+ 
++    const headers = { 'Content-Type': 'application/json' };
++    if (tenantId) {
++      headers['tenant'] = tenantId;
++    }
++
+     this.apiClient = axios.create({
+       baseURL: baseUrl,
+       auth: this.auth,
++      headers,
+     });
+ 
+     this.dataClient = axios.create({
+       baseURL: dataUrl,
+       auth: this.auth,
++      headers,
+     });
+ 
+     this.tokenMgmtClient = axios.create({
+       baseURL: tokenUrl + '/api',
+       auth: this.auth,
++      headers,
+     });
+   }
+ 
+-  // Helper to handle search/count which often use the api.upya.io URL
++  async authenticate() {
++    try {
++      const response = await this.dataClient.post('/auth/token', {
++        username: this.auth.username,
++        password: this.auth.password,
++      });
++      const token = response.data?.token;
++      if (token) {
++        this.token = token;
++        const authHeader = `Bearer ${token}`;
++        this.apiClient.defaults.headers.common['Authorization'] = authHeader;
++        this.dataClient.defaults.headers.common['Authorization'] = authHeader;
++        this.tokenMgmtClient.defaults.headers.common['Authorization'] = authHeader;
++        console.log(`[UpyaClient] Token auth successful for tenant: ${this.tenantId || 'none'}`);
++        return true;
++      }
++    } catch (e) {
++      console.warn(`[UpyaClient] Token auth failed: ${e.response?.status || e.message}. Falling back to Basic Auth.`);
++    }
++    return false;
++  }
++
++  // Helper to handle search/count which use the data.upya.io URL
+   async search(collection, query = {}, options = {}) {
+-    const response = await this.apiClient.post(`/data/search/${collection}`, {
++    const response = await this.dataClient.post(`/data/search/${collection}`, {
+       query,
+       ...options,
+     });
+@@ -37,7 +71,7 @@ class UpyaClient {
+   }
+ 
+   async count(collection, query = {}) {
+-    const response = await this.apiClient.post(`/data/count/${collection}`, {
++    const response = await this.dataClient.post(`/data/count/${collection}`, {
+       query,
+     });
+     return response.data;
+diff --git a/server/modules/upya-api-client/src/endpoints/agents.js b/server/modules/upya-api-client/src/endpoints/agents.js
+index f7b4111..e76426f 100644
+--- a/server/modules/upya-api-client/src/endpoints/agents.js
++++ b/server/modules/upya-api-client/src/endpoints/agents.js
+@@ -4,8 +4,17 @@ export const agentsEndpoints = (client) => ({
+     return response.data;
+   },
+   search: (query, options) => client.dataClient.post('/data/search/agents', { query, ...options }),
+-  edit: async (agentNumber, data) => {
+-    const response = await client.dataClient.put(`/data/agents/${agentNumber}`, data);
++  edit: async (agentNumberOrData, data = {}) => {
++    let body;
++    if (typeof agentNumberOrData === 'object' && agentNumberOrData !== null) {
++      body = agentNumberOrData;
++    } else {
++      body = { agentNumber: agentNumberOrData, ...data };
++    }
++    const response = await client.dataClient.put('/data/agents', body);
+     return response.data;
+   },
++  update: async (agentNumberOrData, data = {}) => {
++    return client.agents.edit(agentNumberOrData, data);
++  },
+ });
+diff --git a/server/modules/upya-api-client/src/endpoints/contracts.js b/server/modules/upya-api-client/src/endpoints/contracts.js
+index e6cd2c8..8826876 100644
+--- a/server/modules/upya-api-client/src/endpoints/contracts.js
++++ b/server/modules/upya-api-client/src/endpoints/contracts.js
+@@ -31,15 +31,22 @@ export const contractsEndpoints = (client) => ({
+   },
+ 
+   /**
+-   * Update contract details
+-   * @param {string} contractNumber 
+-   * @param {Partial<Contract>} data 
++   * Update contract details (updateOne / hard reset)
++   * @param {object} data - { contractNumber, totalPaid, status, nextStatusUpdate, ... }
+    */
+-  update: async (contractNumber, data) => {
+-    const response = await client.apiClient.put(`/data/contracts/${contractNumber}`, data);
++  updateOne: async (data) => {
++    const response = await client.dataClient.put('/data/contracts/updateOne', data);
+     return response.data;
+   },
+ 
++  /**
++   * Update contract details (alias for updateOne)
++   * @param {object} data
++   */
++  update: async (data) => {
++    return client.contracts.updateOne(data);
++  },
++
+   /**
+    * Bulk approve contracts
+    * @param {string[]} contractNumbers 
+@@ -57,4 +64,76 @@ export const contractsEndpoints = (client) => ({
+     const response = await client.dataClient.put('/data/contracts/reject', { contractNumbers });
+     return response.data;
+   },
++
++  /**
++   * Sign one or multiple contracts
++   * @param {object} data - { contractNumber, paygNumber, signingDate, ... } or { data: [...] }
++   */
++  sign: async (data) => {
++    const response = await client.dataClient.put('/data/contracts/sign', data);
++    return response.data;
++  },
++
++  /**
++   * Change deal (pricing terms) of an existing contract
++   * @param {object} data - { contractNumber, dealNumber, ... } or { data: [...] }
++   */
++  changeDeal: async (data) => {
++    const response = await client.dataClient.put('/data/contracts/changedeal', data);
++    return response.data;
++  },
++
++  /**
++   * Edit specific terms of an existing contract
++   * @param {object} data - { contractNumber, edits: { totalCost, pricingSchedule } }
++   */
++  editTerms: async (data) => {
++    const response = await client.dataClient.put('/data/contracts/editterms', data);
++    return response.data;
++  },
++
++  /**
++   * Add unit to contract
++   * @param {object} data - { contractNumber, paygNumber, ... }
++   */
++  addUnit: async (data) => {
++    const response = await client.dataClient.put('/data/contracts/addUnit', data);
++    return response.data;
++  },
++
++  /**
++   * Pay off contracts / unlock
++   * @param {object} data - { contractNumbers, sendCodeToClients }
++   */
++  unlock: async (data) => {
++    const response = await client.dataClient.put('/data/contracts/unlock', data);
++    return response.data;
++  },
++
++  /**
++   * Write off contracts
++   * @param {object} data - { contractNumbers }
++   */
++  writeoff: async (data) => {
++    const response = await client.dataClient.put('/data/contracts/writeoff', data);
++    return response.data;
++  },
++
++  /**
++   * Send bonus code to a unit/contract
++   * @param {object} data - { contractNumber, days, ... }
++   */
++  sendBonus: async (data) => {
++    const response = await client.dataClient.post('/data/codes/send-bonus', data);
++    return response.data;
++  },
++
++  /**
++   * Synchronize unit state
++   * @param {object} data - { contractNumber, ... }
++   */
++  syncUnit: async (data) => {
++    const response = await client.dataClient.post('/data/codes/syncUnit', data);
++    return response.data;
++  },
+ });
+diff --git a/server/modules/upya-api-client/src/endpoints/data_collections.js b/server/modules/upya-api-client/src/endpoints/data_collections.js
+index 0a96cbd..05a77f7 100644
+--- a/server/modules/upya-api-client/src/endpoints/data_collections.js
++++ b/server/modules/upya-api-client/src/endpoints/data_collections.js
+@@ -33,5 +33,14 @@ export const dataCollectionsEndpoints = (client) => ({
+   update: async (id, formData) => {
+     const response = await client.dataClient.put(`/data/forms/${id}`, formData);
+     return response.data;
++  },
++
++  /**
++   * Get signed URLs for form media items (signatures, images, etc.)
++   * @param {string[]} listOfIds - Array of media/item IDs
++   */
++  getSignedUrls: async (listOfIds) => {
++    const response = await client.dataClient.post('/data/forms/signedUrls', { listOfIds });
++    return response.data;
+   }
+ });
+diff --git a/server/modules/upya-api-client/src/endpoints/products_deals.js b/server/modules/upya-api-client/src/endpoints/products_deals.js
+index 8bbc1e5..9212a7d 100644
+--- a/server/modules/upya-api-client/src/endpoints/products_deals.js
++++ b/server/modules/upya-api-client/src/endpoints/products_deals.js
+@@ -3,10 +3,13 @@ export const productsEndpoints = (client) => ({
+     const response = await client.dataClient.post('/data/products/create', productData);
+     return response.data;
+   },
+-  update: async (id, productData) => {
+-    const response = await client.dataClient.put(`/data/products/${id}`, productData);
++  update: async (productData) => {
++    const response = await client.dataClient.put('/data/products', productData);
+     return response.data;
+   },
++  edit: async (productData) => {
++    return client.products.update(productData);
++  },
+   search: async (query, options) => {
+     const response = await client.dataClient.post('/data/products/search', { query, ...options });
+     return response.data;
+@@ -18,5 +21,12 @@ export const dealsEndpoints = (client) => ({
+     const response = await client.dataClient.post('/data/deals/create', dealData);
+     return response.data;
+   },
+-  search: (query, options) => client.apiClient.post('/data/search/deals', { query, ...options }),
++  edit: async (dealData) => {
++    const response = await client.dataClient.put('/data/deals', dealData);
++    return response.data;
++  },
++  update: async (dealData) => {
++    return client.deals.edit(dealData);
++  },
++  search: (query, options) => client.search('deals', query, options),
+ });
+diff --git a/server/modules/upya-api-client/src/index.js b/server/modules/upya-api-client/src/index.js
+index 1cd40b6..a4eeb99 100644
+--- a/server/modules/upya-api-client/src/index.js
++++ b/server/modules/upya-api-client/src/index.js
+@@ -17,8 +17,8 @@ import { deviceGatewayEndpoints } from './endpoints/device_gateway.js';
+ import { dataCollectionsEndpoints } from './endpoints/data_collections.js';
+ 
+ class UpyaManageClient extends UpyaClient {
+-  constructor(username, password) {
+-    super(username, password);
++  constructor(username, password, tenantId = null) {
++    super(username, password, tenantId);
+ 
+     this.clients = clientsEndpoints(this);
+     this.contracts = contractsEndpoints(this);
+diff --git a/server/scrape_actions.cjs b/server/scrape_actions.cjs
+index 8c647e0..2a534b5 100644
+--- a/server/scrape_actions.cjs
++++ b/server/scrape_actions.cjs
+@@ -11,7 +11,7 @@ const fs = require('fs');
+   try {
+     await page.goto('https://manage.upya.io/login', { waitUntil: 'networkidle2' });
+     
+-    await page.type('input[type="text"], input[name="username"], input[name="email"], input[id="email"]', 'armando.afa');
++    await page.type('input[type="text"], input[name="username"], input[name="email"], input[id="email"]', 'armando.bantoshub');
+     await page.type('input[type="password"]', '123456!');
+     await page.click('button[type="submit"]');
+     
+diff --git a/server/scratch_auth_upya.mjs b/server/scratch_auth_upya.mjs
+new file mode 100644
+index 0000000..3d2f2d9
+--- /dev/null
++++ b/server/scratch_auth_upya.mjs
+@@ -0,0 +1,21 @@
++import UpyaManageClient from './modules/upya-api-client/src/index.js';
++
++async function test() {
++  try {
++    const upya = new UpyaManageClient('judithmoralesplay', 'JuD13.@');
++    console.log("Instantiated client. Fetching agents...");
++    const res = await upya.apiClient.post('/data/search/agents', { query: {}, limit: 10, skip: 0 });
++    console.log("Agents response:", res.data);
++    
++    console.log("Fetching clients...");
++    const res2 = await upya.dataClient.post('/data/search/clients', { query: {}, limit: 10, skip: 0 });
++    console.log("Clients response:", res2.data);
++    
++  } catch (error) {
++    console.error("Error:", error.message);
++    if (error.response) {
++      console.error("Response data:", error.response.data);
++    }
++  }
++}
++test();
+diff --git a/server/scratch_inspect_deals.mjs b/server/scratch_inspect_deals.mjs
+index 080fffa..1bdc5ba 100644
+--- a/server/scratch_inspect_deals.mjs
++++ b/server/scratch_inspect_deals.mjs
+@@ -1,6 +1,6 @@
+ import UpyaManageClient from './modules/upya-api-client/src/index.js';
+ 
+-const username = 'armando.afa';
++const username = 'armando.bantoshub';
+ const password = '123456!';
+ 
+ async function test() {
+diff --git a/server/src/index.js b/server/src/index.js
+index 9e455b5..c71cb03 100644
+--- a/server/src/index.js
++++ b/server/src/index.js
+@@ -200,38 +200,45 @@ const upload = multer({ storage });
+ // Utilidad: descargar todas las páginas de una colección filtrando opcionalmente por tenantId
+ async function fetchAll(upya, collection, pageSize = 100, tenantId = null) {
+   const all = [];
+-  
+-  const attempt = async (client, name) => {
+-    const results = [];
+-    let currentSkip = 0;
+-    try {
+-      while (true) {
+-        const query = {}; // No filtramos por tenantId en Upya ya que no existe ese campo allá
+-        const res = await client.post(`/data/search/${collection}`, { query, limit: pageSize, skip: currentSkip });
+-        let page = res.data;
+-        if (!Array.isArray(page)) page = page?.data || page?.results || [];
+-        if (!Array.isArray(page) || page.length === 0) break;
+-        results.push(...page);
+-        if (page.length < pageSize) break;
+-        currentSkip += pageSize;
+-      }
+-    } catch (e) {
+-      console.error(`[fetchAll attempt ${name}] ${collection}:`, e.message);
+-    }
+-    return results;
++  let currentSkip = 0;
++
++  // Mapeo de colecciones a métodos del API Client
++  const clientEndpointsMap = {
++    clients: upya.clients,
++    contracts: upya.contracts,
++    assets: upya.assets,
++    payments: upya.payments,
++    products: upya.products,
++    deals: upya.deals,
++    agents: upya.agents,
++    users: upya.users,
++    messages: upya.messages,
+   };
+ 
+-  try {
+-    const useDataClient = ['payments', 'products', 'deals', 'assets', 'clients'].includes(collection);
+-    const primary = useDataClient ? upya.dataClient : upya.apiClient;
+-    const secondary = useDataClient ? upya.apiClient : upya.dataClient;
++  const endpoint = clientEndpointsMap[collection];
+ 
+-    let res = await attempt(primary, 'Primary');
+-    if (res.length === 0) {
+-      res = await attempt(secondary, 'Secondary');
++  try {
++    while (true) {
++      const query = tenantId ? { tenantId } : {};
++      let page;
++      if (endpoint && typeof endpoint.search === 'function') {
++        page = await endpoint.search(query, { limit: pageSize, skip: currentSkip });
++      } else {
++        // Fallback genérico si no hay endpoint específico
++        const client = ['payments', 'products', 'deals', 'assets', 'clients'].includes(collection)
++          ? upya.dataClient
++          : upya.apiClient;
++        const res = await client.post(`/data/search/${collection}`, { query, limit: pageSize, skip: currentSkip });
++        page = res.data;
++      }
++
++      if (!Array.isArray(page)) page = page?.data || page?.results || [];
++      if (!Array.isArray(page) || page.length === 0) break;
++      all.push(...page);
++      if (page.length < pageSize) break;
++      currentSkip += pageSize;
+     }
+-    console.log(`[fetchAll] ${collection} fetched: ${res.length} items`);
+-    all.push(...res);
++    console.log(`[fetchAll] ${collection} fetched: ${all.length} items`);
+   } catch (e) {
+     console.error(`[fetchAll Error] ${collection}:`, e.message);
+   }
+@@ -241,17 +248,14 @@ async function fetchAll(upya, collection, pageSize = 100, tenantId = null) {
+ async function fetchSignatureAsBase64(upya, clientId) {
+   if (!clientId) return null;
+   try {
+-    const formsRes = await upya.dataClient.post('/data/search/forms', { 
+-        query: { clientId: clientId }, 
+-        limit: 20 
+-    });
++    const forms = await upya.dataCollections.search({ clientId: clientId }, { limit: 20 });
+     
+-    let forms = formsRes.data;
+-    if (!Array.isArray(forms)) forms = forms?.data || forms?.results || [];
+-    if (!Array.isArray(forms) || forms.length === 0) return null;
++    let formsList = forms;
++    if (!Array.isArray(formsList)) formsList = formsList?.data || formsList?.results || [];
++    if (!Array.isArray(formsList) || formsList.length === 0) return null;
+ 
+     // Buscar el formulario de onboarding que tenga una firma (priorizando los más recientes)
+-    const onboardingForm = forms
++    const onboardingForm = formsList
+       .sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0))
+       .find(f => 
+         (f.questionnaire?.name?.toLowerCase().includes('onboarding') || f.questionnaire?.name?.toLowerCase().includes('basic')) &&
+@@ -263,11 +267,9 @@ async function fetchSignatureAsBase64(upya, clientId) {
+     const signItem = onboardingForm.creditItems.find(i => i.isSignature === true);
+     if (!signItem) return null;
+ 
+-    const signedRes = await upya.dataClient.post('/data/forms/signedUrls', { 
+-        listOfIds: [signItem._id] 
+-    });
++    const signedUrlDataList = await upya.dataCollections.getSignedUrls([signItem._id]);
+ 
+-    const signedUrlData = signedRes.data?.[0];
++    const signedUrlData = signedUrlDataList?.[0];
+     if (signedUrlData && signedUrlData.URL) {
+         const imgRes = await axios.get(signedUrlData.URL, { responseType: 'arraybuffer' });
+         const base64 = Buffer.from(imgRes.data, 'binary').toString('base64');
+@@ -287,7 +289,8 @@ app.post('/api/sync/bootstrap', async (req, res) => {
+   let stats = { clients: 0, contracts: 0, inventory: 0, products: 0, dataCollections: 0, payments: 0 };
+   
+   try {
+-    const upya = new UpyaManageClient(username, password);
++    const upya = new UpyaManageClient(username, password, targetTenant);
++    await upya.authenticate();
+ 
+     // 1. Clientes
+     try {
+@@ -348,11 +351,8 @@ app.post('/api/sync/bootstrap', async (req, res) => {
+           // Si no tenemos el ID interno de Upya, intentamos buscarlo por clientNumber
+           if (!upyaClientId && clientNumber) {
+             try {
+-              const cliSearch = await upya.dataClient.post('/data/search/clients', { 
+-                query: { clientNumber: clientNumber },
+-                limit: 1 
+-              });
+-              const foundCli = cliSearch.data?.[0] || cliSearch.data?.data?.[0];
++              const cliSearchList = await upya.clients.search({ clientNumber: clientNumber }, { limit: 1 });
++              const foundCli = cliSearchList?.[0] || cliSearchList?.data?.[0];
+               if (foundCli) {
+                 upyaClientId = foundCli.id || foundCli._id;
+                 console.log(`[SYNC] Resolved clientId ${upyaClientId} for clientNumber ${clientNumber}`);
+@@ -683,6 +683,10 @@ async function getScopeFilter(tenantId, userId, role, scopeOrgId, scopeRole, tab
+ 
+   // Nivel 3: Staff (Solo ve lo que él creó)
+   if (scopeRole === 'STAFF') {
++    if (tableAlias === 'i') {
++      if (scopeOrgId) return { filter: `${tableAlias}.org_id = ?`, params: [scopeOrgId] };
++      return { filter: '1=0', params: [] };
++    }
+     return { filter: `${tableAlias}.created_by_user_id = ?`, params: [userId] };
+   }
+ 
+@@ -703,6 +707,9 @@ async function getScopeFilter(tenantId, userId, role, scopeOrgId, scopeRole, tab
+   }
+ 
+   // Fallback: Si no tiene rol definido o algo falló, mostramos solo lo suyo
++  if (tableAlias === 'i') {
++    return { filter: '1=0', params: [] };
++  }
+   return { filter: `${tableAlias}.created_by_user_id = ?`, params: [userId] };
+ }
+ 
+diff --git a/server/test_auth_upya.cjs b/server/test_auth_upya.cjs
+index e2ba3e0..34ff75e 100644
+--- a/server/test_auth_upya.cjs
++++ b/server/test_auth_upya.cjs
+@@ -8,7 +8,7 @@ const axios = require('axios');
+   
+   try {
+     const tokenRes = await dataClient.post('/auth/token', {
+-      username: 'armando.afa',
++      username: 'armando.bantoshub',
+       password: '123456!'
+     });
+     const token = tokenRes.data.token;
+diff --git a/server/test_fetch_signature.mjs b/server/test_fetch_signature.mjs
+index 384ccfa..4446d2a 100644
+--- a/server/test_fetch_signature.mjs
++++ b/server/test_fetch_signature.mjs
+@@ -3,7 +3,7 @@ import axios from 'axios';
+ import dotenv from 'dotenv';
+ dotenv.config();
+ 
+-const username = process.env.UPYA_USER || 'armando.afa';
++const username = process.env.UPYA_USER || 'armando.bantoshub';
+ const password = process.env.UPYA_PASS || '123456!';
+ 
+ async function fetchSignature() {
+diff --git a/server/test_puppeteer_users.cjs b/server/test_puppeteer_users.cjs
+new file mode 100644
+index 0000000..f86b262
+--- /dev/null
++++ b/server/test_puppeteer_users.cjs
+@@ -0,0 +1,38 @@
++const puppeteer = require('puppeteer');
++(async () => {
++  const browser = await puppeteer.launch({
++    headless: 'new',
++    args: ['--no-sandbox', '--disable-setuid-sandbox']
++  });
++  const page = await browser.newPage();
++  
++  try {
++    await page.goto('https://manage.upya.io/login', { waitUntil: 'networkidle2' });
++    
++    await page.type('input[type="text"], input[name="username"], input[name="email"], input[id="email"]', 'armando.bantoshub');
++    await page.type('input[type="password"]', '123456!');
++    await page.click('button[type="submit"]');
++    
++    await page.waitForNavigation({ waitUntil: 'networkidle2' });
++    
++    const users = await page.evaluate(async () => {
++      try {
++        const res = await fetch('https://api.upya.io/data/search/users', {
++          method: 'POST',
++          headers: {
++            'Content-Type': 'application/json',
++            'Accept': 'application/json'
++          },
++          body: JSON.stringify({ query: {} })
++        });
++        return await res.json();
++      } catch (err) { return { error: err.toString() }; }
++    });
++
++    console.log('Users fetch result:', users);
++  } catch (e) {
++    console.error('Error:', e);
++  } finally {
++    await browser.close();
++  }
++})();
+diff --git a/server/test_questionnaire.mjs b/server/test_questionnaire.mjs
+index 51342b9..715e8b4 100644
+--- a/server/test_questionnaire.mjs
++++ b/server/test_questionnaire.mjs
+@@ -1,6 +1,6 @@
+ import axios from 'axios';
+ 
+-const username = 'armando.afa';
++const username = 'armando.bantoshub';
+ const password = '123456!';
+ const auth = { username, password };
+ 
+diff --git a/server/test_tickets.mjs b/server/test_tickets.mjs
+index 659576c..2ed9866 100644
+--- a/server/test_tickets.mjs
++++ b/server/test_tickets.mjs
+@@ -1,6 +1,6 @@
+ import axios from 'axios';
+ 
+-const username = 'armando.afa';
++const username = 'armando.bantoshub';
+ const password = '123456!';
+ const auth = { username, password };
+ 
+diff --git a/server/test_tickets_payload.mjs b/server/test_tickets_payload.mjs
+index 7eb50af..90d02ee 100644
+--- a/server/test_tickets_payload.mjs
++++ b/server/test_tickets_payload.mjs
+@@ -1,6 +1,6 @@
+ import axios from 'axios';
+ 
+-const username = 'armando.afa';
++const username = 'armando.bantoshub';
+ const password = '123456!';
+ const auth = { username, password };
+ 
+diff --git a/server/test_upya.cjs b/server/test_upya.cjs
+index 0276fa7..2bf2902 100644
+--- a/server/test_upya.cjs
++++ b/server/test_upya.cjs
+@@ -2,11 +2,11 @@ const axios = require('axios');
+ (async () => {
+   const upya = axios.create({
+     baseURL: 'https://api.upya.io/api/v1',
+-    auth: { username: 'armando.afa', password: '123456!' }
++    auth: { username: 'armando.bantoshub', password: '123456!' }
+   });
+   const upyaData = axios.create({
+     baseURL: 'https://data.upya.io/api/v1',
+-    auth: { username: 'armando.afa', password: '123456!' }
++    auth: { username: 'armando.bantoshub', password: '123456!' }
+   });
+ 
+   const testEndpoints = [
+diff --git a/server/test_upya.mjs b/server/test_upya.mjs
+index 4552044..f091138 100644
+--- a/server/test_upya.mjs
++++ b/server/test_upya.mjs
+@@ -5,16 +5,15 @@ dotenv.config();
+ async function test() {
+     const username = process.env.UPYA_USER || 'itdevelopment';
+     const password = process.env.UPYA_PASS || 'Alika2012.';
+-    const tenantId = 'c-romel';
+-    
+-    const upya = new UpyaManageClient(username, password);
+-    const query = { tenantId };
+-    
++    console.log('Testing Upya Search for c-romel with Token Auth...');
+     try {
+-        console.log('Testing Upya Search for c-romel...');
+-        const res = await upya.dataClient.post('/data/search/clients', { query, limit: 5 });
+-        console.log('Clients count:', res.data?.length || res.data?.results?.length || 0);
+-        console.log('Sample client:', JSON.stringify(res.data?.[0] || res.data?.results?.[0], null, 2));
++        const upya = new UpyaManageClient(username, password, 'c-romel');
++        const authOk = await upya.authenticate();
++        console.log('Authentication status:', authOk);
++        
++        const res = await upya.clients.search({}, { limit: 5 });
++        console.log('Clients fetched:', Array.isArray(res) ? res.length : res.data?.length || 0);
++        console.log('Sample client:', JSON.stringify(Array.isArray(res) ? res[0] : res.data?.[0], null, 2));
+     } catch (e) {
+         console.error('Error:', e.response?.data || e.message);
+     }
+diff --git a/server/test_upya2.cjs b/server/test_upya2.cjs
+index b6d6274..a6521b9 100644
+--- a/server/test_upya2.cjs
++++ b/server/test_upya2.cjs
+@@ -2,7 +2,7 @@ const axios = require('axios');
+ (async () => {
+   const upya = axios.create({
+     baseURL: 'https://api.upya.io/api/v1',
+-    auth: { username: 'armando.afa', password: '123456!' }
++    auth: { username: 'armando.bantoshub', password: '123456!' }
+   });
+   const testEndpoints = [
+     '/data/search/countries',
+diff --git a/server/test_upya3.cjs b/server/test_upya3.cjs
+index 651b7e3..3be5c2f 100644
+--- a/server/test_upya3.cjs
++++ b/server/test_upya3.cjs
+@@ -13,7 +13,7 @@ const axios = require('axios');
+   
+   try {
+     const tokenRes = await dataClient.post('/auth/token', {
+-      username: 'armando.afa',
++      username: 'armando.bantoshub',
+       password: '123456!'
+     });
+     const token = tokenRes.data.token;
+@@ -39,6 +39,6 @@ const axios = require('axios');
+       }
+     }
+   } catch(e) {
+-     console.log('❌ Auth failed:', e.message);
++     console.log('❌ Auth failed:', e.message, e.response?.data);
+   }
+ })();
+diff --git a/server/test_upya4.cjs b/server/test_upya4.cjs
+index 73187c1..2383a83 100644
+--- a/server/test_upya4.cjs
++++ b/server/test_upya4.cjs
+@@ -2,7 +2,7 @@ const axios = require('axios');
+ (async () => {
+   const upya = axios.create({
+     baseURL: 'https://api.upya.io/api/v1',
+-    auth: { username: 'armando.afa', password: '123456!' }
++    auth: { username: 'armando.bantoshub', password: '123456!' }
+   });
+   
+   try {

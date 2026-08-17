@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Pago Seguro Dynamicore</title>
+  <style>
+    body, html {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+    }
+    #dynamicore-target {
+      width: 100%;
+      height: 100%;
+      border: none;
+    }
+  </style>
+  <script>
+    const urlParams = new URLSearchParams(window.location.search);
+    window.config = {
+      targetIFrame: 'dynamicore-target',
+      keyId: urlParams.get('keyId'),
+      publicKey: urlParams.get('publicKey')
+    };
+  </script>
+</head>
+<body>
+  <iframe id="dynamicore-target" title="Pago Seguro Dynamicore"></iframe>
+  <!-- Script goes AFTER the iframe so it exists in the DOM when script runs -->
+  <script src="https://d132t6c8viujz9.cloudfront.net"></script>
+  <script>
+    // Forward messages from Dynamicore to the parent React app
+    window.addEventListener('message', (event) => {
+      if (event.data) {
+        window.parent.postMessage(event.data, '*');
+      }
+    });
+
+    // Also forward alerts (like TOKEN:xxx) to parent postMessage
+    const originalAlert = window.alert;
+    window.alert = function(msg) {
+      if (typeof msg === 'string' && msg.includes('TOKEN:')) {
+        window.parent.postMessage(msg, '*');
+        return;
+      }
+      originalAlert.apply(this, arguments);
+    };
+
+    // Silence the inner iframe alert just in case
+    setInterval(() => {
+      try {
+        const iframe = document.getElementById('dynamicore-target');
+        if (iframe && iframe.contentWindow) {
+          iframe.contentWindow.alert = window.alert;
+        }
+      } catch (err) {}
+    }, 500);
+  </script>
+</body>
+</html>

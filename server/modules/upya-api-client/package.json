@@ -1,0 +1,10 @@
+{
+  "name": "upya-api-client",
+  "version": "1.0.0",
+  "description": "API Client for Upya Manage",
+  "main": "src/index.js",
+  "type": "module",
+  "dependencies": {
+    "axios": "^1.7.0"
+  }
+}

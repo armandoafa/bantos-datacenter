@@ -1,0 +1,9 @@
+ALTER TABLE client_history ADD COLUMN IF NOT EXISTS first_name VARCHAR(150) AFTER name;
+ALTER TABLE client_history ADD COLUMN IF NOT EXISTS last_name VARCHAR(150) AFTER first_name;
+ALTER TABLE client_history ADD COLUMN IF NOT EXISTS external_id VARCHAR(100) AFTER last_name;
+ALTER TABLE client_history ADD COLUMN IF NOT EXISTS phone VARCHAR(50) AFTER email;
+ALTER TABLE client_history ADD COLUMN IF NOT EXISTS reference_contact VARCHAR(150) AFTER phone;
+ALTER TABLE client_history ADD COLUMN IF NOT EXISTS reference_phone VARCHAR(50) AFTER reference_contact;
+ALTER TABLE client_history ADD COLUMN IF NOT EXISTS entity VARCHAR(255) AFTER reference_phone;
+ALTER TABLE client_history ADD COLUMN IF NOT EXISTS agent VARCHAR(255) AFTER entity;
+ALTER TABLE client_history ADD COLUMN IF NOT EXISTS signing_date DATETIME AFTER status;

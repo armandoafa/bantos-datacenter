@@ -1,0 +1,266 @@
+  Analyze
+  Manage
+  Set up
+Contracts
+1
+Signed
+Approved
+Pending
+Rejected
+ by deal
+ by status
+ by agent
+209 contracts
+page 1 / 11
+ContractNumber
+Deal
+Type
+Client
+App user
+Total paid
+Progress
+Status
+Last update
+Next update
+A95696595
+Peru
+sam26sus
+sam a26 5g su
+PAYG
+Nancy milagros Cruz bellido
+O. pardo quintana
+PEN 1,822
+84%
+Locked
+Jul 4, 2026
+Jul 4, 2026
+BHNW2BNHXQD3
+Peru
+MOTO g06 i 50 6m cs 47 - 600
+MOTO G06 I50 6m cs 47 - 600
+PAYG
+Rocio ines Villalba ulloa
+O. pardo quintana
+PEN 521
+44%
+Locked
+Jul 4, 2026
+Jul 4, 2026
+A51586077
+-
+MT g15 i100 6m cs 42
+MT g15 i100 6m cs 42
+PAYG
+Richard alfonso Cotera quevedo
+-
+PEN 900
+81%
+Locked
+Jul 4, 2026
+Jul 4, 2026
+BHNAGLPIX7WY
+Peru
+SAM A16 I60 6M CQ 120 - 700
+SAM A16 I 60 6M CQ 120 - 700
+PAYG
+Alberto Laura huaman
+O. pardo quintana
+PEN 660
+44%
+Locked
+Jul 3, 2026
+Jul 3, 2026
+BHNHCWYSXJF4
+Peru
+SAM A16 I100 6M CS49 - 700
+SAM A16 I100 6M CS49 - 700
+PAYG
+Walter hugo Cervantes livias
+O. pardo quintana
+PEN 640
+50%
+Enabled
+Jul 3, 2026
+Jul 12, 2026
+BHNRCRFKXDVI
+Peru
+SAM A16 I200 3M CS 85 - 700
+SAM A16 I200 3M CS 85 - 700
+PAYG
+Juan Jaramillo retuerto
+O. pardo quintana
+PEN 965
+79%
+Enabled
+Jul 3, 2026
+Jul 10, 2026
+A13586604
+-
+A56 500 S6 O
+samsung a56 5g S6
+PAYG
+Joel Ananca collanqui
+-
+PEN 2,560
+90%
+Enabled
+Jul 3, 2026
+Jul 10, 2026
+A96413705
+-
+100C24C51
+samsung a16M
+PAYG
+Peter Quispe rojas
+-
+PEN 995
+78%
+Enabled
+Jul 3, 2026
+Jul 10, 2026
+NDTU2BBWXRQR
+Peru
+SAM A56 I 300 6M CS 112 - 1700
+SAM A56 I 300 6M CS 112 -1700
+PAYG
+Luis Yaicate mozombite
+E. rafael becerra
+PEN 1,645
+55%
+Enabled
+Jul 3, 2026
+Jul 12, 2026
+BHNEZUJMXIJP
+Peru
+SAM A16 I50 6M CS 56 - 790
+SAM A16 I50 6M CS 56 - 790
+PAYG
+Flor marilin Solano cruz
+O. pardo quintana
+PEN 946
+68%
+Enabled
+Jul 3, 2026
+Jul 12, 2026
+NDT5MJ3KXC5M
+Peru
+MOTO G15 I100 6M CS 50 - 700
+MOTO G15 I100 6M CS 50 - 700
+PAYG
+Dony gina paola Mendoza
+E. rafael becerra
+PEN 800
+62%
+Enabled
+Jul 3, 2026
+Jul 10, 2026
+A95982145
+-
+SAM A16 I50 6M CS50 - 700
+SAM A16 I50 6M CS50 - 700
+PAYG
+Felix david Urapari lopez
+-
+PEN 1,100
+88%
+Enabled
+Jul 3, 2026
+Jul 10, 2026
+BHNMEDFPXIMR
+Peru
+MOTO G05 I50 6M CS 39
+MOTO G05 I50 6M CS 39 - 500
+PAYG
+Isaias Espinoza kaqui
+O. pardo quintana
+PEN 674
+68%
+Enabled
+Jul 3, 2026
+Jul 10, 2026
+BHNMK7FKXDVI
+Peru
+SAM A16 I200 3M CS 85 - 700
+SAM A16 I200 3M CS 85 - 700
+PAYG
+Yaker Navarro samaren
+O. pardo quintana
+PEN 795
+65%
+Enabled
+Jul 3, 2026
+Jul 10, 2026
+BHN92UYSXJF4
+Peru
+SAM A16 I100 6M CS49 - 700
+SAM A16 I100 6M CS49 - 700
+PAYG
+Isau Oscanda villegas
+O. pardo quintana
+PEN 640
+50%
+Enabled
+Jul 3, 2026
+Jul 10, 2026
+NDTCP7DFXPME
+Peru
+MT g15 I 50 6M CS 53
+Moto G15 I 50 6M CS 53 - 700
+PAYG
+Jhennifer jhaneth Lopez cotera
+E. rafael becerra
+PEN 739
+56%
+Enabled
+Jul 2, 2026
+Jul 11, 2026
+BHNQKX3KXC5M
+Peru
+MOTO G15 I100 6M CS 50 - 700
+MOTO G15 I100 6M CS 50 - 700
+PAYG
+Edmundo Calle cuti
+O. pardo quintana
+PEN 900
+69%
+Enabled
+Jul 2, 2026
+Jul 9, 2026
+A18294055
+Peru
+sa16SM
+sam a16 4/128 m1
+PAYG
+Angelica Flores asto
+O. pardo quintana
+PEN 1,272
+96%
+Enabled
+Jul 2, 2026
+Jul 11, 2026
+BHN7RCNHXQD3
+Peru
+MOTO g06 i 50 6m cs 47 - 600
+MOTO G06 I50 6m cs 47 - 600
+PAYG
+Humberto ebrain Hernadez torres
+O. pardo quintana
+PEN 615
+52%
+Enabled
+Jul 2, 2026
+Jul 9, 2026
+BHNVP2RJX8MB
+Peru
+SAM A16 I 210 6M CS 40 - 700
+SAM A16 I 210 6M CS 40 - 700
+PAYG
+Cesia jocabeth Valles arriaga
+O. pardo quintana
+PEN 391
+33%
+Enabled
+Jul 2, 2026
+Jul 12, 2026
+©Upya Technologies Ltd 2026
+

@@ -1,0 +1,6110 @@
+Trustonic Telecom Platform
+API Specification v2.0
+VERSION NUMBER
+DATE
+DRAFT OR RELEASED
+
+2.2
+19 June 26
+Released - Final
+
+Preface
+This document is the confidential and proprietary information of Trustonic ("Confidential
+Information"). This document is protected by copyright and the information described therein may
+be protected by one or more EC patents, foreign patents, or pending applications. No part of the
+document may be reproduced or divulged in any form by any means without the prior written
+authorization of Trustonic. Any use of the document and the information described is forbidden
+(including, but not limited to, implementation, whether partial or total, modification, and any form
+of testing or derivative work) unless written authorization or appropriate license rights are previously
+granted by Trustonic.
+
+TRUSTONIC MAKES NO REPRESENTATIONS OR WARRANTIES ABOUT THE
+SUITABILITY OF SOFTWARE DEVELOPED FROM THIS DOCUMENT, EITHER EXPRESS
+OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE IMPLIED WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, OR NONINFRINGEMENT. TRUSTONIC SHALL NOT BE LIABLE FOR ANY DAMAGES SUFFERED
+BY LICENSEE AS A RESULT OF USING, MODIFYING OR DISTRIBUTING THIS
+DOCUMENT OR ITS DERIVATIVES.
+
+Table of Contents
+Overview ................................................................................................................. 9
+URI Method and Definition ........................................................................................9
+Common Data Types ................................................................................................9
+Rate limiting of API ................................................................................................. 10
+Batch Processing ................................................................................................... 11
+1
+
+Authorization ................................................................................................... 12
+1.1
+
+2
+
+1.1.1
+
+REQUEST................................................................................................................ 12
+
+1.1.2
+
+RESPONSE.............................................................................................................. 12
+
+Inventory Management ..................................................................................... 13
+2.1
+
+Upload Devices..................................................................................................... 13
+
+2.1.1
+
+REQUEST................................................................................................................ 13
+
+2.1.2
+
+EXAMPLE ............................................................................................................... 14
+
+2.1.3
+
+RESPONSE.............................................................................................................. 15
+
+2.2
+
+Upload Status ....................................................................................................... 16
+
+2.2.1
+
+REQUEST................................................................................................................ 16
+
+2.2.2
+
+RESPONSE.............................................................................................................. 16
+
+2.3
+
+Transfer Devices ...................................................................................................17
+
+2.3.1
+
+REQUEST................................................................................................................ 17
+
+2.3.2
+
+EXAMPLE ............................................................................................................... 18
+
+2.3.3
+
+RESPONSE.............................................................................................................. 18
+
+2.4
+
+3
+
+Get Access Token..................................................................................................12
+
+Transfer Status ..................................................................................................... 18
+
+2.4.1
+
+REQUEST................................................................................................................ 19
+
+2.4.2
+
+RESPONSE.............................................................................................................. 19
+
+Service Management ........................................................................................ 20
+3.1
+
+Activate ................................................................................................................ 20
+
+3.1.1
+
+REQUEST................................................................................................................ 20
+
+3.1.2
+
+EXAMPLE ............................................................................................................... 22
+
+3.1.3
+
+RESPONSES ........................................................................................................... 22
+
+3.2
+
+Deactivate ............................................................................................................ 23
+
+3.2.1
+
+REQUEST................................................................................................................ 23
+
+3.2.2
+
+EXAMPLE ............................................................................................................... 24
+
+3.2.3
+3.3
+
+RESPONSES ........................................................................................................... 24
+
+Update .................................................................................................................25
+
+reloadDays3.3.2
+3.3.3
+3.4
+
+4
+
+EXAMPLE ....................................................................................... 26
+
+RESPONSES ........................................................................................................... 26
+
+Status .................................................................................................................. 27
+
+3.4.1
+
+REQUEST................................................................................................................ 27
+
+3.4.2
+
+RESPONSE.............................................................................................................. 28
+
+Device Management ......................................................................................... 29
+4.1
+
+Message Device .................................................................................................... 29
+
+4.1.1
+
+REQUEST................................................................................................................ 29
+
+4.1.2
+
+EXAMPLE ............................................................................................................... 29
+
+4.1.3
+
+RESPONSES ........................................................................................................... 30
+
+4.2
+
+Lock Device ..........................................................................................................30
+
+4.2.1
+
+REQUEST................................................................................................................ 30
+
+4.2.2.1
+
+EXAMPLE OF LOCK.......................................................................................... 31
+
+4.2.2.2 EXAMPLE OF TEMPORARY LOCK ................................................................. 31
+4.2.3
+4.3
+
+RESPONSES ........................................................................................................... 32
+
+Unlock Device....................................................................................................... 32
+
+4.3.1
+
+REQUEST................................................................................................................ 32
+
+4.3.2
+
+EXAMPLE ............................................................................................................... 33
+
+4.3.3
+
+RESPONSES ........................................................................................................... 33
+
+4.4
+
+PIN Unlock ...........................................................................................................34
+
+4.4.1
+
+REQUEST................................................................................................................ 34
+
+4.4.2
+
+EXAMPLE ............................................................................................................... 35
+
+4.4.3
+
+RESPONSES ........................................................................................................... 35
+
+4.5
+
+Release Device .....................................................................................................35
+
+4.5.1
+
+REQUEST................................................................................................................ 35
+
+4.5.2
+
+EXAMPLE ............................................................................................................... 36
+
+4.5.3
+
+RESPONSES ........................................................................................................... 36
+
+4.6
+
+Archive Device ......................................................................................................37
+
+4.6.1
+
+REQUEST................................................................................................................ 37
+
+4.6.2
+
+EXAMPLE ............................................................................................................... 37
+
+4.6.3
+
+RESPONSES ........................................................................................................... 37
+
+4.7
+
+Reload Device....................................................................................................... 38
+
+4.7.1
+
+REQUEST................................................................................................................ 38
+
+4.7.2
+
+EXAMPLE ............................................................................................................... 38
+
+4.7.3
+4.8
+
+RESPONSES ........................................................................................................... 39
+
+Update Custom Property ....................................................................................... 39
+
+4.8.1
+
+REQUEST................................................................................................................ 39
+
+4.8.2
+
+EXAMPLE ............................................................................................................... 40
+
+4.8.3
+
+RESPONSES ........................................................................................................... 40
+
+4.9
+
+Update Device IMEI2 .............................................................................................40
+
+4.9.1 REQUEST................................................................................................................... 41
+4.9.2 EXAMPLE .................................................................................................................. 41
+4.9.3 RESPONSES .............................................................................................................. 41
+4.10 Report/Cancel Stolen ...........................................................................................42
+
+4.10.1 REQUEST................................................................................................................. 42
+4.10.2 EXAMPLE ................................................................................................................ 43
+4.10.3 RESPONSES ............................................................................................................ 43
+4.11 Lock Message ...................................................................................................... 43
+
+4.11.1
+
+REQUEST.............................................................................................................. 43
+
+4.11.2
+
+EXAMPLE ............................................................................................................. 44
+
+4.11.3
+
+RESPONSES ......................................................................................................... 44
+
+4.12 Disable Sim Control ............................................................................................. 45
+
+4.12.1
+
+REQUEST.............................................................................................................. 45
+
+4.12.2
+
+EXAMPLE ............................................................................................................. 45
+
+4.12.3
+
+RESPONSES ......................................................................................................... 45
+
+4.13 Assign Sim Control ............................................................................................... 46
+
+4.12.1
+
+REQUEST.............................................................................................................. 46
+
+4.12.2
+
+EXAMPLE ............................................................................................................. 46
+
+4.12.3
+
+RESPONSES ......................................................................................................... 47
+
+4.14 ISMI Swap Device.................................................................................................47
+
+4.14.1
+
+REQUEST.............................................................................................................. 47
+
+4.14.2
+
+EXAMPLE ............................................................................................................. 47
+
+4.14.3
+
+RESPONSES ......................................................................................................... 48
+
+4.15 Update Expiration Time ......................................................................................... 48
+
+4.15.1
+
+REQUEST.............................................................................................................. 48
+
+4.15.2
+
+EXAMPLE ............................................................................................................. 49
+
+4.15.3
+
+RESPONSES ......................................................................................................... 49
+
+4.16 BLOCK ADB COMMAND......................................................................................... 50
+
+4.16.1
+
+REQUEST.............................................................................................................. 50
+
+4.17 BLOCK AE PROVISION ...........................................................................................51
+
+4.18 BLOCK FACTORY RESET ........................................................................................ 52
+4.19 Blink Reminder ....................................................................................................54
+
+5
+
+4.19.1
+
+REQUEST.............................................................................................................. 54
+
+4.19.2
+
+EXAMPLE ............................................................................................................. 55
+
+4.19.3
+
+RESPONSES ......................................................................................................... 55
+
+Query Management .......................................................................................... 56
+5.1
+
+Tenant Info ........................................................................................................... 56
+
+5.1.1
+
+REQUEST................................................................................................................ 56
+
+5.1.2
+
+RESPONSES ........................................................................................................... 57
+
+5.2
+
+Inventory Info ....................................................................................................... 57
+
+5.3.1
+
+REQUEST................................................................................................................ 57
+
+5.3.2
+
+RESPONSES ........................................................................................................... 58
+
+5.3
+
+Service Summary Info ........................................................................................... 58
+
+5.3.1
+
+REQUEST................................................................................................................ 58
+
+5.3.2
+
+RESPONSE.............................................................................................................. 59
+
+5.4
+
+Device Info ........................................................................................................... 59
+
+5.4.1
+
+REQUEST................................................................................................................ 59
+
+5.4.2
+
+EXAMPLE ............................................................................................................... 60
+
+5.4.3
+
+RESPONSES ........................................................................................................... 60
+
+5.7
+
+User Info............................................................................................................... 62
+
+5.7.1
+
+REQUEST................................................................................................................ 62
+
+5.7.2
+
+RESPONSE.............................................................................................................. 63
+
+5.8
+
+State Info.............................................................................................................. 63
+
+5.8.1
+
+REQUEST................................................................................................................ 63
+
+5.8.2
+
+RESPONSE.............................................................................................................. 64
+
+5.9
+
+Message Template ................................................................................................ 64
+
+5.9.1
+
+REQUEST................................................................................................................ 65
+
+5.9.2
+
+RESPONSE.............................................................................................................. 65
+
+5.10 Batch Action Status.............................................................................................. 66
+
+5.10.1
+
+REQUEST.............................................................................................................. 66
+
+5.10.2
+
+RESPONSE............................................................................................................ 66
+
+5.11 Tac Info ...............................................................................................................67
+
+5.11.1
+
+REQUEST.............................................................................................................. 67
+
+5.10.2
+
+RESPONSE............................................................................................................ 67
+
+5.12 Sim control rule Info ............................................................................................. 68
+
+5.11.1
+
+REQUEST.............................................................................................................. 68
+
+5.10.2
+
+RESPONSE............................................................................................................ 69
+
+6
+
+User Management ............................................................................................ 69
+6.1
+
+6.1.1
+
+REQUEST................................................................................................................ 69
+
+6.1.2
+
+EXAMPLE ............................................................................................................... 70
+
+6.1.3
+
+RESPONSE.............................................................................................................. 70
+
+6.2
+
+Deactivate ............................................................................................................ 70
+
+6.2.1
+
+REQUEST................................................................................................................ 70
+
+6.2.2
+
+RESPONSE.............................................................................................................. 71
+
+6.3
+
+7
+
+Add ......................................................................................................................69
+
+Modify .................................................................................................................. 71
+
+6.3.1
+
+REQUEST................................................................................................................ 71
+
+6.3.2
+
+EXAMPLE ............................................................................................................... 72
+
+6.3.3
+
+RESPONSE.............................................................................................................. 72
+
+Webhook Notification API ................................................................................. 73
+Callback Method .......................................................................................................... 73
+7.1
+
+REQUEST................................................................................................................ 74
+
+7.1.2
+
+EXAMPLE ............................................................................................................... 75
+
+7.1.3
+
+RESPONSES ........................................................................................................... 75
+
+7.2
+
+GET Subscription ..................................................................................................75
+
+7.2.1
+
+REQUEST................................................................................................................ 76
+
+7.2.2
+
+RESPONSES ........................................................................................................... 76
+
+7.3
+
+GET ALL Subscription ............................................................................................ 76
+
+7.3.1
+
+REQUEST................................................................................................................ 77
+
+7.3.2
+
+RESPONSES ........................................................................................................... 77
+
+7.4
+
+8
+
+Create Subscription ..............................................................................................74
+
+7.1.1
+
+Delete Subscription .............................................................................................. 77
+
+7.4.1
+
+REQUEST................................................................................................................ 77
+
+7.4.2
+
+RESPONSES ........................................................................................................... 78
+
+Contract Management ...................................................................................... 78
+8.1 Add Contract ......................................................................................................... 78
+
+8.1.1
+
+REQUEST................................................................................................................ 78
+
+8.1.2
+
+EXAMPLE ............................................................................................................... 79
+
+8.1.3
+
+RESPONSES ........................................................................................................... 79
+
+8.2 Exit Contract ......................................................................................................... 80
+
+8.2.1
+
+REQUEST................................................................................................................ 80
+
+8.2.2
+
+EXAMPLE ............................................................................................................... 80
+
+8.2.3
+
+RESPONSES ........................................................................................................... 80
+
+8.3 Get Contract List ................................................................................................... 81
+
+8.3.1
+
+REQUEST................................................................................................................ 81
+
+8.3.2
+
+RESPONSES ........................................................................................................... 81
+
+8.4 Get List Device Billing Cycles..................................................................................82
+
+8.4.1
+
+REQUEST................................................................................................................ 82
+
+8.4.2
+
+RESPONSES ........................................................................................................... 83
+
+8.5 Update Device Payment .......................................................................................... 83
+
+9
+
+8.5.1
+
+REQUEST................................................................................................................ 84
+
+8.5.2
+
+RESPONSES ........................................................................................................... 84
+
+Workflow Management..................................................................................... 85
+9.1 Add Workflow ........................................................................................................ 85
+
+9.1.1
+
+REQUEST................................................................................................................ 85
+
+9.1.2
+
+EXAMPLE ............................................................................................................... 85
+
+9.1.3
+
+RESPONSES ........................................................................................................... 86
+
+9.2 Exit Workflow ........................................................................................................86
+
+9.2.1
+
+REQUEST................................................................................................................ 86
+
+9.2.2
+
+EXAMPLE ............................................................................................................... 87
+
+8.2.3
+
+RESPONSES ........................................................................................................... 87
+
+9.3 Get Workflow List ..................................................................................................87
+
+10
+
+9.3.1
+
+REQUEST................................................................................................................ 87
+
+9.3.2
+
+RESPONSES ........................................................................................................... 88
+
+APPENDIX ...................................................................................................... 88
+
+API ERROR .................................................................................................................... 88
+
+Overview
+This document describes the Telecoms Platform public API method and its specifications. It is
+intended for operators who intend to integrate with the Telecoms Platform system to manage the
+devices within the Telecoms Platform system. The API is designed to be simple to integrate with
+and provide the necessary operations to register and manage the devices within the Trustonic
+Telecoms platform.
+
+URI Method and Definition
+RESTful uses standard HTTP methods to operate resources. The standard HTTP methods are as
+follows:
+Parameter
+
+Description
+The following enumerated values are supported:
+POST: Create resources.
+
+HTTP Method PUT: Replace resources.
+PATCH: Modify resource attributes.
+GET: Query resources.
+DELETE: Delete resources.
+
+Common Data Types
+Data Type
+
+Description
+Boolean.
+
+boolean
+
+This type applies to the service parameter/entity XML type. Only sets use the
+Boolean type (Boolean objects).
+Date.
+
+date
+
+Example: date in the format YYYY-MM-DD
+
+Date and time.
+date-time
+Example: date and time in the format YYYY-MM-DDTHH:MM:SS
+Data object list.
+list[data
+type(length)]
+numberdecimal
+
+Decimal integer value with immutable precision, containing more than 16
+significant bits. The decimal length ranges from 0 to 20.
+Decimal integer that consists of 0 to 10 digits.
+
+integer
+
+Long decimal integer that consists of 10 to 20 digits.
+number-long
+
+number-float
+
+Single-precision floating-point decimal number that consists of 0 to 10 digits.
+Enter two numbers separated by a comma (,). The two numbers indicate
+precision and scale, respectively. For example, 6,4 indicates numberfloat(6,4).
+
+Double-precision floating-point number, which contains 10 to 20 digits. Enter
+number-double two numbers separated by a comma (,). The two numbers indicate precision
+and scale, respectively. For example, 20,4 indicates number-double(20,4).
+Text type.
+text / string
+
+For example, text(50) indicates that the text contains a maximum of 50
+characters.
+Time.
+
+time
+
+Example, time in the format HH:MM:SS
+
+Rate limiting of API
+A "rate limit" is the number of API calls that can be made within a given time period.
+
+It helps us provide reliable and scalable API services to protect your operation from erratic and
+unpredictable spikes in the rate of requests.
+Telecoms Platform sets the rate limit such that an API can be called up to 100 times/minute
+using the single API token.
+If your application exceeds the request limits detailed above, the Telecoms Platform will return a
+429 — "Too Many Requests" error message and the new API calls will need to be made again.
+
+Batch Processing
+The Device management APIs support Batch Processing and it is designed to handle bulk
+requests efficiently. Depending on the size of the list in the request body, the processing is
+handled either synchronously or asynchronously.
+
+
+
+
+Synchronous Processing:
+If the request contains a list with fewer than or equal to 100 items, the system processes
+the request synchronously and returns a response with the result directly.
+Asynchronous Processing:
+If the request contains a list with more than 100 items, the system processes the request
+asynchronously. In this case, the API returns additional parameter batchActionId and
+batchActionStatus. batchActionId can be used to query the status of the batch operation
+status using Batch Action status (GET /api/v2/query/batchAction) API.
+
+1
+
+Authorization
+
+1.1
+
+Get Access Token
+
+API-Key will be used to get the Access/Bearer Token from Telecoms Platform. API-Key is
+unique per user account in Telecoms Platform. Depends on the user access role in Telecoms
+Platform, Access/Bearer Token can be used for multiple tenants. User can use the tenantId in
+request header to perform the API Operation for specific tenant. When tenantId is not included in
+the Header, API operation will be performed on the users default tenant account.
+POST api/v2/authorization/token
+
+1.1.1
+
+REQUEST
+
+Request Header
+apiKey API-Key from Telecoms Platform
+
+1.1.2
+
+RESPONSE
+
+Response Header
+Response Body
+token
+
+Token generated for authentication.
+Date of expiration of token in ISO 8601 format in UTC timezone
+
+expireTime YYYY-MM-DDTHH:MM:SS.ssssss±HH:MM
+Example : 2024-08-20T16:50:15.764436+00:00
+Token received must be used as Authorization bearer in all API Method’s Header.
+
+2
+
+Inventory Management
+
+2.1
+
+Upload Devices
+
+To upload devices to Telecoms Platform Inventory. Single or Multiple devices can be uploaded
+into Telecoms Platform.
+POST api/v2/inventory/upload
+
+2.1.1
+
+REQUEST
+
+Request Header
+Parameter
+
+Parameter Description
+Bearer <Token>
+
+Authorization
+Token generated using Authorization API Call.
+Tenant ID
+tenantId
+Tenant ID in which API Method operation to be performed
+Request Body
+deviceList
+
+Array of objects (deviceList)
+
+*required
+
+A list of devices to be uploaded. List size min = 1, max = 10,000
+
+* deviceUid
+
+IMEI or serial number used to uniquely identify a device.
+Type of the Device Unique Identifier
+
+* idType
+Enum {imei, serialNo}
+Type of the Device
+* deviceType
+Enum {tablet, smartphone}
+additionalInfo
+Json Object
+
+[optional] Additional information such as custom properties can be
+specified in Key Value pair
+Ex : { "imei2": "352887771751553", "expiry": 1711731594000}
+
+[optional] Number of days to extend the prepaid service validity.
+reloadDays
+
+Applicable only for DeviceFinancing when paymentMethod is
+prepaid
+
+contractId
+
+[Optional] Sequence number of contract to be assigned to the device.
+
+assignedContractDate
+
+[Conditional] The start date of the contract. Required If contractId is
+assigned to Device
+
+workflowId
+
+[Optional] Sequence number of workflow to be assigned to the
+device.
+
+reloadTime
+
+[Optional] The reload time for prepaid workflows. Accepted values 1
+to 1095
+
+reloadTimeUnit
+
+[Optional] Unit of the reload time. Supported values hour, day,
+week, month, year
+
+simControlRuleId
+
+Sim Control Rule ID to be applied to the device
+Service Object List
+
+serviceList
+
+* serviceName
+
+[optional] If serviceName is not provided, device will be loaded only
+in Inventory
+Enum {supplyChain, deviceFinancing, simControl, theftProtection,
+subsidyProtection}
+Name of service to be deactivated from the device.
+String
+
+serviceTenure
+The length of the service in Months of the services
+Enum {prepaid, postpaid} Default is postpaid
+paymentMethod
+
+2.1.2
+
+Payment mode of the contract. Required when serviceType is
+deviceFinancing.
+
+EXAMPLE
+
+{
+"deviceList":[
+{
+"deviceUid":"453700000000106",
+"idType":"imei",
+"deviceType":"smartphone",
+"additionalInfo":{
+"imei2":"352887771751553",
+"expiry":"1711731594000"
+
+}
+},
+{
+"deviceUid":"453700000000107",
+"idType":"imei",
+"deviceType":"smartphone",
+"serviceList":[
+{
+"serviceName":"deviceFinancing"
+}
+]
+}
+]
+}
+
+2.1.3
+
+RESPONSE
+
+Response Header
+Response Body
+uploadId
+
+upload id for the device upload
+
+tenantName
+
+Name of the Tenant
+
+uploadChannel
+
+Channel used to upload request. i.e., API or GUI
+
+uploadStatus
+
+Status of the upload. For asynchronous (batch) request, the status will
+most likely be in progress when the API returns its result.
+
+totalDeviceCount
+
+Total number of devices in the request
+
+validDeviceCount
+
+Number of valid devices for upload
+
+invalidDeviceCount Number of rejected devices
+Device Object List
+deviceList
+
+Details of all devices processed in this request. Device Object list will be
+populated for each serviceType activated for the device
+
+deviceUid
+
+Device Unique ID
+
+uploadStatus
+
+Status of the device upload [COMPLETED/ INPROGRESS / FAILED]
+
+serviceName
+
+Name of the service
+
+serviceStatus
+
+Status of the service activation [COMPLETED/ INPROGRESS /
+FAILED]
+
+resultCode
+
+Result Code when upload is failed
+
+resultMessage
+
+Result Message when upload is failed
+
+2.2
+
+Upload Status
+
+To check the status of the device upload request.
+GET api/v2/inventory?uploadId={uploadId}
+
+2.2.1
+
+REQUEST
+
+Request Header
+Parameter
+
+Parameter Description
+Bearer <Token>
+
+Authorization
+Token generated using Authorization API Call.
+Tenant ID
+tenantId
+Tenant ID in which API Method operation to be performed
+Parameter
+uploadId
+Upload id of the device upload operation.
+*required
+pageNum Default: 1
+[Optional] The page number to get, which must be >= 1.
+pageSize
+
+Default: 1000, Maximum = 1000
+
+[Optional] The number of items in a page, which must be >0 and <= 1000.
+2.2.2
+
+RESPONSE
+
+Response Header
+Response Body
+uploadId
+
+upload id for the device upload
+
+tenantName
+
+Name of the Tenant
+
+uploadChannel
+
+Channel used to upload request. i.e., API or GUI
+
+uploadStatus
+
+Status of the upload. For asynchronous (batch) request, the status will
+most likely be in progress when the API returns its result.
+
+totalDeviceCount
+
+Total number of devices in the request
+
+validDeviceCount
+
+Number of valid devices for upload
+
+invalidDeviceCount Number of rejected devices
+Device Object List
+deviceList
+
+Details of all devices processed in this request. Device Object list will be
+populated for each serviceType activated for the device
+
+deviceUid
+
+Device Unique ID
+
+uploadStatus
+
+Status of the device upload [COMPLETED/ INPROGRESS / FAILED]
+
+serviceName
+
+Name of the service activated for device
+
+serviceStatus
+
+Status of the service activation [COMPLETED/ INPROGRESS /
+FAILED]
+
+resultCode
+
+Result Code when upload is failed
+
+resultMessage
+
+Result Message when upload is failed
+
+2.3
+
+Transfer Devices
+
+To move the devices from a inventory to other child workspace inventory. Moving devices
+between workspaces is only permitted when the devices are in an Idle state.
+POST api/v2/inventory/transfer
+
+2.3.1
+
+REQUEST
+
+Request Header
+Parameter
+
+Parameter Description
+Bearer <Token>
+
+Authorization
+Token generated using Authorization API Call.
+Tenant ID
+tenantId
+Tenant ID in which API Method operation to be performed. Parent tenant ID
+Request Body
+
+* targetTenantId
+
+Tenant ID of the child workspace to move the devices
+
+transferDeviceList Array of objects (deviceList)
+*required
+
+A list of devices to be uploaded. List size min = 1, max = 10,000
+
+* deviceUid
+
+IMEI or serial number used to uniquely identify a device.
+
+2.3.2
+
+EXAMPLE
+
+{
+"targetTenantId": "tenant-1"
+"transferDeviceList":[
+{
+"deviceUid":"453700000000106"
+},
+{
+"deviceUid":"453700000000107"
+}
+]
+}
+
+2.3.3
+
+RESPONSE
+
+Response Header
+Response Body
+transferId
+
+Transfer ID of the device transfer operation
+
+tenantName
+
+Name of the Root Tenant
+
+targetTenantName
+
+Name of the child Tenant
+
+transferStatus
+
+Status of the transfer. For asynchronous (batch) request, the status will
+most likely be in progress when the API returns its result.
+Device Object List
+
+transferResponseList
+Details of all devices processed in this request.
+deviceUid
+
+Device Unique ID
+
+resultCode
+
+Result Code when upload is failed
+
+resultMessage
+
+Result Message when upload is failed
+
+2.4
+
+Transfer Status
+
+To check the status of the device upload request.
+
+GET api/v2/inventory/transfer?transferId={transferId}
+
+2.4.1
+
+REQUEST
+
+Request Header
+Parameter
+
+Parameter Description
+Bearer <Token>
+
+Authorization
+Token generated using Authorization API Call.
+Tenant ID
+tenantId
+Tenant ID in which API Method operation to be performed
+Parameter
+transferId
+Transfer id of the device transfer operation.
+*required
+
+2.4.2
+
+RESPONSE
+
+Response Header
+Response Body
+transferId
+
+transfer ID of the device transfer operation
+
+tenantName
+
+Name of the Root Tenant
+
+targetTenantName
+
+Name of the child Tenant
+
+transferStatus
+
+Status of the transfer. For asynchronous (batch) request, the status will
+most likely be in progress when the API returns its result.
+
+totalDeviceCount
+
+Total number of devices in the request
+Device Object List
+
+transferResponseList
+Details of all devices processed in this request.
+deviceUid
+
+Device Unique ID
+
+resultCode
+
+Result Code when upload is failed
+
+resultMessage
+
+Result Message when upload is failed
+
+3
+
+Service Management
+
+3.1
+
+Activate
+
+To activate new service for the device which is successfully uploaded in Telecoms Platform
+inventory. Below is the list of services device can be enrolled.
+1.
+2.
+3.
+4.
+5.
+
+Device Financing
+Supply chain
+SIM Control
+Theft Protection
+Subsidy Protection
+
+POST api/v2/service/activate
+
+3.1.1
+
+REQUEST
+
+Request Header
+Parameter
+
+Parameter Description
+Bearer <Token>
+
+Authorization
+Token generated using Authorization API Call.
+Tenant ID
+tenantId
+Tenant ID in which API Method operation to be performed
+Request Body
+deviceList
+
+Device Object List
+
+*required
+
+A list of devices to be uploaded. List size min = 1, max = 10,000
+String
+
+* deviceUid
+IMEI or serial number used to uniquely identify a device.
+
+Sales channel type. The options are as follows:
+POS
+accessChannelType
+CRM
+APP
+additionalInfo
+Json Object
+
+Additional information such as custom properties can be specified in
+Key Value pair
+Ex : {"expiry": 1711731594000}
+[optional] Number of days to extend the prepaid service validity.
+
+reloadDays
+
+Applicable only for DeviceFinancing when paymentMethod is
+prepaid
+[Optional] Sequence number of contract (Ex: 1, 2, 3, ….).
+
+contractId
+[Required] If user want to assign workflow to device via upload
+[Conditional] The start date of the contract.
+assignedContractDate
+[Required] If user want to assign workflow to device via upload
+workflowId
+
+[Optional] Sequence number of workflow (Ex: 1, 2, 3, ….).
+
+reloadTime
+
+[Optional] The reload time for prepaid workflows. Accept values
+from 1 to 1095 days.
+[Optional] The reload time unit for prepaid workflows.
+
+reloadTimeUnit
+ENUM { hour, day, week, month, year }
+simControlRuleId
+* serviceList
+* serviceName
+
+Sim Control Rule ID to be applied to the device
+Service Object List
+Enum {supplyChain, deviceFinancing, simControl, theftProtection,
+subsidyProtection}
+Type of service to be activated for the device.
+String
+
+serviceTenure
+The length of the service in Months of the services
+
+Enum {prepaid, postpaid} Default is postpaid
+paymentMethod
+
+3.1.2
+
+Payment mode of the contract. Required when serviceType is
+deviceFinancing.
+
+EXAMPLE
+
+{
+"deviceList":[
+{
+"deviceUid":"453700000000101",
+"serviceList":[
+{
+"serviceName":"deviceFinancing",
+"serviceTenure":12,
+"paymentMethod":"postpaid"
+}
+]
+},
+{
+"deviceUid":"453700000000102",
+"reloadDays":30,
+"serviceList":[
+{
+"serviceName":"deviceFinancing",
+"serviceTenure":12,
+"paymentMethod":"prepaid"
+}
+]
+}
+]
+}
+
+3.1.3
+
+RESPONSES
+
+Response Header
+Response Body
+serviceOrderId
+
+order id for the service activate request
+
+serviceOrderStatus
+
+Status of the service order request. For asynchronous request the status
+will most likely be in progress when the API returns its result.
+
+tenantName
+
+Name of the Tenant
+
+deviceList
+
+Device Object List
+String
+
+deviceUid
+IMEI or serial number used to uniquely identify a device.
+
+serviceList
+
+Service Object List
+
+serviceName
+
+Name of Financing service activated for the device.
+
+resultCode
+
+Result Code
+
+resultMessage Result Message
+
+3.2
+
+Deactivate
+
+To remove the device from the service after completion of service tenure or to withdraw the
+device from the service.
+DELETE api/v2/service
+
+3.2.1
+
+REQUEST
+
+Request Header
+Parameter
+
+Parameter Description
+Bearer <Token>
+
+Authorization
+Token generated using Authorization API Call.
+Tenant ID
+tenantId
+Tenant ID in which API Method operation to be performed
+
+Request Body
+deviceList
+
+Device List Object
+
+*required
+
+A list of devices to be uploaded. List size min = 1, max = 10,000
+String
+
+* deviceUid
+IMEI or serial number used to uniquely identify a device.
+serviceList
+*
+
+Service List Object
+
+* serviceName
+
+Enum {supplyChain, deviceFinancing, simControl, theftProtection,
+subsidyProtection}
+Name of service to be deactivated from the device.
+ENUM {prepaid, postpaid} Default is postpaid
+
+paymentMethod
+
+Payment mode of the contract. Required when serviceType is
+deviceFinancing.
+Reason for deactivation the device from service.
+
+* deactivateReason
+ENUM {tenureEnd, soldForCash, cancel, lost, stolen, other}
+additionalRemarks Additional remarks for the releasing the device from the service
+
+3.2.2
+
+EXAMPLE
+
+{
+"deviceList":[
+{
+"deviceUid":"453700000000101",
+"serviceList":[
+{
+"serviceName":"deviceFinancing",
+"deactivateReason":"soldForCash",
+"additionalRemarks":"Customer paid for the device"
+},
+{
+"serviceName":"simControl",
+"deactivateReason":"soldForCash",
+"additionalRemarks":"Customer paid for the device "
+}
+]
+},
+{
+"deviceUid":"453700000000101",
+"serviceList":[
+{
+"serviceName":"deviceFinancing",
+"deactivateReason":"tenureEnd",
+"additionalRemarks":"Customer paid for the device"
+}
+]
+}
+]
+}
+
+3.2.3
+
+RESPONSES
+
+Response Header
+
+Response Body
+serviceOrderId
+
+order id for the service deactivate request
+
+serviceOrderStatus
+
+Status of the service order request. For asynchronous request the status
+will most likely be in progress when the API returns its result.
+
+tenantName
+
+Name of the Tenant
+
+deviceList
+
+Device Object List
+String
+
+deviceUid
+IMEI or serial number used to uniquely identify a device.
+serviceList
+
+Service Object List
+
+serviceName
+
+Name of Financing service to be deactivated from the device.
+
+resultCode
+
+Result Code
+
+resultMessage Result Message
+
+3.3
+
+Update
+
+To update the service details of the device.
+PATCH api/v2/service/
+
+3.3.1.1 REQUEST
+Request Header
+Parameter
+
+Parameter Description
+Bearer <Token>
+
+Authorization
+Token generated using Authorization API Call.
+Tenant ID
+tenantId
+Tenant ID in which API Method operation to be performed
+Request Body
+deviceList
+
+Device Object List
+
+*required
+
+A list of devices to be uploaded. List size min = 1, max = 10,000
+
+String
+* deviceUid
+IMEI or serial number used to uniquely identify a device.
+additionalInfo
+
+[optional] Additional information such as custom prosperities of the
+device in Key Value pair
+
+reloadDays
+
+[optional] Number of days to extend the prepaid service validity
+
+* serviceList
+
+Service Object List
+Enum {supplyChain, deviceFinancing, simControl, theftProtection,
+subsidyProtection}
+
+serviceName
+Type of Financing Contract to be applied for the device. More than one
+contract can be applied to device
+serviceTenure
+
+String
+The length of the service in Months of the services
+ENUM {prepaid, postpaid} Default is postpaid
+
+paymentMethod
+Payment mode of the contract
+
+3.3.2
+
+EXAMPLE
+
+{
+"deviceList":[
+{
+"deviceUid":"453700000000101",
+"additionalInfo": {},
+"reloadDays": 1,
+"serviceList":[
+{
+"serviceName":"deviceFinancing",
+"serviceTenure":"36",
+"paymentMethod":"prepaid"
+}
+]
+}
+]
+}
+
+3.3.3
+
+RESPONSES
+
+Response Header
+Response Body
+
+serviceOrderId
+
+order id for the service activate request
+
+serviceOrderStatus
+
+Status of the service order request. For asynchronous request the status
+will most likely be in progress when the API returns its result.
+
+tenantName
+
+Name of the Tenant
+
+deviceList
+
+Device Object List
+String
+
+deviceUid
+IMEI or serial number used to uniquely identify a device.
+serviceList
+
+Service Object List
+
+serviceName
+
+Name of Financing service activated for the device.
+
+resultCode
+
+Result Code
+
+resultMessage Result Message
+
+3.4
+
+Status
+
+To check the status of the service activation/deactivation request.
+GET api/v2/service?serviceOrderId={serviceOrderId}
+
+3.4.1
+
+REQUEST
+
+Request Header
+Parameter
+
+Parameter Description
+Bearer <Token>
+
+Authorization
+Token generated using Authorization API Call.
+Tenant ID
+tenantId
+Tenant ID in which API Method operation to be performed
+Parameter
+serviceOrderId int
+*required
+
+Order id for the service request.
+
+pageNum
+
+Default: 1
+
+[Optional]
+
+The page number to get, which must be >= 1.
+
+pageSize
+
+Default: 1000, Maximum = 1000
+
+[Optional]
+
+The number of items in a page, which must be >0 and <= 1000.
+
+3.4.2
+
+RESPONSE
+
+Response Header
+Response Body
+tenantName
+
+Name of the Tenant
+
+orderChannel
+
+Channel used to upload request. i.e., API or GUI
+
+orders
+
+Number of service request.
+
+orderStatus
+
+Status of the service request.
+
+totalServiceCount
+
+Total number of Service in the request
+
+successServiceCount Number of valid Service for the devices
+failedServiceCount
+
+Number of rejected Service
+Device Object List
+
+deviceList
+Details of all devices processed in this request.
+deviceUid
+
+Device Unique ID
+
+serviceName
+
+Name of the service activated for the device
+
+serviceType
+
+Type of Service
+
+resultCode
+
+Result Code
+
+resultMessage
+
+Result Message
+
+4
+
+Device Management
+
+4.1
+
+Message Device
+
+To send Notification or warning message to the device
+POST api/v2/device/notify/
+
+4.1.1
+
+REQUEST
+
+Request Header
+Parameter
+
+Parameter Description
+Bearer <Token>
+
+Authorization
+Token generated using Authorization API Call.
+Tenant ID
+tenantId
+Tenant ID in which API Method operation to be performed
+Request Body
+messageList
+
+Message Object List
+
+* deviceUid
+
+Device Unique ID
+ENUM {headsup, fullscreen}
+
+notificationType
+Type of Notification Message, Default headsup
+messageTemplateId ID of the message template to be send to device in DPC/DLC solution
+Title of the Notification Message
+notificationTitle
+
+For DPC/DLC solution, notification title should match the title preconfigured in UI. Title details can be queried using Message Template
+API.
+
+notificationContent
+
+Notification Message Content
+
+Note : Either messageTemplateId or notificationTitle must be provided in the request. At least
+one of these parameters is required to send the Notification message to the device.
+
+4.1.2
+
+EXAMPLE
+
+{
+"messageList":[
+{
+"deviceUid":"453700000000101",
+"notificationType":"headsup",
+"notificationTitle":"Payment Reminder-1",
+"notificationContent":"Reminder for the Payment"
+}
+]
+}
+
+4.1.3
+
+RESPONSES
+
+Response Header
+Response Body
+Unique identifier for the batch action that is generated when the request
+body contains a list with more than 100 items. This ID can be used to
+track the status of the batch operation through Batch Action Status
+endpoints.
+
+batchActionId
+[optional]
+batchActionStatus
+[optional]
+
+Indicates the current processing status of the batch action when the
+request body contains more than 100 items.
+ENUM {INPROGRESS, COMPLETED, FAILED}
+
+messageResponseList Message Response Object List
+* deviceUid
+
+Device Unique ID
+
+resultCode
+
+Result Code
+
+resultMessage
+
+Result Message
+
+4.2
+
+Lock Device
+
+To lock the device.
+POST api/v2/device/lock/
+
+4.2.1
+
+REQUEST
+
+Request Header
+Parameter
+
+Parameter Description
+
+Bearer <Token>
+Authorization
+Token generated using Authorization API Call.
+Tenant ID
+tenantId
+Tenant ID in which API Method operation to be performed
+Request Body
+lockList
+
+Lock Object List
+
+* deviceUid
+
+Device Unique ID
+
+lockType
+
+It is an optional parameter and default value is lock
+
+[Optional]
+
+ENUM {lock, temporaryLock}
+
+lockDuration
+[*required if lockType is
+temporaryLock]
+lockDurationTimeUnit
+
+Duration for temporary lock.
+This field allows specifying the time unit for
+lockDuration, default value is minute.
+
+[*required if lockType is
+temporaryLock]
+
+ENUM {minute, hour}
+
+lockMsgTitle
+
+Title of the Lock Message. *Not applicable for all OEMs
+
+lockMsgContent
+
+Lock Message Content
+
+4.2.2.1
+
+EXAMPLE OF LOCK
+
+{
+"lockList":[
+{
+"deviceUid":"453700000000101",
+"lockType":"lock",
+"lockMsgTitle":"Payment Due",
+"lockMsgContent":"Payment is Due"
+}
+]
+}
+
+4.2.2.2 EXAMPLE OF TEMPORARY LOCK
+{
+"lockList":[
+{
+
+"deviceUid":"453700000000101",
+"lockType":"temporaryLock",
+"lockDuration": 15,
+"lockDurationTimeUnit": "minute",
+"lockMsgTitle":"Payment Due",
+"lockMsgContent":"Payment is Due"
+}
+]
+}
+
+4.2.3
+
+RESPONSES
+
+Response Header
+Response Body
+batchActionId
+
+Unique identifier for the batch action that is generated when the request
+body contains a list with more than 100 items. This ID can be used to track
+the status of the batch operation through Batch Action Status endpoints.
+
+[optional]
+batchActionStatus
+[optional]
+
+Indicates the current processing status of the batch action when the request
+body contains more than 100 items.
+ENUM {INPROGRESS, COMPLETED, FAILED}
+
+lockResponseList Lock Response Object List
+* deviceUid
+
+Device Unique ID
+
+resultCode
+
+Result Code
+
+resultMessage
+
+Result Message
+
+4.3
+
+Unlock Device
+
+To unlock the device from locking state after the successful payment
+POST api/v2/device/unlock/
+
+4.3.1
+
+REQUEST
+
+Request Header
+Parameter
+
+Parameter Description
+Bearer <Token>
+
+Authorization
+Token generated using Authorization API Call.
+
+Tenant ID
+tenantId
+Tenant ID in which API Method operation to be performed
+Request Body
+unLockList
+
+UnLock Object List
+
+* deviceUid
+
+Device Unique ID
+
+validityDays Number of days for applying next lock, applicable only for prepaid.
+nextDue
+
+Timestamp to extend the service validity, format UNIX timestamp.
+nextDue or validityDays is mandatory for PAYG device unlock.
+
+4.3.2
+
+EXAMPLE
+
+{
+"unLockList":[
+{
+"deviceUid":"453700000000101"
+},
+{
+"nextDue":1706703215,
+"deviceUid":"453700000000102"
+},
+{
+"deviceUid":"453700000000103",
+"validityDays":1
+}
+]
+}
+
+4.3.3
+
+RESPONSES
+
+Response Header
+Response Body
+batchActionId
+[optional]
+batchActionStatus
+[optional]
+
+Unique identifier for the batch action that is generated when the request
+body contains a list with more than 100 items. This ID can be used to
+track the status of the batch operation through Batch Action Status
+endpoints.
+Indicates the current processing status of the batch action when the
+request body contains more than 100 items.
+ENUM {INPROGRESS, COMPLETED, FAILED}
+
+unlockResponseList Unlock Response Object List
+deviceUid
+
+Device Unique ID
+
+resultCode
+
+Result Code
+
+resultMessage
+
+Result Message
+
+4.4
+
+PIN Unlock
+
+To unlock a device using unlock pin in offline mode by requesting the unlock PIN.
+To release a device using release pin in offline mode by requesting the release PIN. (Only
+support Postpaid service and DLC/DPC devices)
+POST api/v2/device/pinunlock/
+
+4.4.1
+
+REQUEST
+
+Request Header
+Parameter
+
+Parameter Description
+Bearer <Token>
+
+Authorization
+Token generated using Authorization API Call.
+Tenant ID
+tenantId
+Tenant ID in which API Method operation to be performed
+Request Body
+pinUnlockList pinUnlock Object List
+* deviceUid
+challenge
+
+Device Unique ID
+Code display on the device when it is locked. Code is used as part of the
+security to verify the device user provided a PIN to unlock the device.
+This is applicable to selected OEMs.
+Expiry Time of Unlock PIN. Unit days
+
+validity
+This is applicable to selected OEMs.
+
+Unique identifier on multi-user devices. This parameter allows to identify the
+users when multiple user profiles exist on the device. It is optional parameter.
+If omitted, the system assumes a single-user context by default.
+
+userSerial
+
+4.4.2
+
+EXAMPLE
+
+{
+"pinUnlockList":[
+{
+"deviceUid":"453700000000101"
+},
+{
+"challenge":"123456",
+"deviceUid":"453700000000102",
+"validity":"1"
+}
+]
+}
+
+4.4.3
+
+RESPONSES
+
+Response Header
+Response Body
+pinUnlockResponseList PinUnlock Object List
+deviceUid
+
+Device Unique ID
+
+challengePin
+
+Offline Unlock Pin to unlock the device.
+
+resultCode
+
+Result Code
+
+resultMessage
+
+Result Message
+
+4.5
+
+Release Device
+
+To Release device from Telecoms Platform. Device cannot be re-enrolled into any services after
+it is released.
+PUT api/v2/device/release/
+
+4.5.1
+
+REQUEST
+
+Request Header
+Parameter
+
+Parameter Description
+
+Bearer <Token>
+Authorization
+Token generated using Authorization API Call.
+Tenant ID
+tenantId
+Tenant ID in which API Method operation to be performed
+Request Body
+deviceReleaseList Release Object List
+*
+
+deviceUid
+
+Device Unique ID
+
+reason
+
+The Reason for releasing the device
+
+4.5.2
+
+EXAMPLE
+
+{
+"deviceReleaseList":[
+{
+"deviceUid":"453700000000101"
+},
+{
+"reason":"End of Tenure",
+"deviceUid":"453700000000101"
+}
+]
+}
+
+4.5.3
+
+RESPONSES
+
+Response Header
+Response Body
+batchActionId
+[optional]
+batchActionStatus
+[optional]
+
+Unique identifier for the batch action that is generated when the request
+body contains a list with more than 100 items. This ID can be used to
+track the status of the batch operation through Batch Action Status
+endpoints.
+Indicates the current processing status of the batch action when the
+request body contains more than 100 items.
+ENUM {INPROGRESS, COMPLETED, FAILED}
+
+releaseResponseList Release Response Object List
+
+* deviceUid
+
+Device Unique ID
+
+resultCode
+
+Result Code
+
+resultMessage
+
+Result Message
+
+4.6
+
+Archive Device
+
+To archive the device from inventory. After device is achieved, it cannot be assigned to any
+services.
+POST api/v2/device/archive/
+
+4.6.1
+
+REQUEST
+
+Request Header
+Parameter
+
+Parameter Description
+Bearer <Token>
+
+Authorization
+Token generated using Authorization API Call.
+Tenant ID
+tenantId
+Tenant ID in which API Method operation to be performed
+Request Body
+archiveList
+
+Archive Object List
+
+* deviceUid Device Unique ID
+
+4.6.2
+
+EXAMPLE
+
+{
+"archiveList":[
+{
+"deviceUid":"453700000000101"
+},
+{
+"deviceUid":"453700000000102"
+}
+]
+}
+
+4.6.3
+
+RESPONSES
+
+Response Header
+Response Body
+archiveResponseList Archive Response Object List
+deviceUid
+
+Device Unique ID
+
+resultCode
+
+Result Code
+
+resultMessage
+
+Result Message
+
+4.7
+
+Reload Device
+
+To update the active PAYG device next payment due date.
+POST api/v2/device/reload/
+
+4.7.1
+
+REQUEST
+
+Request Header
+Parameter
+
+Parameter Description
+Bearer <Token>
+
+Authorization
+Token generated using Authorization API Call.
+Tenant ID
+tenantId
+Tenant ID in which API Method operation to e performed
+Request Body
+reloadList
+
+Reload Object List
+
+* deviceUid
+
+Device Unique ID
+
+nextDue
+
+Timestamp to extend the service validity, format UNIX timestamp.
+
+reloadDays Number of days to extend the service validity.
+Note : Either nextDue or reloadDays is mandatory to apply reload action.
+
+4.7.2
+
+EXAMPLE
+
+{
+"reloadList":[
+
+{
+"nextDue":1706703215,
+"deviceUid":"453700000000101"
+},
+{
+"deviceUid":"453700000000102",
+"reloadDays":30
+}
+]
+}
+
+4.7.3
+
+RESPONSES
+
+Response Header
+Response Body
+Unique identifier for the batch action that is generated when the request
+body contains a list with more than 100 items. This ID can be used to
+track the status of the batch operation through Batch Action Status
+endpoints.
+
+batchActionId
+[optional]
+batchActionStatus
+[optional]
+
+Indicates the current processing status of the batch action when the
+request body contains more than 100 items.
+ENUM {INPROGRESS, COMPLETED, FAILED}
+
+reloadResponseList Reload Response Object List
+deviceUid
+
+Device Unique ID
+
+resultCode
+
+Result Code
+
+resultMessage
+
+Result Message
+
+4.8
+
+Update Custom Property
+
+To update the custom property of the device. Custom property will be added to device if does not
+exists for the device.
+PUT api/v2/device/customproperty/
+
+4.8.1
+
+REQUEST
+
+Request Header
+Parameter
+
+Parameter Description
+
+Bearer <Token>
+Authorization
+Token generated using Authorization API Call.
+Tenant ID
+tenantId
+Tenant ID in which API Method operation to e performed
+Request Body
+customList
+
+Custom Object List
+
+* deviceUid
+
+Device Unique ID
+Custom prosperities to be updated. Value should be in Key Value pair
+
+* customProperty
+Ex : { "Account number": "123456", “Eligibility Check“ : True }
+
+4.8.2
+
+EXAMPLE
+
+{
+"customList":[
+{
+"deviceUid":"453700000000101",
+"customProperty":{
+"Account number": "123456"
+}
+}
+]
+}
+
+4.8.3
+
+RESPONSES
+
+Response Header
+Response Body
+customResponseList Custom Response Object List
+deviceUid
+
+Device Unique ID
+
+resultCode
+
+Result Code
+
+resultMessage
+
+Result Message
+
+4.9
+
+Update Device IMEI2
+
+To update or add the IMEI2 of the device.
+
+PUT api/v2/device/info/
+
+4.9.1 REQUEST
+Request Header
+Parameter
+
+Parameter Description
+Bearer <Token>
+
+Authorization
+Token generated using Authorization API Call.
+Tenant ID
+tenantId
+Tenant ID in which API Method operation to be performed
+Request Body
+deviceList
+
+Device Object List
+
+* deviceUid Device Unique ID
+* imei2
+
+IMEI2 number of the Device
+
+4.9.2 EXAMPLE
+{
+"deviceList":[
+{
+"deviceUid":"453700000000106",
+"imei2":"453700000000107"
+}
+]
+}
+
+4.9.3 RESPONSES
+Response Header
+Response Body
+batchActionId
+[optional]
+
+Unique identifier for the batch action that is generated when the request
+body contains a list with more than 100 items. This ID can be used to
+track the status of the batch operation through Batch Action Status
+endpoints.
+
+batchActionStatus
+[optional]
+
+Indicates the current processing status of the batch action when the
+request body contains more than 100 items.
+ENUM {INPROGRESS, COMPLETED, FAILED}
+
+deviceResponseList Device Response Object List
+deviceUid
+
+Device Unique ID
+
+resultCode
+
+Result Code
+
+resultMessage
+
+Result Message
+
+4.10
+
+Report/Cancel Stolen
+
+To Report or Reset the device stolen status.
+POST api/v2/device/theft/
+
+4.10.1 REQUEST
+Request Header
+Parameter
+
+Parameter Description
+Bearer <Token>
+
+Authorization
+Token generated using Authorization API Call.
+Tenant ID
+tenantId
+Tenant ID in which API Method operation to be performed
+Request Body
+theftDeviceList Theft Device Object List
+* deviceUid
+
+Device Unique ID
+Type of action to be applied.
+ENUM { report, reset }
+
+* action
+report – Reported Stolen, can be applied only for Protected devices.
+reset – Reset to Protected, can be applied only for locked devices.
+
+4.10.2 EXAMPLE
+{
+"theftDeviceList":[
+{
+"deviceUid":"453700000000101",
+"action":"report"
+},
+{
+"deviceUid":"453700000000102",
+"action":"reset"
+}
+]
+}
+
+4.10.3 RESPONSES
+Response Header
+Response Body
+theftResponseList Lock Response Object List
+* deviceUid
+
+Device Unique ID
+
+resultCode
+
+Result Code
+
+resultMessage Result Message
+
+4.11
+
+Lock Message
+
+To send message to the locked device
+POST api/v2/device/lockMessage/
+
+4.11.1
+
+REQUEST
+
+Request Header
+Parameter
+
+Parameter Description
+Bearer <Token>
+
+Authorization
+Token generated using Authorization API Call.
+Tenant ID
+tenantId
+Tenant ID in which API Method operation to be performed
+
+Request Body
+lockMessageList
+
+Message Object List
+
+* deviceUid
+
+Device Unique ID
+ID of the lock message template to be send to device in DPC/DLC
+solution
+
+messageTemplateId
+
+Title of the Lock Message
+messageTitle
+
+For DPC/DLC solution, notification title should match the title preconfigured in UI. Title details can be queried using Message
+Template API.
+
+messageContent
+
+Lock Message Content
+
+Note : Either messageTemplateId or messageTitle must be provided in the request. At least
+one of these parameters is required to send a Lock message to the device. If both are missing,
+the system will return
+
+4.11.2
+
+EXAMPLE
+
+{
+"LockMessageList":[
+{
+"deviceUid":"453700000000101",
+"messageTitle":"Device Lock",
+"messageContent":"Please make payment to unlock the device"
+}
+]
+}
+
+4.11.3
+
+RESPONSES
+
+Response Header
+Response Body
+batchActionId
+[optional]
+batchActionStatus
+[optional]
+
+Unique identifier for the batch action that is generated when the request
+body contains a list with more than 100 items. This ID can be used to
+track the status of the batch operation through Batch Action Status
+endpoints.
+Indicates the current processing status of the batch action when the
+request body contains more than 100 items.
+ENUM {INPROGRESS, COMPLETED, FAILED}
+
+messageResponseList Message Response Object List
+* deviceUid
+
+Device Unique ID
+
+resultCode
+
+Result Code
+
+resultMessage
+
+Result Message
+
+4.12
+
+Disable Sim Control
+
+To disable the Sim Control rule of the device
+POST api/v2/device/disableSimControlRule
+
+4.12.1
+
+REQUEST
+
+Request Header
+Parameter
+
+Parameter Description
+Bearer <Token>
+
+Authorization
+Token generated using Authorization API Call.
+Tenant ID
+tenantId
+Tenant ID in which API Method operation to be performed
+Request Body
+deviceList
+
+Message Object List
+
+* deviceUid Device Unique ID
+
+4.12.2
+
+EXAMPLE
+
+{
+"deviceList":[
+{
+"deviceUid":"453700000000101"
+}
+]
+}
+
+4.12.3
+
+RESPONSES
+
+Response Header
+
+Response Body
+simControlRuleResponseList Sim Control Rule Disable Response Object List
+*
+
+deviceUid
+
+Device Unique ID
+
+resultCode
+
+Result Code
+
+resultMessage
+
+Result Message
+
+4.13
+
+Assign Sim Control
+
+To assign the Sim Control rule to the device
+POST api/v2/device/assignSimControlRule
+
+4.12.1
+
+REQUEST
+
+Request Header
+Parameter
+
+Parameter Description
+Bearer <Token>
+
+Authorization
+Token generated using Authorization API Call.
+Tenant ID
+tenantId
+Tenant ID in which API Method operation to be performed
+Request Body
+deviceList
+
+Message Object List
+
+* deviceUid
+
+Device Unique ID
+
+* simControlRuleId Id of sim control rule
+
+4.12.2
+
+EXAMPLE
+
+{
+"deviceList":[
+{
+"deviceUid":"453700000000101",
+"simControlRuleId": "Postpaid_v3"
+}
+]
+}
+
+4.12.3
+
+RESPONSES
+
+Response Header
+Response Body
+simControlRuleResponseList Sim Control Rule Assign Response Object List
+*
+
+deviceUid
+
+Device Unique ID
+
+resultCode
+
+Result Code
+
+resultMessage
+
+Result Message
+
+4.14
+
+ISMI Swap Device
+
+To swap the IMSI SIM in device
+POST api/v2/device/imsiSwap
+
+4.14.1
+
+REQUEST
+
+Request Header
+Parameter
+
+Parameter Description
+Bearer <Token>
+
+Authorization
+Token generated using Authorization API Call.
+Tenant ID
+tenantId
+Tenant ID in which API Method operation to be performed
+Request Body
+imsiSwapList Message Object List
+* deviceUid Device Unique ID
+
+4.14.2
+
+EXAMPLE
+
+{
+"imsiSwapList":[
+{
+"deviceUid":"453700000000101"
+}
+
+]
+}
+
+4.14.3
+
+RESPONSES
+
+Response Header
+Response Body
+Unique identifier for the batch action that is generated when the
+request body contains a list with more than 100 items. This ID can be
+used to track the status of the batch operation through Batch Action
+Status endpoints.
+
+batchActionId
+[optional]
+batchActionStatus
+[optional]
+
+Indicates the current processing status of the batch action when the
+request body contains more than 100 items.
+ENUM {INPROGRESS, COMPLETED, FAILED}
+
+imsiSwapResponseList IMSI Swap Response Object List
+*
+
+deviceUid
+
+Device Unique ID
+
+resultCode
+
+Result Code
+
+resultMessage
+
+Result Message
+
+4.15 Update Expiration Time
+To updates a device’s expiration timestamp (and optional custom properties)
+POST api/v2/device/updateExpiration
+
+4.15.1
+
+REQUEST
+
+Request Header
+Parameter
+
+Parameter Description
+Bearer <Token>
+
+Authorization
+Token generated using Authorization API Call.
+Tenant ID
+tenantId
+Tenant ID in which API Method operation to be performed
+Request Body
+
+updateExpirationList Update Expiration List
+* deviceUid
+
+Device Unique ID (IMEI or Serial number of the device)
+
+* expiration
+
+New expiration value (UNIX timestamp or ISO 8601 datetime).
+
+customProperty
+
+4.15.2
+
+Optional custom key–value pairs to update
+
+EXAMPLE
+
+{
+"updateExpirationList": [
+{
+"deviceUid": "350266809906657",
+"expiration": 1759925447,
+"customProperty": {
+"Account Number": "12321321311"
+}
+}
+]
+}
+
+4.15.3
+
+RESPONSES
+
+Response Header
+Response Body
+batchActionId
+[optional]
+batchActionStatus
+[optional]
+
+Unique identifier for the batch action that is generated when
+the request body contains a list with more than 100 items. This
+ID can be used to track the status of the batch operation
+through Batch Action Status endpoints.
+Indicates the current processing status of the batch action when
+the request body contains more than 100 items.
+ENUM {INPROGRESS, COMPLETED, FAILED}
+
+updateExpirationResponseList Update Expiration Response Object List
+*
+
+deviceUid
+
+Device Unique ID
+
+resultCode
+
+Result Code
+
+resultMessage
+
+Result Message
+
+Response Example
+{
+"updateExpirationResponseList": [
+
+{
+"deviceUid": "350266809906657",
+"resultCode": "REQUEST_SUCCESS",
+"resultMessage": "Request is successful"
+}
+]
+}
+
+4.16 BLOCK ADB COMMAND
+Enable/disable Block ADB Command on KG devices for a device UID.
+POST api/v2/device/blockADB
+
+4.16.1
+
+REQUEST
+
+Request Header
+Parameter
+
+Parameter Description
+Bearer <Token>
+
+Authorization
+Token generated using Authorization API Call.
+Tenant ID
+tenantId
+Tenant ID in which API Method operation to be performed
+Request Body
+ADBPropertyList Message Object List
+* deviceUid
+
+Device Unique ID
+
+* blockADB
+
+Boolean
+
+4.16.2 EXAMPLE
+{
+"ADBPropertyList": [
+{
+"blockADB": true,
+"deviceUid": "string"
+}
+]
+}
+
+4.16.3 RESPONSES
+
+Response Header
+Response Body
+Unique identifier for the batch action that is generated when the
+request body contains a list with more than 100 items. This ID can be
+used to track the status of the batch operation through Batch Action
+Status endpoints.
+
+batchActionId
+[optional]
+batchActionStatus
+[optional]
+
+Indicates the current processing status of the batch action when the
+request body contains more than 100 items.
+ENUM {INPROGRESS, COMPLETED, FAILED}
+
+blockADBResponseList ADB Property Response Object List
+*
+
+deviceUid
+
+IMEI1 of The Device
+
+resultCode
+
+Result Code
+
+resultMessage
+
+Result Message
+
+4.17 BLOCK AE PROVISION
+Enable/disable Block AE Provision on KG devices for a device UID
+POST api/v2/device/blockAEProvision
+
+4.17.1 REQUEST
+Request Header
+Parameter
+
+Parameter Description
+Bearer <Token>
+
+Authorization
+Token generated using Authorization API Call.
+Tenant ID
+tenantId
+Tenant ID in which API Method operation to be performed
+Request Body
+AE PROVISION PROPERTY LIST Message Object List
+*
+
+deviceUid
+
+Device Unique ID
+
+*
+
+blockAEProvision
+
+Boolean
+
+4.17.2 EXAMPLE
+{
+"aeProvisionPropertyList": [
+{
+"blockAEProvision": true,
+"deviceUid": "string"
+}
+]
+}
+
+4.17.3 RESPONSES
+Response Header
+Response Body
+batchActionId
+[optional]
+batchActionStatus
+[optional]
+
+Unique identifier for the batch action that is generated when
+the request body contains a list with more than 100 items.
+This ID can be used to track the status of the batch operation
+through Batch Action Status endpoints.
+Indicates the current processing status of the batch action
+when the request body contains more than 100 items.
+ENUM {INPROGRESS, COMPLETED, FAILED}
+
+blockAEProvisionResponseList AE Provision Property Response Object List
+*
+
+deviceUid
+
+IMEI1 of The Device
+
+resultCode
+
+Result Code
+
+resultMessage
+
+Result Message
+
+4.18 BLOCK FACTORY RESET
+Enable/disable Block Factory Reset on KG devices for a device UID.
+POST api/v2/device/blockFactoryReset
+
+4.18.1 REQUEST
+Request Header
+
+Parameter
+
+Parameter Description
+Bearer <Token>
+
+Authorization
+Token generated using Authorization API Call.
+Tenant ID
+tenantId
+Tenant ID in which API Method operation to be performed
+Request Body
+factoryResetPropertyList
+
+Message Object List
+
+* deviceUid
+
+Device Unique ID
+
+* blockfactoryReset
+
+Boolean
+
+4.18.2 EXAMPLE
+{
+"factoryResetPropertyList": [
+{
+"blockFactoryReset": true,
+"deviceUid": "string"
+}
+]
+}
+
+4.18.3 RESPONSES
+Response Header
+Response Body
+batchActionId
+[optional]
+batchActionStatus
+[optional]
+
+Unique identifier for the batch action that is generated when
+the request body contains a list with more than 100 items.
+This ID can be used to track the status of the batch operation
+through Batch Action Status endpoints.
+Indicates the current processing status of the batch action
+when the request body contains more than 100 items.
+ENUM {INPROGRESS, COMPLETED, FAILED}
+
+blockFactoryResetResponseList Factory Reset Property Response Object List
+*
+
+deviceUid
+
+IMEI1 of The Device
+
+resultCode
+
+Result Code
+
+resultMessage
+
+Result Message
+
+4.19
+
+Blink Reminder
+
+To set the blinking reminder for sending the repeated notifications
+POST /api/v2/device/blinkReminder
+
+4.19.1
+
+REQUEST
+
+Request Header
+Parameter
+
+Parameter Description
+Bearer <Token>
+
+Authorization
+Token generated using Authorization API Call.
+Tenant ID
+tenantId
+Tenant ID in which API Method operation to be performed
+Request Body
+Parameter
+
+Description
+
+* deviceUid
+
+IMEI or serial number used to uniquely identify a device
+integer <int64> [ 3 .. 86400 ]
+
+* interval
+Time in seconds (max 24 hours) between notification reminders.
+string
+* message
+Message to display on the device. Limit 200 characters.
+string
+* title
+Title to display on the device. Limit 200 characters.
+
+Array of integers <int32> [ items <int32 > ]
+timeLimit
+
+Set this value to [23, 7] when you want to disable the blinking reminder
+from 11 PM to 7 AM. If 'timeLimitEnable' or 'daysLimitEnable' is 'true',
+this field is mandatory. Array size must be 2, the values of timeLimit
+must be between 0 and 23.
+Array of integers <int32> [ items <int32 > ]
+
+dayLimit
+
+Set this value to [0, 1] when you want to disable the blinking reminder
+from Sunday to Monday (0: Sunday, 1: Monday ... and 6:Saturday). If
+'daysLimitEnable = true', this field is mandatory. Array size must be 2,
+the values of daysLimit must be between 0 and 6.
+boolean
+
+timeLimitEnabled
+
+Used to disable the blinking reminder for a specific time. If this value is
+true, timeLimit field is required. Example: disable blinking reminder
+from 11PM - 7AM; timeLimitEnable:true, daysLimitEnable:false,
+timeLimit:[23,7], daysLimit:null
+boolean
+
+Used to disable the blinking reminder on specific days and hours. If this
+dayLimitEnabled value is true, timeLimit and daysLimit fields are required. Example:
+disable blinking reminder from 6AM SUN- 7AM MON;
+timeLimitEnable:false, daysLimitEnable:true, timeLimit:[6,7],
+daysLimit:[0,1]
+
+4.19.2
+
+EXAMPLE
+
+{
+"blinkReminderList": [
+{
+"deviceUid": "device unique id",
+"interval": integer (from 3 to 86400 second),
+"timeLimit": [0, 23],
+"dayLimit": [0, 6],
+"timeLimitEnable": bool,
+"dayLimitEnable": bool,
+"message": "string"
+}
+]
+}
+
+4.19.3
+
+RESPONSES
+
+Response Header
+Response Body
+Unique identifier for the batch action that is generated when
+the request body contains a list with more than 100 items. This
+ID can be used to track the status of the batch operation
+through Batch Action Status endpoints.
+
+batchActionId
+[optional]
+batchActionStatus
+[optional]
+
+Indicates the current processing status of the batch action when
+the request body contains more than 100 items.
+ENUM {INPROGRESS, COMPLETED, FAILED}
+
+updateExpirationResponseList Update Expiration Response Object List
+*
+
+deviceUid
+
+Device Unique ID
+
+resultCode
+
+Result Code
+
+resultMessage
+
+Result Message
+
+5
+
+Query Management
+
+5.1
+
+Tenant Info
+
+To get the list of tenant information can be accessed using the API Key.
+GET api/v2/query/tenant/
+
+5.1.1
+
+REQUEST
+
+Request Header
+Parameter
+
+Parameter Description
+Bearer <Token>
+
+Authorization
+Token generated using Authorization API Call.
+
+5.1.2
+
+RESPONSES
+
+Response Header
+Response Body
+tenantList
+tenantId
+
+Tenant Object List
+Unique ID of the Tenant to be used on Header message
+
+tenantName Name of the Tenant
+
+5.2
+
+Inventory Info
+
+To get the inventory information of the Tenant.
+GET
+api/v2/query/inventory?deviceType={deviceType}&deviceManufacturer={deviceManu
+facturer}&deviceModel={deviceModel}
+
+5.3.1
+
+REQUEST
+
+Request Header
+Parameter
+
+Parameter Description
+Bearer Token.
+
+Authorization
+Token generated using Authorization API Call.
+Tenant ID
+tenantId
+Tenant ID in which API Method operation to be performed
+Parameter (optional)
+Type of the Device
+deviceType
+Enum {smartphone, tablet}
+deviceManufacturer Device Manufacturer Name
+deviceModel
+
+Device Model Name
+
+If parameter is not passed, all device will be considered in summary.
+
+5.3.2
+
+RESPONSES
+
+Response Header
+Response Body
+tenantName
+
+Name of the Tenant
+
+totalDeviceCount
+
+Number of Devices uploaded into telecoms platform
+
+idleDeviceCount
+
+Number of Idle Device in inventory which is not provisioned to any
+service.
+
+serviceDeviceCount Number of Devices provisioned with services.
+
+5.3
+
+Service Summary Info
+
+To get the device summary of the services.
+GET api/v2/query/service?serviceName={serviceName}
+GET api/v2/query/service?serviceName={serviceName}&deviceType={deviceType}
+GET
+api/v2/query/service?serviceName={serviceName}&paymentMethod={paymentMethod}
+
+5.3.1
+
+REQUEST
+
+Request Header
+Parameter
+
+Parameter Description
+Bearer <Token>
+
+Authorization
+Token generated using Authorization API Call.
+Tenant ID
+tenantId
+Tenant ID in which API Method operation to be performed
+Parameter
+Name of the Services
+* serviceName
+
+Enum {supplyChain, deviceFinancing, simControl, theftProtection,
+subsidyProtection}
+
+Type of the Device
+deviceType
+Enum {smartphone, tablet}
+Enum {prepaid, postpaid} Default is postpaid
+paymentMethod
+
+5.3.2
+
+Payment mode of the contract. Required when serviceType is
+DeviceFinancing.
+
+RESPONSE
+
+Response Header
+Response Body
+Parameter
+
+Parameter Description
+
+tenantName
+
+Name of the Tenant
+
+serviceSummaryList
+
+Service Summary Object List
+
+serviceTypeList
+Type of Financing service applied for the device.
+stateDeviceInfoList Device State Info Object List
+Number of Devices in each state in the service. Key value Pair
+stateDeviceInfo
+
+5.4
+
+Example Ready for use:50
+
+Device Info
+
+To get details about the devices from Telecoms Platform.
+POST api/v2/query/devices
+
+5.4.1
+
+REQUEST
+
+Request Header
+Parameter
+
+Parameter Description
+
+Bearer <Token>
+Authorization
+Token generated using Authorization API Call.
+Tenant ID
+tenantId
+Tenant ID in which API Method operation to be performed
+Request Body
+Parameter
+
+Parameter Description
+Array of objects (deviceList)
+
+deviceList
+A list of devices to be uploaded. List size min = 1, max = 10,000
+* deviceUid IMEI or serial number used to uniquely identify a device.
+
+5.4.2
+
+EXAMPLE
+
+{
+"deviceList":[
+{
+"deviceUid":"453700000000101"
+},
+{
+"deviceUid":"453700000000102"
+}
+]
+}
+
+5.4.3
+
+RESPONSES
+
+Response Header
+Response Body
+deviceResponseList
+
+Array of Device objects
+
+deviceUid
+
+Device Unique ID
+
+imei2
+
+IMEI2 of the Device
+
+tenantName
+
+Name of the Tenant
+
+currentPolicy
+
+The current policy of the device
+
+tac
+
+TAC Information Object
+
+lastCheckIn
+
+Timestamp of Device Last checkin
+
+lastChanged
+
+Timestamp of last update to the device state
+
+createdTimeStamp
+
+Timestamp of Device Enrol
+
+createdBy
+
+Username used to enrol the device
+
+deviceManufacturer
+
+Device Manufacturer Name
+
+deviceModel
+
+Device Model Name
+
+deviceMarketName
+
+Device Marketing Name
+
+stateInfo
+
+Current State of the Device
+
+serviceDetails
+
+List of Services device is enrolled.
+Transition state of the Device
+
+transitionState
+
+transitionQueue
+
+ENUM {Idle, Ready For Use, Protected, Enrolled, Active, Locked,
+Released, Delivered}
+List of the last three pending transitions in the queue, ordered from
+earliest to latest.
+{transitionState_1,transitionState_2,transitionState_3}
+
+expirationTime
+additionalInfo
+Json Object
+
+Next Relock time of the prepaid device
+Additional information such as custom prosperities of the device in
+Key Value pair
+Ex : {"Account Number": "123456", "Amount owed": "10.00",
+“Retail Brand“: “TTP3.0 QA Basic“, “Due Date“: ““, “Amount
+owed“: ““, “Days past due“: ““, … }
+
+simControlRule
+
+Current sim control rule name assigned to device
+
+contractId
+
+Current contract id assigned to device
+
+workflowId
+
+Current workflow id assigned to device
+
+imsiInfo
+
+IMSI information such as IMSI of the device in Key Value pair
+
+Json Object
+[optional]
+
+Ex : {"IMSI": "452050474429354", "IMSI Lock": true, "IMSI Last
+Changed": "2025-08-04 10:47:38"}
+Current Status of ADB command.
+
+adbCommandStatus
+ENUM {BLOCK,ENABLE}
+[optional]
+Applicable only for KG Devices
+
+Current Status of AE Provisioning.
+aeProvisioningStatus
+ENUM {BLOCK,ENABLE}
+[optional]
+Applicable only for KG Devices
+Current Status of Factory Reset option.
+factoryResetStatus
+ENUM {BLOCK,ENABLE}
+[optional]
+Applicable only for KG Devices
+resultCode
+
+Result Code.
+
+[optional]
+
+Contains error code when the request fails.
+
+resultMessage
+
+Result Message
+
+[optional]
+
+Contains error message when the request fails.
+
+5.7
+
+User Info
+
+To get the user information of a user resource.
+GET api/v2/query/users?username={username}
+
+5.7.1
+
+REQUEST
+
+Request Header
+Parameter
+
+Parameter Description
+Bearer <Token>
+
+Authorization
+Token generated using Authorization API Call.
+Tenant ID
+tenantId
+Tenant ID in which API Method operation to be performed
+Parameter (optional)
+username Username
+If parameter is not passed, all user details will be returned.
+
+5.7.2
+
+RESPONSE
+
+Response Header
+Response Body
+Parameter
+
+Parameter Description
+
+userList
+
+User Object List
+
+username
+
+Username
+
+firstName
+
+First Name of the User
+
+lastName
+
+Last Name of the User
+
+userType
+
+User type.
+ENUM {viewer, user, operator, support, delivery, admin}
+
+userRole
+
+Name of the role assigned to user account
+
+contactNumber
+
+Contact Number of the User
+
+accountValidity
+
+Validity of the user in days.
+
+department
+
+Department Name of the User
+
+organizationUnit Organization Unit of the User
+Account Status
+1. active
+2. locked
+3. expired
+
+Status
+
+5.8
+
+State Info
+
+To get the device list of device from specific state.
+GET api/v2/query/state?stateName={stateName}
+
+5.8.1
+
+REQUEST
+
+Request Header
+Parameter
+
+Parameter Description
+
+Bearer <Token>
+Authorization
+Token generated using Authorization API Call.
+Tenant ID
+tenantId
+Tenant ID in which API Method operation to be performed
+Parameter
+Parameter Parameter Description
+stateName
+
+Name of the State
+
+*required
+
+ENUM {idle, readyForUse, enrolled, active, locked, released, protected,
+delivered, all}
+
+pageNum
+
+Default: 1
+
+[Optional]
+
+The page number to get, which must be >= 1.
+
+pageSize
+
+Default: 1000, Maximum = 1000
+
+[Optional]
+
+The number of items in a page, which must be >0 and <= 1000.
+
+5.8.2
+
+RESPONSE
+
+Response Header
+Response Body
+Parameter
+
+Parameter Description
+
+stateName
+
+Name of the State
+
+deviceObjectList State Object List
+deviceUid
+
+5.9
+
+List of Device Unique identifier under the state
+
+Message Template
+
+To get the list of notification message template configured in the tenant.
+Note : The Message title from the response message can be used in send message api to send
+notification to the devices using pre-configured template in UI.
+GET api/v2/query/messageTemplate
+
+5.9.1
+
+REQUEST
+
+Request Header
+Parameter
+
+Parameter Description
+Bearer <Token>
+
+Authorization
+Token generated using Authorization API Call.
+Tenant ID
+tenantId
+Tenant ID in which API Method operation to be performed
+messageType
+
+5.9.2
+
+Type of Message Templates to be queried
+ENUM { lock, notify }
+
+RESPONSE
+
+Response Header
+Response Body
+Parameter
+
+Parameter Description
+
+tenantName
+
+Name of the State
+
+messageObjectList
+
+Message Object List
+Type of Message Template
+
+messageType
+ENUM { lock, notify}
+Name of the Service
+serviceName
+
+Enum {supplyChain, deviceFinancing, simControl, theftProtection,
+subsidyProtection}
+Payment mode of the contract.
+
+paymentMethod
+Enum {prepaid, postpaid}
+messageTemplateId Unique ID of the Message Template
+notificationTitle
+
+Notification message title
+
+notificationContent Notification message content
+
+Type of the Notification
+notificationType
+
+5.10
+
+
+
+
+headsup
+fullscreen
+
+Batch Action Status
+
+To check the status of the batch action request.
+GET api/v2/query/batchAction
+
+5.10.1
+
+REQUEST
+
+Request Header
+Parameter
+
+Parameter Description
+Bearer <Token>
+
+Authorization
+Token generated using Authorization API Call.
+Tenant ID
+tenantId
+Tenant ID in which API Method operation to be performed
+Parameter
+batchActionId
+Batch Action id of the device operation.
+*required
+pageNum
+
+Default: 1
+
+[Optional]
+
+The page number to get, which must be >= 1.
+
+pageSize
+
+Default: 1000, Maximum = 1000
+
+[Optional]
+
+The number of items in a page, which must be >0 and <= 1000.
+
+5.10.2
+
+RESPONSE
+
+Response Header
+Response Body
+
+Parameter
+
+Parameter Description
+
+batchActionId
+
+Batch Action id of the device operation.
+Status of the Batch Action
+
+batchActionStatus
+ENUM {INPROGRESS, COMPLETED, FAILED}
+deviceResponseList Message Object List
+deviceUid
+
+Device Unique ID
+
+resultCode
+
+Result Code of the device operation.
+
+resultMessage
+
+Result Message of the device operation
+
+5.11
+
+Tac Info
+
+Note this is internal API, no need to include in Product Brochure and swagger.
+To get the list of TAC information can be accessed using the API Key.
+GET api/v2/query/tac?tacId={tacId}
+
+5.11.1
+
+REQUEST
+
+Request Header
+Parameter
+
+Parameter Description
+Bearer <Token>
+
+Authorization
+Token generated using Authorization API Call.
+Tenant ID
+tenantId
+Tenant ID in which API Method operation to be performed
+Parameter
+tacId
+tacId of the device.
+*required
+
+5.10.2
+
+RESPONSE
+
+Response Header
+
+Response Body
+Parameter
+
+Parameter Description
+
+tacId
+
+Tac ID of the device
+
+tenantName
+
+Name of the Tenant
+
+modelName
+
+Message Object List
+
+brandName
+
+A device's brand name
+
+marketingName
+
+A device's marketing name
+
+manufacturer
+
+A device's manufacturer
+
+provisioningType The type of device
+multiSim
+
+Support multiSim
+
+createTime
+
+Timestamp of TAC’s creation
+
+5.12
+
+Sim control rule Info
+
+To get the list of sim control rule information can be accessed using the API Key.
+GET api/v2/query/simControls
+
+5.11.1
+
+REQUEST
+
+Request Header
+Parameter
+
+Parameter Description
+Bearer <Token>
+
+Authorization
+Token generated using Authorization API Call.
+Tenant ID
+tenantId
+Tenant ID in which API Method operation to be performed
+Parameter
+serviceName
+service name to list the sim control rule data
+*required
+
+5.10.2
+
+RESPONSE
+
+Response Header
+Response Body
+Parameter
+
+Parameter Description
+
+simControlRuleList
+
+Sim Control Rule Object List
+
+* simControlRuleId
+
+Sim Control rule id
+
+* simControlRuleName Sim Control rule name
+* tenantId
+
+Id of the tenant
+Service type name
+
+* serviceName
+
+ENUM {postpaid, simControl, prepaid, theftProtection,
+subsidyProtection}
+
+6
+
+User Management
+
+6.1
+
+Add
+
+To creates new user account in Telecoms platform for the tenant.
+POST api/v2/identity/users/add
+
+6.1.1
+
+REQUEST
+
+Request Header
+Parameter
+
+Parameter Description
+Bearer <Token>
+
+Authorization
+Token generated using Authorization API Call.
+Tenant ID
+tenantId
+Tenant ID in which API Method operation to be performed
+Request Body
+Parameter
+
+Parameter Description
+
+userList
+
+User Object List
+Username to login to the Telecoms Platform.
+
+* username
+Format: email Address
+* firstName
+
+First Name of the User
+
+* lastName
+
+Last Name of the User
+
+* userType
+
+User type.
+ENUM {viewer, user, operator, support, delivery, admin}
+
+* userRole
+
+Name of the role assigned to user account
+
+contactNumber
+
+Contact Number of the User
+
+tenantIdList
+
+List of Tenant ID to be accessed by User
+
+department
+
+Department Name of the User
+
+organizationUnit Organization Unit of the User
+
+6.1.2
+
+EXAMPLE
+
+6.1.3
+
+RESPONSE
+
+Response Header
+Response Body
+Parameter
+
+Parameter Description
+
+userResultObject User List Object
+username
+
+User Name Added
+
+resultCode
+
+Result Code
+
+resultMessage Result Message
+
+6.2
+
+Deactivate
+
+This API delete user information for a user resource.
+DELETE api/v2/identity/users/deactivate
+
+6.2.1
+
+REQUEST
+
+Request Header
+Parameter
+
+Parameter Description
+Bearer <Token>
+
+Authorization
+Token generated using Authorization API Call.
+Tenant ID
+tenantId
+Tenant ID in which API Method operation to be performed
+Request Body
+userList
+
+User List Object
+
+* username User Name to be deleted
+
+6.2.2
+
+RESPONSE
+
+Response Header
+Response Body
+Parameter
+
+Parameter Description
+
+userResultObject User List Object
+username
+
+User Name deleted
+
+resultCode
+
+Result Code
+
+resultMessage Result Message
+
+6.3
+
+Modify
+
+This API Modifies user information for a user resource.
+PATCH api/v2/identity/users/
+
+6.3.1
+
+REQUEST
+
+Request Header
+Parameter
+
+Parameter Description
+
+Bearer <Token>
+Authorization
+Token generated using Authorization API Call.
+Tenant ID
+tenantId
+Tenant ID in which API Method operation to be performed
+Request Body
+Parameter
+
+Parameter Description
+
+userList
+
+User List Object
+
+firstName
+
+First Name of the User
+
+lastName
+
+Last Name of the User
+
+userType
+
+User type. The options are as follows,
+ENUM {viewer, user, operator, support, delivery, admin}
+
+tenantIdList
+
+List of the Tenant to be accessed.
+
+contactNumber
+
+Contact Number of the User
+
+accountValidity
+
+Validity of the user in days.
+
+department
+
+Department Name of the User
+
+organizationUnit Organization Unit of the User
+Status of the account
+accountStatus
+{lock, unlock}
+resultCode
+
+Result Code
+
+resultMessage
+
+Result Message
+
+6.3.2
+
+EXAMPLE
+
+6.3.3
+
+RESPONSE
+
+Response Header
+Response Body
+Parameter
+
+Parameter Description
+
+userResultObject User List Object
+username
+
+User Name Modified
+
+resultCode
+
+Result Code
+
+resultMessage Result Message
+
+7
+
+Webhook Notification API
+
+The Telecoms Platform Webhook Notification API allows to send change notifications to a
+subscribed client about the completion of any subscribed events or background processes. On
+completion, the operation results from the Telecoms Platform services API operations are shared
+with the requesting client as a change notification. The result-sharing process is based on an
+efficient asynchronous workflow that avoids locking computational resources and, therefore,
+prevents inefficient event dependencies.
+
+A Webhook push is simply a HTTP POST request, sent to the URL of your choosing. The push
+is automatically triggered when data updates.
+
+The following procedure summarizes the Webhook Notification API workflow:
+1. The client can create an event with the Webhook Notification. For example, an event
+could be registering device into service or changing the device state such as locked,
+active, enrolled .
+2. The webhook notification event is now registered. A database stores the event
+notification subscription and the associated event.
+3. The client makes a call to inventory upload API or Activate/deactivate service API with
+list of devices. The API operation in Telecoms Platform triggers an asynchronous event
+for batch of devices.
+4. Telecoms Platform performs a database lookup to get the Notification events and check
+the event status in configured intervals.
+5. Based on event status, Notification will send to URL registered in the Webhook
+Notification request.
+
+Callback Method
+This webhook listens for state changes of devices and provides the real-time webhook
+notifications to web application:
+POST {$request.body#/url}
+
+Callback Payload
+The webhook notification will return one of the following status:
+actionCompleted: Indicates that the action has been completed successfully, and the device
+state has changed or has been successfully
+actionFailed: Indicates that the action has failed and the device state change is failed.
+Payload:
+Body
+deviceUid
+
+Device Unique Identifier
+Specifies the name of the transition state.
+
+eventType
+ENUM {idle, readyForUse, enrolled, active, locked, released}
+actionName
+
+Specifies the action being performed on the device (e.g., upload, register,
+deregister, lock, unlock, reload, release ).
+
+status
+
+Provides the status of the action (actionCompleted, actionFailed).
+Indicates the type of service associated with the device
+
+serviceType
+
+Enum {inventory, supplyChain, deviceFinancing, simControl, theftProtection,
+subsidyProtection}
+
+updatedAt
+
+The date and time of when the action was completed or failed.
+
+failedReason
+
+Describes the reason for failure when an action or upload does not complete
+successfully (e.g., 1st party error).
+
+7.1
+
+Create Subscription
+
+Creates a subscription assigning an endpoint to an event. This endpoint will be triggered
+whenever the expected event happens.
+POST api/v2/webhook/subscription
+
+7.1.1
+
+REQUEST
+
+Request Header
+Parameter
+
+Parameter Description
+
+Bearer <Token>
+Authorization
+Token generated using Authorization API Call.
+Tenant ID
+tenantId
+Tenant ID in which API Method operation to be performed
+
+Request Body
+
+eventType
+
+The actions that trigger an callback. The subscription endpoint is called when the
+below subscribed state transition has been completed or failed.
+ENUM {idle, readyForUse, enrolled, active, locked, released}
+
+url
+
+7.1.2
+
+Callback URL of the entity to be Notified
+
+EXAMPLE
+
+{
+eventType: "locked",
+url: "https://app.userback.io/viewer/123456/98765/2007850MSNv8n6f/"
+}
+
+7.1.3
+
+RESPONSES
+
+Response Header
+Response Body
+id
+
+ID of the Webhook Notification (WN) subscription
+
+url
+
+Callback URL of the entity to be Notified
+The type of entity that was targeted by the action.
+
+eventType
+ENUM {idle, readyForUse, enrolled, active, locked, released}
+createdAt
+
+The time of webhook registration in ISO 8601 format.
+
+resultCode
+
+Result Code
+
+resultMessage Result Message
+
+7.2
+
+GET Subscription
+
+To retrieve a webhook subscription based on WN subscription Id.
+GET api/v2/webhook/subscription?subscriptionId={subscriptionId}
+
+7.2.1
+
+REQUEST
+
+Request Header
+Parameter
+
+Parameter Description
+Bearer <Token>
+
+Authorization
+Token generated using Authorization API Call.
+Tenant ID
+tenantId
+Tenant ID in which API Method operation to be performed
+Parameter
+subscriptionId ID of the Webhook Notification (WN) subscription
+
+7.2.2
+
+RESPONSES
+
+Response Header
+Response Body
+id
+
+ID of the Webhook Notification (WN) subscription
+
+url
+
+Callback URL of the entity to be Notified
+
+eventType
+
+The actions that trigger an callback. The subscription endpoint is called when
+the below subscribed state transition has been completed or failed.
+ENUM {idle, readyForUse, enrolled, active, locked, released}
+
+createdAt
+
+The time of webhook registration in ISO 8601 format.
+
+resultCode
+
+Result Code
+
+resultMessage Result Message
+
+7.3
+
+GET ALL Subscription
+
+To retrieve a webhook subscription based on WN subscription Id.
+
+GET api/v2/webhook/subscriptions/
+
+7.3.1
+
+REQUEST
+
+Request Header
+Parameter
+
+Parameter Description
+Bearer <Token>
+
+Authorization
+Token generated using Authorization API Call.
+Tenant ID
+tenantId
+Tenant ID in which API Method operation to be performed
+
+7.3.2
+
+RESPONSES
+
+Response Header
+Response Body
+subscriptionList Subscription Object List
+id
+
+subscriptionId, the id of the subscription.
+
+url
+
+callback registered URL
+The set of actions that trigger an callback. The subscription endpoint is called
+when the below subscribed state transition has been completed or failed.
+
+eventType
+
+ENUM {idle, readyForUse, enrolled, active, locked, released}
+createdAt
+
+7.4
+
+The time of webhook registration in ISO 8601 format.
+
+Delete Subscription
+
+To deletes a webhook notification subscription from Telecoms platform.
+DELETE api/v2/webhook/subscription?subscriptionId={subscriptionsId}
+
+7.4.1
+
+REQUEST
+
+Request Header
+Parameter
+
+Parameter Description
+
+Bearer <Token>
+Authorization
+Token generated using Authorization API Call.
+Tenant ID
+tenantId
+Tenant ID in which API Method operation to be performed
+Parameter
+subscriptionId ID of the Webhook Notification (WN) subscription
+
+7.4.2
+
+RESPONSES
+
+Response Header
+id
+
+ID of the Webhook Notification (WN) subscription
+
+url
+
+Callback URL of the entity to be Notified
+
+eventType
+
+The actions that trigger an callback. The subscription endpoint is called when
+the below subscribed state transition has been completed or failed.
+ENUM {idle, readyForUse, enrolled, active, locked, released}
+
+createdAt
+
+The time of webhook registration in ISO 8601 format.
+
+resultCode
+
+Result Code
+
+resultMessage Result Message
+
+8
+
+Contract Management
+
+8.1
+
+Add Contract
+
+To add the device into new contract
+POST api/v2/contract/addContract/
+
+8.1.1
+
+REQUEST
+
+Request Header
+Parameter
+
+Parameter Description
+
+Bearer <Token>
+Authorization
+Token generated using Authorization API Call.
+Tenant ID
+tenantId
+Tenant ID in which API Method operation to be performed
+Request Body
+addContractList
+
+Add Contract Object List
+
+* deviceUid
+
+Device Unique ID
+
+* contractId
+
+Sequence number of contract to be assigned to the device.
+
+* assignedContractDate
+
+The start date of the contract. Required If contractId is assigned to
+Device
+[Optional] The reload time unit for prepaid workflows.
+
+reloadTimeUnit
+ENUM { hour, day, week, month, year }
+reloadTime
+
+8.1.2
+
+[Optional] The reload time for prepaid workflows. Accepting values
+from 1 to 1095 days.
+
+EXAMPLE
+
+{
+"addContractList": [
+{
+"deviceUid": "358285100032080",
+"contractId": "123",
+"assignedContractDate" : "2025-01-01 09:00:00"
+}
+]
+}
+
+8.1.3
+
+RESPONSES
+
+Response Header
+Response Body
+addContractResponseList Add Contract Response Object List
+*
+
+deviceUid
+
+Device Unique ID
+
+resultCode
+
+Result Code
+
+resultMessage
+
+8.2
+
+Result Message
+
+Exit Contract
+
+To exit workflow from device
+PUT api/v2/contract/exitContract/
+
+8.2.1
+
+REQUEST
+
+Request Header
+Parameter
+
+Parameter Description
+Bearer <Token>
+
+Authorization
+Token generated using Authorization API Call.
+Tenant ID
+tenantId
+Tenant ID in which API Method operation to be performed
+Request Body
+exitContractList Exit Contract Object List
+*
+
+deviceUid
+
+* exitReason
+
+8.2.2
+
+Device Unique ID
+The reason why exit workflow from device
+
+EXAMPLE
+
+{
+"exitContractList": [
+{
+"deviceUid": "358285100032080",
+"exitReason": "Device is out of contract length"
+}
+]
+}
+
+8.2.3
+
+RESPONSES
+
+Response Header
+Response Body
+
+exitContractResponseList Exit Contract Response Object List
+*
+
+deviceUid
+
+Device Unique ID
+
+resultCode
+
+Result Code
+
+resultMessage
+
+Result Message
+
+8.3
+
+Get Contract List
+
+To list all contracts from TTP3.0 Platform
+GET api/v2/contract/contracts/
+
+8.3.1
+
+REQUEST
+
+Request Header
+Parameter
+
+Parameter Description
+Bearer <Token>
+
+Authorization
+Token generated using Authorization API Call.
+Tenant ID
+tenantId
+Tenant ID in which API Method operation to be performed
+Parameter
+serviceType
+The service type used to filter contracts (postpaid, prepaid, simcontrol).
+(*required)
+
+8.3.2
+
+RESPONSES
+
+Response Header
+Response Body
+contractList
+
+Contract Object List
+
+* contractId
+
+The unique ID of the contract.
+
+contractName
+
+The name of the contract.
+
+contractMode
+
+The mode of the contract (fixed or variable) used for prepaid
+service.
+
+workflowName
+
+The workflow name associated with this contract.
+
+simControlPolicyName The SIM control policy name associated with the contract.
+createdAt
+
+The date and time when the contract was created.
+
+isActive
+
+Indicates if the contract is active or inactive.
+
+Example
+{
+"contractList": [
+{
+"simControlPolicyName": "Sim restricted",
+"createdAt": "2025-01-01",
+"contractMode": "fixed",
+"contractId": "17",
+"contractName": "Dino",
+"workflowName": "Normal workflow",
+"isActive": true
+}
+]
+}
+
+8.4
+
+Get List Device Billing Cycles
+
+To list all billing cycles of the device from TTP3.0 Platform
+GET api/v2/contract/deviceBillingCycles/
+
+8.4.1
+
+REQUEST
+
+Request Header
+Parameter
+
+Parameter Description
+Bearer <Token>
+
+Authorization
+Token generated using Authorization API Call.
+Tenant ID
+tenantId
+Tenant ID in which API Method operation to be performed
+deviceUid
+
+Device Uid
+
+(*required)
+
+The unique ID of the device to retrieve billing cycle information
+
+8.4.2
+
+RESPONSES
+
+Response Header
+Response Body
+deviceBillingCyclesList Billing Cycles Response Object List
+* deviceBillingCycleId The unique ID of the billing cycle
+billingDate
+
+The date on which the bill is generated
+
+startDate
+
+The start date of the billing cycle
+
+endDate
+
+The end date of the billing cycle
+
+dueDate
+
+The due date for the payment of the bill
+
+deviceUid
+
+The unique ID of the device
+
+paymentStatus
+
+Status of payment (true, false)
+
+Example
+{
+"deviceBillingCyclesList": [
+{
+"deviceBillingCycleId": 1,
+"billingDate": "2025-01-10T01:00:00Z",
+"startDate": "2025-01-01T01:00:00Z",
+"endDate": "2025-01-10T01:00:00Z",
+"dueDate": "2025-01-11T01:00:00Z",
+"deviceUid": "123455678",
+"paymentStatus": true
+},
+{
+"deviceBillingCycleId": 2,
+"billingDate": "2025-02-10T01:00:00Z",
+"startDate": "2025-02-01T01:00:00Z",
+"endDate": "2025-02-10T01:00:00Z",
+"dueDate": "2025-02-11T01:00:00Z",
+"deviceUid": "123455678",
+"paymentStatus": false
+}
+]
+}
+
+8.5 Update Device Payment
+To Update the Billing Cycle Payment of the device
+PUT api/v2/contract/updatePayment/
+
+8.5.1
+
+REQUEST
+
+Request Header
+Parameter
+
+Parameter Description
+Bearer <Token>
+
+Authorization
+Token generated using Authorization API Call.
+Tenant ID
+tenantId
+Tenant ID in which API Method operation to be performed
+Request Body
+updatePaymentList
+
+Device payment Object List
+
+* deviceUid
+
+Device Unique ID
+
+* deviceBillingCycles
+
+The list cycle number of the device bill cycle during which the user
+makes the payment. This should accept multiple cycleNumber values
+
+* cycleNumber
+
+The unique ID of the billing cycle
+
+reloadTime
+
+[Optional] The reload time for prepaid workflows. Accepting values
+from 1 to 1095 days.
+[Optional] The reload time unit for prepaid workflows.
+
+reloadTimeUnit
+ENUM { hour, day, week, month, year }
+Example Request
+{
+"updatePaymentList": [
+{
+"deviceUid": "358285100032080",
+"deviceBillingCycles":[
+{
+"cycleNumber": 1
+}
+],
+"reloadTime": 1,
+"reloadTimeUnit": 'day'
+}
+]
+}
+
+8.5.2
+
+RESPONSES
+
+Response Header
+Response Body
+updatePaymentResponseList Update Payment Response Object List
+*
+
+deviceUid
+
+Device Unique ID
+
+resultCode
+
+Result Code
+
+resultMessage
+
+Result Message
+
+9
+
+Workflow Management
+
+9.1
+
+Add Workflow
+
+To add the device into new workflow
+POST api/v2/workflow/addWorkflow/
+
+9.1.1
+
+REQUEST
+
+Request Header
+Parameter
+
+Parameter Description
+Bearer <Token>
+
+Authorization
+Token generated using Authorization API Call.
+Tenant ID
+tenantId
+Tenant ID in which API Method operation to be performed
+Request Body
+addWorkflowList Workflow Object List
+*
+
+deviceUid
+
+* workflowId
+
+9.1.2
+
+Device Unique ID
+Sequence number of workflow to be assigned to the device.
+
+EXAMPLE
+
+{
+"addWorkflowList": [
+
+{
+"deviceUid": "358285100032080",
+"workflowId": 123,
+"assignedWorkflowDate" : "2025-01-01 09:00:00"
+}
+]
+}
+
+9.1.3
+
+RESPONSES
+
+Response Header
+Response Body
+addWorkflowResponseList Add Workflow Response Object List
+*
+
+deviceUid
+
+Device Unique ID
+
+resultCode
+
+Result Code
+
+resultMessage
+
+Result Message
+
+9.2
+
+Exit Workflow
+
+To remove device from the workflow.
+PUT api/v2/workflow/exitWorkflow/
+
+9.2.1
+
+REQUEST
+
+Request Header
+Parameter
+
+Parameter Description
+Bearer <Token>
+
+Authorization
+Token generated using Authorization API Call.
+Tenant ID
+tenantId
+Tenant ID in which API Method operation to be performed
+Request Body
+exitWorkflowList Exit workflow Object List
+*
+
+deviceUid
+
+Device Unique ID
+
+* exitReason
+
+9.2.2
+
+The reason for exiting the device from workflow.
+
+EXAMPLE
+
+{
+"exitWorkflowList": [
+{
+"deviceUid": "358285100032080",
+"exitReason": "Device is out of contract length"
+}
+]
+}
+
+8.2.3
+
+RESPONSES
+
+Response Header
+Response Body
+exitWorkflowResponseList Exit workflow Response Object List
+*
+
+deviceUid
+
+Device Unique ID
+
+resultCode
+
+Result Code
+
+resultMessage
+
+Result Message
+
+9.3
+
+Get Workflow List
+
+To list all workflows from TTP3.0 Platform
+GET api/v2/workflow/workflows
+
+9.3.1
+
+REQUEST
+
+Request Header
+Parameter
+
+Parameter Description
+Bearer <Token>
+
+Authorization
+Token generated using Authorization API Call.
+Tenant ID
+tenantId
+Tenant ID in which API Method operation to be performed
+
+Parameter
+serviceType
+The service type used to filter contracts (postpaid, prepaid, simcontrol).
+(*required)
+
+9.3.2
+
+RESPONSES
+
+Response Header
+Response Body
+workflowList
+
+Workflow Object List
+
+* workflowId
+
+The unique ID of the workflow.
+
+workflowName The name of the Workflow.
+createdAt
+
+The date and time when the workflow was created.
+
+isActive
+
+Indicates if the workflow is active or inactive.
+
+Example
+{
+"workfloweList": [
+{
+"workflowId": "123",
+"workflowName": "Normal workflow",
+"createdAt": "2025-01-01",
+"isActive": true
+}
+]
+}
+
+10
+
+APPENDIX
+
+API ERROR
+resultCode : error (required)
+resultMessage : String Verbose description of the reason behind this response
+Example :
+resultCode
+
+UPLOAD_ID_NOT_FOUND
+
+resultMessage Upload ID is not found in the system
+
+No. Type
+1
+General
+2
+
+Error Code
+UPLOAD_ID_NOT_FOUND
+DEVICE_UID_NOT_VALID
+
+3
+4
+
+IMEI2_INVALID
+IMEI1_BLANK
+
+5
+
+IMEI2_BLANK
+
+6
+7
+
+DEVICE_UID_DUPLICATE
+INVALID_TENANT
+
+8
+
+ASSIGNED_ACTION_INVALID
+
+9
+
+11
+
+PROVISIONING_
+TYPE_UNSUPPORTED
+PROVISIONING_
+TYPE_MISMATCH
+IMEI2_ALREADY_EXISTED
+
+12
+
+DEVICE_UID_EXIST
+
+13
+
+INTERNAL_ERROR
+
+14
+
+RELOAD_DAYS_NOT_APPLIC
+ABLE
+INVALID_RANGE
+
+10
+
+15
+
+Checking
+input
+
+16
+17
+
+REQUIRED_PROPERTIES
+INVALID_ENUM_VALUE
+
+18
+
+INVALID_MINIMUM
+
+19
+
+INVALID_DATA_TYPE
+
+20
+
+INVALID_PARAMS
+
+21
+
+INVALID_RELOAD_DAYS
+
+Result Message
+Upload ID is not found in the system
+This {device_type_title} [{device_uid}]
+is invalid
+IMEI2 {imei2} is not valid
+The device cannot be added due to imei
+is invalid of imei1 [{device_uid}]
+The device cannot be added due to imei
+is invalid of imei2 [{device_uid}]
+This imei [{request}] is duplicated
+Specified target tenant is invalid or not
+found
+This {device_type_title} [{imei or serial
+number}] is in State transition, please
+wait for the Action complete
+Device [{device_uid}] fail to add
+IMEI2 due to wrong provisioning type
+This [{imei}] differs from the
+provisioning type of [{imei2}]
+This imei [{device_uid}] has already
+added imei2
+This imei [{device_uid}] is already
+uploaded
+An unexpected error occurred. Please
+try again later.
+Reload days is not applicable for the
+service {service_name}
+Please input {property}'s value and in
+range {minimum} to {maximum}
+Please input {property}
+{property} has a value of one of the
+following types: {options}
+{property} has a value {value} is less
+than {minimum}
+{property} has a value of type
+{data_type}
+One or more parameters in the request
+body are invalid
+Reload days must be an integer value
+and in range {minimum} to
+{maximum}
+
+22
+
+INVALID_FORMAT_JSON
+
+23
+24
+25
+26
+27
+28
+29
+30
+
+Authenticate
+
+31
+32
+33
+34
+35
+36
+37
+38
+
+Authorization
+
+39
+
+Device
+
+40
+41
+42
+43
+44
+
+The request body contains invalid
+JSON.
+INVALID_NEXT_DUE
+nextDue timestamp is invalid. Expected
+10 or 13 characters and timestamp in
+the past is not allowed
+MAXIMUM_LEN_EXCEEDED
+Maximum character for the device
+property is {maximum}
+MAXIMUM_BATCH_SIZE_EXC Maximum device for batch is
+EEDED
+{maximum}
+MISSING_KEY_REQUEST
+Missing key {key} request
+INVALID_CHALLENGE
+Challenge code must be number and
+{len_pin_valid} digits
+URL_INVALID
+URL is invalid
+REQUIRED_PARAMS
+Please input messageTemplateId or
+notificationTitle
+AUTHENTICATION_REQUIRE Token is invalid or needs to be provided
+D_BEARER
+`Bearer` prefix
+AUTHENTICATION_MISMATC Authorized is mismatched!
+H
+AUTHENTICATION_INVALID_ Unauthorized: API key is not available
+APIKEY
+AUTHENTICATION_INVALID_ User or tenant not exists
+TENANT
+AUTHENTICATION_TOKEN_E Token is expired
+XPIRED
+AUTHENTICATION_INVALID_ Unauthorized: Invalid Signature
+SIGNATURE
+AUTHENTICATION_INVALID_ Unauthorized: invalid token
+TOKEN
+AUTHENTICATION
+Authorized missing information!
+AUTHORIZATION
+token does not have sufficient
+permissions to access this resource
+DEVICE_UID_NOT_FOUND
+Not found the device with
+{device_type} [{device_uid}]
+DEVICE_IS_ASSIGNED
+This {device_type} [{device_uid}] is in
+State transition, please wait for the
+Action complete
+DEVICE_UID_ARCHIVED
+This {device_type} [{device_uid}] has
+been archived
+DEVICE_IS_IDLE_RELEASE_S Device {device_uid} must be in Idle or
+TATE
+Release state
+DEVICE_UNSUPPORTED_OEM Unsupported OEM
+DEVICE_STATE_SERVICE_NO Device must be in Locked state and in
+T_VALID
+Prepaid or Postpaid service
+
+45
+46
+47
+48
+49
+50
+
+51
+52
+53
+54
+55
+56
+57
+58
+59
+60
+61
+62
+63
+64
+65
+
+DEVICE_UID_NOT_PRIMARY
+
+Please make sure this device uid
+[{device_uid}] with the correct value of
+'imei (required)'
+DEVICE_CANNOT_ASSIGN_A Cannot {action_name} to {state_name}
+CTION
+device because current device is being
+applied with another action
+DEVICE_UNABLE_UNLOCK
+The device is unable to {action_name}
+DEVICE_STATE_NOT_PERMIT The device is currently {state_name}
+_ACTION
+and unable to be {action_name}
+DEVICE_ACTION_NOT_VALID Cannot find action {action_name} for
+_SERVICE
+this service {service_name}
+DEVICE_NOT_ALLOWED_DER This {device_type_title} [{request}]
+EGISTER
+cannot assign action Deregister because
+provision type of [{request}] doesn't
+support
+WRONG_SERVICE_TYPE
+Please make sure this
+{device_type_title} [{request}] is with
+the right Service
+DEVICE_NEXT_DUE_MUST_B Please input greater value than the
+E_GREATER_THAN_EXPIRY
+current expiration datetime
+DEVICE_MAXIMUM_RELOAD Reload fail due to reach maximum
+_DATETIME
+Expiry. Please check the expiration time
+first
+DEVICE_VALIDATION_REQUI validityDays is required for this device
+RED
+{device_uid}
+DEVICE_UID_NOT_VALID_LU This imei {deviceUID} is invalid luhn
+HN
+check
+DEVICE_UNSUPPORTED_OEM Unsupported OEM
+SMARTPHONE_HAS_TAC_AR This smartphone [{device_uid}], TAC
+CHIVED
+is archived
+DEVICE_UID_OWNED_BY_OT This {device_type} [{device_uid}] does
+HER
+not belong to this customer
+DEVICE_IS_ALREADY_UNLO
+Device is already unlocked.
+CKED
+DEVICE_UNSUPPORTED_UPD Update service is not allow for
+ATING_SERVICE
+{device_uid} in {device_state_name}
+State
+DEVICE_TYPE_HAS_THE_SA
+Currently, we only support a single
+ME_TYPE
+device type in batch actions
+DEVICE_STATE_INVALID
+The device is unable to assign Action,
+please check the device's state
+DEVICE_UID_MAX_LENGTH_ Please keep the Serial Number within
+CHARACTER
+32 characters
+TAC_BLACKLISTED
+This device {imei} uses a TAC that is
+not supported.
+USER_NOT_FOUND
+User is not found in the system
+
+66
+67
+68
+69
+
+User and
+Service
+Device
+Properties
+
+70
+71
+72
+
+Generate Pin
+Unlock
+
+73
+74
+75
+76
+77
+78
+
+Webhook
+
+79
+80
+81
+82
+
+TAC
+
+83
+84
+
+Transfer
+
+85
+86
+
+Batch Action
+
+87
+
+Order Service
+
+SERVICE_NOT_FOUND
+Service is disabled in the system
+SERVICE_NOT_SUPPORT_ACT service {service_name} not support this
+ION
+action
+SERVICE_NOT_ENABLED
+Service is not enabled
+PROPERTY_NOT_PERMIT_AC Please contact Admin to update the
+CESS
+Global & System custom property
+PROPERTY_NOT_VALID
+{properties} is a invalid Custom
+Property, please input a valid Custom
+property
+DEVICE_NOT_ELIGIBLE_FOR_ The device is not belong to
+UPDATE_PROPERTY
+{workspace_name} and unable to
+update device property
+PIN_DEVICE_INVALID_STATE The device can't generate PIN in state
+{state_name}
+DEVICE_STATE_NOT_GENER Current state {state_name} can't
+ATE_PIN
+generate Pin
+PIN_SERVICE_NOT_VALID
+The device can't generate Pin in service
+{service_name}
+PIN_DEVICE_NOT_VALID
+The device does not support generate
+PIN
+PIN_GENERATE_FAILED
+PIN generation fail, OEM system is
+currently unavailable. Please try again
+later.
+PIN_UNLOCK_USERID_NOT_F The specified user code for PIN
+OUND
+UNLOCK does not exist in the system.
+WEBHOOK_SUBSCRIPTION_N Subscription is not found in the system
+OT_FOUND
+WEBHOOK_DUPLICATE_SUBS Subscription is already existed
+CRIPTION
+WEBHOOK_SUBSCRIPTION_N Webhook is not enabled.
+OT_ALLOWED
+WEBHOOK_INVALID_EVENT_ Event Type is not supported by
+TYPE
+webhook
+TAC_NOT_EXIST
+This imei [{device_uid}], TAC is not in
+the database
+TRANSFER_ID_NOT_FOUND
+Transfer ID is not found in the system
+ACTION_NOT_ALLOWED
+The device is not belong to
+{workspace_name} and unable to be
+{action_name}
+DEVICE_NOT_ELIGIBLE_FOR_ The device is not belong to
+UPDATE_IMEI2
+{workspace_name} and unable to
+update IMEI2
+BATCH_ACTION_ID_NOT_FO
+Batch Action ID is not found in the
+UND
+system
+SYSTEM_ERROR
+An unexpected error occurred. Please
+try again later.
+
+88
+89
+90
+91
+
+System
+
+92
+93
+94
+95
+96
+97
+98
+99
+10
+0
+10
+1
+10
+2
+10
+3
+10
+4
+10
+5
+10
+6
+10
+7
+10
+8
+10
+9
+
+Contract &
+Workflow
+
+SERVICE_NOT_FOUND
+Service is disabled in the system
+SERVICE_NOT_ENABLED
+Service is not enabled
+ORDER_ID_NOT_FOUND
+Order ID is not found in the system
+SYSTEM_HANDLER_NOT_FO
+System handler is not found
+UND
+SYSTEM_NOT_FOUND_HAND The System didn't find the handler
+LER
+SYSTEM_CAN_NOT_PARSE_V System can not parse {value} to
+ALUE
+{datatype} exist
+SYSTEM_FEATURE_UNSUPPO Currently, this feature does not support
+RTED
+SYSTEM_INVALID_ENDPOINT Invalid endpoint. The requested
+resource could not be found.
+REQUEST_SUCCESS
+Request is successful
+SYSTEM_INVALID_ENDPOINT Invalid Endpoint Method. The
+_METHOD
+requested resource could not be found.
+WORKFLOW_IS_NOT_ACTIVA Workflow is not activated for this
+TED
+tenant.
+DEVICE_BILLING_CYCLE_NO Device bill cycle number
+T_FOUND
+{cycle_number} was not found for
+device with IMEI {imei}.
+NO_CONTRACT_ASSIGNED
+No contract is assigned to this device
+NOT_FOUND_BILLING_CYCL
+E
+NO_CONTRACT_ASSIGNED
+
+Not found billing cycle data with cycle
+number {cycle_number} with device
+{imei}
+No contract is assigned with this device
+
+PREVIOUS_PAYMENT_NOT_P
+AID
+
+The previous payment for cycle number
+{cycle_number} has not been
+completed
+SERVICE_IS_NOT_VALID_FOR Temporary lock is only available for
+_TEMPORARY_LOCK
+DeviceFinancing Postpaid
+WORKFLOW_FIELD_REQUIRE Field {field} is required
+D
+ACTION_DISABLED_FOR_WO Workflow is assigned to device and
+RKFLOW_DEVICE
+cannot assign {action}
+API_ENDPOINT_DISABLED
+The requested API endpoint is disabled
+and cannot be accessed at this time.
+Please contact support to enable it
+EXIT_REASON_REQUIRED
+Exit reason cannot be empty
+SERVICE_IS_NOT_VALID_FOR Flexible Workflow is not supported for
+_FLEXIBLE_WORKFLOW
+the service type {service_type}.
+Allowed services: Prepaid, Postpaid,
+Sim Control.
+
+11
+0
+11
+1
+11
+2
+11
+3
+11
+4
+11
+5
+11
+6
+11
+7
+11
+8
+11
+9
+12
+0
+12
+1
+
+INCOMPATIBLE_SERVICE_W
+ORKFLOW
+
+Current device service {service_type} is
+incompatible with workflow
+{workflow_name}
+WORKFLOW_ALREADY_ASSI Workflow {workflow_name} already
+GNED
+exists for this {device_type}
+{device_uid}, Remove the existing
+workflow before adding new workflow.
+ASSIGNED_CONTRACT_DATE Invalid assignedContractDate
+_IN_PAST
+{assigned_contract_date}. It must be
+greater than or equal to the current date
+and time.
+NO_FLEXIBLE_WORKFLOW_
+The device has no active flexible
+ASSIGNED
+workflow, or the assigned flexible
+workflow has already ended.
+CONTRACT_WORKFLOW_CO Both Contract and workflow feature
+NFLICT
+cannot be assigned to the {device_type}
+{device_uid}.
+FLEXIBLE_WORKFLOW_OR_C Neither Contract nor Flexible Workflow
+ONTRACT_NOT_ACTIVATED
+is activated for this tenant
+INCOMPATIBLE_SERVICE_CO Current device service {service_type} is
+NTRACT
+incompatible with contract
+{contract_name}
+TEMP_LOCK_DURATION_TOO Temporary Lock duration must be at
+_SHORT
+least {min_duration} minutes
+INVALID_ASSIGNED_CONTR
+Invalid assignedContractDate format.
+ACT_DATE
+Expected format: YYYY-MM-DD
+HH:MM:SS
+SERVICE_IS_NOT_VALID_FOR Contracts is not supported for the
+_CONTRACT
+service type {service_type}. Allowed
+services: Prepaid, Postpaid, Sim
+Control.
+WORKFLOW_NOT_FOUND
+Workflow {workflow_id} not found
+WORKFLOW_ALREADY_ASSI
+GNED
+
+12
+2
+
+CONTRACT_ALREADY_ASSIG
+NED
+
+12
+3
+12
+4
+12
+5
+
+INVALID_EXIT_REASON
+CONTRACT_NOT_FOUND
+
+Workflow {workflow_name} already
+exists for this {device_type}
+{device_uid}.
+Contract {contract_name} already
+exists for this {device_type}
+{device_uid}.
+Please key in valid value for the exit
+reason.
+Contract {contract_id} not found
+
+DEVICE_NOT_ELIGIBLE_FOR_ The device is currently {state_name}
+DISABLING_SIM_CONTROL
+and unable to be disabled sim control
+
+12
+6
+12
+7
+12
+8
+12
+9
+13
+0
+13
+1
+13
+2
+13
+3
+
+Device level
+Sim Control
+Rule
+
+Service
+Change
+
+IMSI Swap
+
+13
+4
+13
+5
+13
+6
+13
+7
+13
+8
+13
+9
+14
+0
+14
+1
+14
+2
+
+Block ADB
+Command
+Block AE
+Provision
+Block Factory
+Reset
+SYSTEM
+
+DEVICE_NOT_ELIGIBLE_FOR_ The device is currently {state_name}
+ASSIGNING_SIM_CONTROL
+and unable to be assigned with sim
+control
+SERVICE_NOT_ELIGIBLE_FOR The current service is not allowed to use
+_DISABLING_SIM_CONTROL
+disable sim control feature
+DEVICE_SIM_CONTROL_RUL SIM control is already disabled for the
+E_ALREADY_DISABLED
+device {imei}
+DEVICE_SIM_CONTROL_RUL SIM control {rule} is already assigned
+E_ALREADY_ASSIGNED
+to the device {imei}
+SIM_RULE_NOT_VALID
+SIM control rule with ID {rule} Not
+found
+SERVICE_TRANSITION_BLOC Transition from :source_service to
+KED_BY_CONFIG
+:target_service is not allowed due to
+configuration conflict.
+SERVICE_TRANSITION_NOT_ Transition from :source_service to
+ALLOWED
+:target_service is not allowed.
+PROVISION_TYPE_NOT_ALLO This :device_type [:device_uid] cannot
+WED
+assign action :action_name because
+provision type of [:device_uid] doesn't
+support
+SERVICE_NOT_SUPPORT_ACT Service [:service_name] not support this
+ION
+action
+DEVICE_STATE_NOT_PERMIT The device is currently :state_name and
+_ACTION
+unable to perform :action_name
+DEVICE_CANNOT_ASSIGN_A Cannot :action_name device because
+CTION
+current device is being applied with
+another action
+SIM_CONTROL_NOT_ENABLE The simControl is currently not enabled
+D
+and unable to perform :action_name
+IMSI_SWAP_IN_PROGRESS
+The IMSI Swap is currently in progress
+and unable to perform :action_name
+DEVICE_NOT_SUPPORT_BLO
+Block ADB Command is only
+CK_ADB_COMMAND
+supported for Knox Guard devices
+DEVICE_NOT_SUPPORT_BLO
+Block AE Provision is only supported
+CK_AE_PROVISION
+for Knox Guard devices
+DEVICE_NOT_SUPPORT_BLO
+Block Factory Reset is only supported
+CK_FACTORY_RESET
+for Knox Guard devices
+SYSTEM_FEATURE_UNSUPPO The requested feature is currently not
+RTED
+supported.
+
+

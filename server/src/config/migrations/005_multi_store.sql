@@ -1,0 +1,18 @@
+-- 1. Create stores table
+CREATE TABLE IF NOT EXISTS stores (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    tenant_id VARCHAR(100) NOT NULL,
+    name VARCHAR(255) NOT NULL,
+    address TEXT,
+    status VARCHAR(50) DEFAULT 'Active',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+-- 2. Add store_id to existing tables
+ALTER TABLE users ADD COLUMN store_id INT DEFAULT NULL;
+ALTER TABLE client_history ADD COLUMN store_id INT DEFAULT NULL;
+ALTER TABLE contract_history ADD COLUMN store_id INT DEFAULT NULL;
+ALTER TABLE payments ADD COLUMN store_id INT DEFAULT NULL;
+ALTER TABLE inventory ADD COLUMN store_id INT DEFAULT NULL;
+ALTER TABLE trustonic_devices ADD COLUMN store_id INT DEFAULT NULL;
