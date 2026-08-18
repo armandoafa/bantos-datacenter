@@ -684,21 +684,21 @@ const ProductModal = ({ isOpen, onClose, product, onSave, session, inventory = [
 // --- MODAL DE TÉRMINOS ---
 const TermModal = ({ isOpen, onClose, term, onSave }) => {
   const [formData, setFormData] = useState({
-    type: 'Fijo', name: '', status: 'Active', description: '', upfront_percentage: '', interest_percentage: '', frequency_days: 7, installments_count: 1, ...term
+    type: 'Contado', name: '', status: 'Active', description: '', upfront_percentage: '', interest_percentage: '', frequency_days: 7, installments_count: 1, ...term
   });
   
   useEffect(() => {
     if (term) {
       let tType = term.type;
-      if (tType === 'PAYG') tType = 'Fijo';
-      if (tType === 'INSTALMENTS' || tType === 'Crédito' || tType === 'CRÉDITO') tType = 'Abono';
+      if (tType === 'PAYG' || tType === 'Fijo') tType = 'Contado';
+      if (tType === 'INSTALMENTS' || tType === 'Abono' || tType === 'CRÉDITO') tType = 'Crédito';
       setFormData({ ...term, type: tType });
     }
-    else setFormData({ type: 'Fijo', name: '', status: 'Active', description: '', upfront_percentage: '', interest_percentage: '', frequency_days: 7, installments_count: 1 });
+    else setFormData({ type: 'Contado', name: '', status: 'Active', description: '', upfront_percentage: '', interest_percentage: '', frequency_days: 7, installments_count: 1 });
   }, [term]);
 
   useEffect(() => {
-    if (formData.type === 'Abono' || formData.type === 'Crédito' || formData.type === 'INSTALMENTS') {
+    if (formData.type === 'Crédito' || formData.type === 'INSTALMENTS' || formData.type === 'Abono') {
       let iters = 1;
       const freq = parseInt(formData.frequency_days) || 7;
       if (freq === 7) iters = 52;
@@ -731,7 +731,7 @@ const TermModal = ({ isOpen, onClose, term, onSave }) => {
             <div className="space-y-1.5">
               <label className="text-[11px] font-black uppercase tracking-widest text-slate-400 ml-1">Tipo de Plan</label>
               <select className="w-full bg-slate-50 border-2 border-slate-100 rounded-xl py-3.5 px-5 font-bold text-slate-800 focus:border-blue-600 outline-none transition-all text-base appearance-none" value={formData.type} onChange={e => setFormData({...formData, type: e.target.value})}>
-                {['Fijo', 'Abono'].map(t => <option key={t} value={t}>{t}</option>)}
+                {['Contado', 'Crédito'].map(t => <option key={t} value={t}>{t}</option>)}
               </select>
             </div>
             <div className="space-y-1.5">
@@ -739,7 +739,7 @@ const TermModal = ({ isOpen, onClose, term, onSave }) => {
               <input type="text" className="w-full bg-slate-50 border-2 border-slate-100 rounded-xl py-3.5 px-5 font-bold text-slate-800 focus:border-blue-600 outline-none transition-all text-base" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} />
             </div>
             
-            {(formData.type === 'Abono' || formData.type === 'Crédito') && (
+            {formData.type === 'Crédito' && (
               <>
                 <div className="space-y-1.5">
                   <label className="text-[11px] font-black uppercase tracking-widest text-slate-400 ml-1">Enganche ($)</label>
@@ -770,7 +770,7 @@ const TermModal = ({ isOpen, onClose, term, onSave }) => {
             </div>
           </div>
 
-          {(formData.type === 'Abono' || formData.type === 'Crédito') && formData.installments_count > 0 && (
+          {formData.type === 'Crédito' && formData.installments_count > 0 && (
             <div className="bg-blue-50 p-5 rounded-2xl border border-blue-100 flex gap-4 text-sm text-blue-800">
               <AlertCircle size={24} className="shrink-0 text-blue-500" />
               <div>
@@ -4731,15 +4731,15 @@ const TermsView = ({ deals, onEdit, onCreate, onDelete }) => (
       <div className="bg-white p-5 md:p-8 rounded-[32px] border border-slate-100 shadow-sm flex items-center gap-6">
         <div className="w-14 h-14 bg-blue-50 rounded-2xl flex items-center justify-center text-blue-600"><ShieldCheck size={28} /></div>
         <div>
-          <p className="text-[12px] font-black text-slate-400 uppercase tracking-widest">Planes Fijos</p>
-          <p className="text-2xl font-black text-slate-800">{deals.filter(d => d.type === 'Fijo' || d.type === 'PAYG').length}</p>
+          <p className="text-[12px] font-black text-slate-400 uppercase tracking-widest">Planes de Contado</p>
+          <p className="text-2xl font-black text-slate-800">{deals.filter(d => d.type === 'Contado' || d.type === 'Fijo' || d.type === 'PAYG').length}</p>
         </div>
       </div>
       <div className="bg-white p-5 md:p-8 rounded-[32px] border border-slate-100 shadow-sm flex items-center gap-6">
         <div className="w-14 h-14 bg-emerald-50 rounded-2xl flex items-center justify-center text-emerald-600"><CreditCard size={28} /></div>
         <div>
-          <p className="text-[12px] font-black text-slate-400 uppercase tracking-widest">Planes en Abonos</p>
-          <p className="text-2xl font-black text-slate-800">{deals.filter(d => d.type === 'Abono' || d.type === 'Crédito' || d.type === 'INSTALMENTS').length}</p>
+          <p className="text-[12px] font-black text-slate-400 uppercase tracking-widest">Planes a Crédito</p>
+          <p className="text-2xl font-black text-slate-800">{deals.filter(d => d.type === 'Crédito' || d.type === 'Abono' || d.type === 'INSTALMENTS').length}</p>
         </div>
       </div>
       <div className="bg-white p-5 md:p-8 rounded-[32px] border border-slate-100 shadow-sm flex items-center gap-6">
@@ -4762,7 +4762,7 @@ const TermsView = ({ deals, onEdit, onCreate, onDelete }) => (
         render={d => (
           <>
             <td className="px-8 py-5">
-              <span className={`px-3 py-1 rounded-full text-[11px] font-black uppercase tracking-wider ${(d.type === 'PAYG' || d.type === 'Fijo') ? 'bg-blue-50 text-blue-600' : 'bg-emerald-50 text-emerald-600'}`}>{d.type}</span>
+              <span className={`px-3 py-1 rounded-full text-[11px] font-black uppercase tracking-wider ${(d.type === 'PAYG' || d.type === 'Fijo' || d.type === 'Contado') ? 'bg-blue-50 text-blue-600' : 'bg-emerald-50 text-emerald-600'}`}>{d.type}</span>
             </td>
             <td className="px-8 py-5 font-bold text-slate-800">{d.name}</td>
             <td className="px-8 py-5">
@@ -4785,7 +4785,7 @@ const TermsView = ({ deals, onEdit, onCreate, onDelete }) => (
               <div className="space-y-1">
                 <p className="font-bold text-slate-800">{d.name}</p>
               </div>
-              <span className={`px-3 py-1 rounded-full text-[11px] font-black uppercase tracking-wider ${(d.type === 'PAYG' || d.type === 'Fijo') ? 'bg-blue-50 text-blue-600' : 'bg-emerald-50 text-emerald-600'}`}>{d.type}</span>
+              <span className={`px-3 py-1 rounded-full text-[11px] font-black uppercase tracking-wider ${(d.type === 'PAYG' || d.type === 'Fijo' || d.type === 'Contado') ? 'bg-blue-50 text-blue-600' : 'bg-emerald-50 text-emerald-600'}`}>{d.type}</span>
             </div>
             <div className="flex justify-between items-center pt-4 border-t border-slate-50">
               <div className="flex items-center gap-2 font-black text-[11px] uppercase tracking-wider text-emerald-600">
@@ -6377,7 +6377,7 @@ const ActionFormView = ({ actionType, prefillData, onBack, onSaveDraft, deals, p
                         return (
                           <div className="col-span-2 bg-emerald-50 p-6 rounded-2xl border border-emerald-100 flex items-center justify-between">
                             <div>
-                              <p className="text-[11px] font-black uppercase tracking-widest text-emerald-500 mb-1">Venta de Contado (Fijo)</p>
+                              <p className="text-[11px] font-black uppercase tracking-widest text-emerald-500 mb-1">Venta de Contado</p>
                               <p className="text-3xl font-black text-emerald-800">${totalCost.toFixed(2)}</p>
                             </div>
                             <CheckSquare size={40} className="text-emerald-200" />
