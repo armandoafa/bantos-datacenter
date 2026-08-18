@@ -107,34 +107,31 @@ export default function PaymentCardForm({ amount, clientId }) {
       
       const baseURL = import.meta.env.VITE_API_URL || 'https://bantos.cloud/datacenter-api/webview';
 
-      // 1. Asignar tarjeta al cliente
+      // Paso 3: Asignar tarjeta al cliente → obtener payment_method_id real (message.id)
       const assignPayload = { customer_id: clientId, token_id: tokenId };
       console.log('➡️ [REQ 1] POST /card-payments/assign-card | Payload:', assignPayload);
       const res1 = await axios.post(`${baseURL}/card-payments/assign-card`, assignPayload);
       console.log('⬅️ [RES 1] Status:', res1.status, '| Data:', res1.data);
 
-      // 2. Procesar el cargo
-      const transPayload = { customer_id: clientId, payment_method: tokenId, amount: parseFloat(amount) };
+      // Usar el payment_method_id real del Paso 3 (no el token_id directamente)
+      const paymentMethodId = res1.data.payment_method_id || tokenId;
+      console.log('💳 [DEBUG] payment_method_id para el cargo:', paymentMethodId);
+
+      // Paso 4: Ejecutar el cargo directo con el payment_method correcto
+      const transPayload = { customer_id: clientId, payment_method: paymentMethodId, amount: parseFloat(amount) };
       console.log('➡️ [REQ 2] POST /card-payments/transactions | Payload:', transPayload);
       const res2 = await axios.post(`${baseURL}/card-payments/transactions`, transPayload);
       console.log('⬅️ [RES 2] Status:', res2.status, '| Data:', res2.data);
 
-      // 3. (Opcional) Guardar preferencia de domiciliación si lo solicitó
-      if (isRecurring) {
-        const parsedDates = recurringDates.split(',').map(s => parseInt(s.trim())).filter(d => !isNaN(d) && d > 0 && d <= 31);
-        const subPayload = {
-          customer_id: clientId,
-          payment_method: tokenId,
-          recurring_dates: parsedDates.length > 0 ? parsedDates : [new Date().getDate()]
-        };
-        console.log('➡️ [REQ 3] POST /card-payments/subscriptions | Payload:', subPayload);
-        const res3 = await axios.post(`${baseURL}/card-payments/subscriptions`, subPayload);
-        console.log('⬅️ [RES 3] Status:', res3.status, '| Data:', res3.data);
-      } else {
-        console.log('ℹ️ [DEBUG] Suscripción omitida (isRecurring = false)');
+      console.groupEnd();
+
+      // 3-D Secure: redirigir al challenge del banco emisor si existe redirection_url
+      if (res2.data.redirection_url) {
+        console.log('🔐 [DEBUG] Redirigiendo al challenge 3DS:', res2.data.redirection_url);
+        window.location.href = res2.data.redirection_url;
+        return; // El flujo continúa en accept_url / cancel_url (https://payment.bantos.cloud)
       }
 
-      console.groupEnd();
       setSuccess(true);
     } catch (err) {
       console.groupEnd();

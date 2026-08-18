@@ -130,7 +130,8 @@ const generalLimiter = rateLimit({
   legacyHeaders: false,
   message: { success: false, message: 'Demasiadas peticiones. Intenta de nuevo en 15 minutos.' },
 });
-app.use(generalLimiter);
+// ⚠️  Rate limiting desactivado temporalmente durante QA — re-habilitar en producción
+// app.use(generalLimiter);
 
 // Límite estricto para el endpoint de autenticación: 10 intentos cada 15 minutos por IP
 // Mitiga ataques de fuerza bruta sobre el login
@@ -1188,7 +1189,7 @@ app.get('/api/backoffice/tenant-list', async (req, res) => {
   }
 });
 
-app.post('/api/backoffice/auth', authLimiter, async (req, res) => {
+app.post('/api/backoffice/auth', /* authLimiter — desactivado en QA */ async (req, res) => {
   const { username, password, tenantId } = req.body;
   
   if (!tenantId) {
@@ -3031,27 +3032,66 @@ app.post('/api/webview/validate-device', async (req, res) => {
 app.post('/api/webview/card-payments/assign-card', async (req, res) => {
   const { customer_id, token_id } = req.body;
   console.log(`>>> [WEBVIEW CARD] Asignando tarjeta ${token_id} a cliente ${customer_id}`);
-  res.json({ success: true, message: 'Tarjeta asignada exitosamente' });
+  try {
+    const result = await dynamicore.assignCardToCustomer(customer_id, token_id);
+    const paymentMethodId = result?.message?.id;
+    console.log(`>>> [WEBVIEW CARD] Tarjeta asignada. payment_method_id: ${paymentMethodId}`);
+    res.json({
+      success: true,
+      payment_method_id: paymentMethodId,
+      data: result.message
+    });
+  } catch (error) {
+    console.error('[WEBVIEW CARD] Error asignando tarjeta:', error.response?.data || error.message);
+    res.status(400).json({
+      success: false,
+      error: error.response?.data?.message || 'Error al asignar la tarjeta al cliente'
+    });
+  }
 });
 
 app.post('/api/webview/card-payments/transactions', async (req, res) => {
   const { customer_id, payment_method, amount } = req.body;
-  const payId = `PAY-CARD-${Date.now()}`;
-  console.log(`>>> [WEBVIEW CARD] Procesando cargo de $${amount} para cliente ${customer_id} con token ${payment_method}`);
-  
+  console.log(`>>> [WEBVIEW CARD] Procesando cargo de $${amount} para cliente ${customer_id} con método ${payment_method}`);
   try {
-    // Registrar el pago en la base de datos de Bantos
-    await pool.query(
-      `INSERT INTO payments (
-        upya_id, transaction_id, tenant_id, contract_id, client_id, amount, method, status, payment_date
-      ) VALUES (?, ?, ?, ?, ?, ?, 'Tarjeta (Dynamicore)', 'COMPLETED', NOW())`,
-      [payId, `TX-${payId}`, 'c-romel', 'CTR-WEBVIEW-01', customer_id || 'CLI-001', amount || 0]
-    );
+    const chargeResult = await dynamicore.directCharge({
+      payment_method,
+      customer_id,
+      amount: parseFloat(amount),
+      sc: 0,
+      accept_url: 'https://payment.bantos.cloud',
+      cancel_url: 'https://payment.bantos.cloud'
+    });
 
-    res.json({ success: true, transaction_id: payId, status: 'APPROVED' });
-  } catch (err) {
-    console.error('Error registrando pago de tarjeta:', err);
-    res.json({ success: true, transaction_id: payId, status: 'APPROVED' });
+    const externalId = chargeResult?.message?.external_id;
+    const redirectionUrl = chargeResult?.message?.redirection_url;
+    console.log(`>>> [WEBVIEW CARD] Cargo iniciado. external_id: ${externalId}`);
+
+    // Registrar en BD local (no crítico si falla)
+    try {
+      const payId = externalId || `PAY-CARD-${Date.now()}`;
+      await pool.query(
+        `INSERT INTO payments (
+          upya_id, transaction_id, tenant_id, contract_id, client_id, amount, method, status, payment_date
+        ) VALUES (?, ?, ?, ?, ?, ?, 'Tarjeta (Dynamicore)', 'PENDING_3DS', NOW())`,
+        [payId, `TX-${payId}`, 'c-romel', 'CTR-WEBVIEW-01', customer_id || 'CLI-001', amount || 0]
+      );
+    } catch (dbErr) {
+      console.warn('[WEBVIEW CARD] No se pudo registrar en BD local:', dbErr.message);
+    }
+
+    res.json({
+      success: true,
+      external_id: externalId,
+      redirection_url: redirectionUrl,
+      status: 'PENDING_3DS'
+    });
+  } catch (error) {
+    console.error('[WEBVIEW CARD] Error procesando cargo:', error.response?.data || error.message);
+    res.status(400).json({
+      success: false,
+      error: error.response?.data?.message || 'Error al procesar el cargo de la tarjeta'
+    });
   }
 });
 

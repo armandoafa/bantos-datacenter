@@ -14,7 +14,7 @@ class BantosGatewayService {
         };
     }
 
-    generateAuthHeader(method, path, body = '', query = '') {
+    generateAuthHeader(method, path, body = '', query = '', baseUrl = null) {
         const { clientKey, secret, authType } = this.config;
         const timestamp = Date.now().toString();
         
@@ -25,7 +25,8 @@ class BantosGatewayService {
             bodyStr = typeof body === 'object' ? JSON.stringify(body) : JSON.stringify(JSON.parse(body));
         }
 
-        const urlObj = new URL(`${this.baseUrl}${path}`);
+        const effectiveBaseUrl = baseUrl || this.baseUrl;
+        const urlObj = new URL(`${effectiveBaseUrl}${path}`);
         const fullPath = urlObj.pathname;
         const requestData = timestamp + method.toUpperCase() + fullPath + query + bodyStr;
         
@@ -102,6 +103,61 @@ class BantosGatewayService {
         };
         // Path corregido segun descubrimiento (marketplace/apps)
         return this.request('POST', '/marketplace/apps/conekta/payments/spei', payload);
+    }
+
+    // --- DYNAMICARDPAY v2 (Cobro con tarjeta tokenizada via iFrame) ---
+    // URL base diferente a la API privada: https://api.dynamicore.io/marketplace/apps/dynamicardpay/v2
+    get cardPayBaseUrl() {
+        return 'https://api.dynamicore.io/marketplace/apps/dynamicardpay/v2';
+    }
+
+    async requestCardPay(method, path, data = null, params = {}) {
+        const baseUrl = this.cardPayBaseUrl;
+        const queryString = Object.keys(params).length > 0 ? '?' + new URLSearchParams(params).toString() : '';
+        const authHeader = this.generateAuthHeader(method, path, data, queryString, baseUrl);
+        try {
+            const config = {
+                method,
+                url: `${baseUrl}${path}${queryString}`,
+                headers: {
+                    'Authorization': authHeader,
+                    'Content-Type': 'application/json'
+                }
+            };
+            if (data && method !== 'GET') config.data = data;
+            console.log(`>>> [DynamiCardPay Request] ${method} ${path}`, JSON.stringify(data));
+            const response = await axios(config);
+            return response.data;
+        } catch (error) {
+            console.error(`[DynamiCardPay Error] ${method} ${path}:`, error.response?.data || error.message);
+            if (error.response?.data) console.error('Full Error Response:', JSON.stringify(error.response.data));
+            throw error;
+        }
+    }
+
+    /**
+     * Paso 3: Asociar tarjeta tokenizada a un cliente
+     * POST https://api.dynamicore.io/marketplace/apps/dynamicardpay/v2/card/assignToCustomer
+     * @param {string} customerId - customer_id del cliente (message.id del Paso 1)
+     * @param {string} tokenId - token_id generado por el iFrame (Paso 2)
+     * @returns {Promise} { status, message: { id (payment_method), token, default, client, created_at } }
+     */
+    async assignCardToCustomer(customerId, tokenId) {
+        const payload = {
+            customer_id: customerId,
+            token_id: tokenId
+        };
+        return this.requestCardPay('POST', '/card/assignToCustomer', payload);
+    }
+
+    /**
+     * Paso 4: Generar cobro con cargo directo (incluye 3-D Secure)
+     * POST https://api.dynamicore.io/marketplace/apps/dynamicardpay/v2/transactions/directCharge
+     * @param {object} chargeData - { payment_method, customer_id, amount, sc, accept_url, cancel_url }
+     * @returns {Promise} { status, message: { external_id, date, client, message, redirection_url } }
+     */
+    async directCharge(chargeData) {
+        return this.requestCardPay('POST', '/transactions/directCharge', chargeData);
     }
 }
 

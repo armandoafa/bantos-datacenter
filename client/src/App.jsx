@@ -2774,8 +2774,7 @@ const SettlementModal = ({ isOpen, onClose, contract, session, onSettled }) => {
               </select>
             </div>
 
-            {/* BYPASS DYNAMICORE FOR TESTING: method === 'Tarjeta de Débito/Crédito' && ( */
-            false && (
+            {method === 'Tarjeta de Débito/Crédito' && (
               <div className="bg-slate-50 p-5 rounded-xl border border-slate-100 flex flex-col space-y-4 relative">
                 {iframeError && (
                   <div className="bg-red-50 text-red-600 p-3 rounded-xl flex items-start text-sm border border-red-100">
@@ -2828,15 +2827,14 @@ const SettlementModal = ({ isOpen, onClose, contract, session, onSettled }) => {
             <div className="flex justify-end gap-3 pt-4 border-t">
               <button type="button" onClick={onClose} className="px-4 py-2.5 rounded-xl font-bold text-slate-500 hover:bg-slate-100 text-xs uppercase tracking-wider">Cancelar</button>
               
-              {/* BYPASS DYNAMICORE FOR TESTING: false && method === 'Tarjeta de Débito/Crédito' && !dynamicoreSuccess ? ( */}
-              {false ? (
+              {method === 'Tarjeta de Débito/Crédito' && !dynamicoreSuccess ? (
                 <button 
                   type="button"
                   disabled={iframeLoading || finalAmount <= 0}
                   onClick={() => {
                     setIframeError(null);
                     setIframeLoading(true);
-                    const iframe = document.getElementById('dynamicore-iframe');
+                    const iframe = document.getElementById('dynamicore-action-iframe');
                     if (window.DynamicoreHelper && typeof window.DynamicoreHelper.submit === 'function') {
                       window.DynamicoreHelper.submit();
                     } else if (iframe && iframe.contentWindow) {
@@ -2898,16 +2896,40 @@ const DynamicoreIframeContainer = ({ amount, clientId, isRecurring, recurringDat
     onLoading(true);
     try {
       const baseURL = API.replace('/api', '');
-      await axios.post(`${baseURL}/card-payments/transactions`, { customer_id: clientId, payment_method: tokenId, amount: parseFloat(amount) });
+
+      // Paso 3: Asignar tarjeta al cliente → obtener payment_method_id real (message.id)
+      const res1 = await axios.post(`${baseURL}/card-payments/assign-card`, {
+        customer_id: clientId,
+        token_id: tokenId
+      });
+      const paymentMethodId = res1.data.payment_method_id || tokenId;
+
+      // Paso 4: Ejecutar cargo directo con el payment_method correcto
+      const res2 = await axios.post(`${baseURL}/card-payments/transactions`, {
+        customer_id: clientId,
+        payment_method: paymentMethodId,
+        amount: parseFloat(amount)
+      });
+
+      // Domiciliación: crear suscripción si aplica
       if (isRecurring) {
-        const parsedDates = Array.isArray(recurringDates) ? recurringDates : (recurringDates||'').split(',').map(s => parseInt(s?.trim())).filter(d => !isNaN(d) && d > 0 && d <= 31);
+        const parsedDates = Array.isArray(recurringDates)
+          ? recurringDates
+          : (recurringDates||'').split(',').map(s => parseInt(s?.trim())).filter(d => !isNaN(d) && d > 0 && d <= 31);
         await axios.post(`${baseURL}/card-payments/subscriptions`, {
           customer_id: clientId,
-          payment_method: tokenId,
+          payment_method: paymentMethodId,
           recurring_dates: parsedDates.length > 0 ? parsedDates : [new Date().getDate()]
         });
       }
-      onSuccess(tokenId);
+
+      // 3-D Secure: redirigir al challenge del banco emisor si existe redirection_url
+      if (res2.data.redirection_url) {
+        window.location.href = res2.data.redirection_url;
+        return;
+      }
+
+      onSuccess(paymentMethodId);
     } catch (err) {
       console.error('Error procesando pago:', err);
       onError('Hubo un error al procesar tu pago. Verifica los fondos o intenta con otra tarjeta.');
@@ -3134,8 +3156,7 @@ export const PaymentFormContent = ({
             <p className="text-[12px] font-black text-emerald-600 uppercase tracking-[0.2em] mb-4">Datos de Cuenta / Tarjeta</p>
             
             <div className="bg-slate-50 p-5 md:p-8 rounded-[40px] border border-slate-100 relative overflow-hidden">
-              {/* BYPASS DYNAMICORE FOR TESTING: className={(formData.method === 'Tarjeta Crédito' || formData.method === 'Tarjeta Débito') ? 'block relative' : 'absolute opacity-0 -left-[9999px] pointer-events-none'} */}
-              <div className={'absolute opacity-0 -left-[9999px] pointer-events-none'}>
+              <div className={(formData.method === 'Tarjeta Crédito' || formData.method === 'Tarjeta Débito') ? 'block relative' : 'absolute opacity-0 -left-[9999px] pointer-events-none'}>
                 {iframeError && (
                   <div className="bg-red-50 text-red-600 p-3 rounded-xl flex items-start text-sm border border-red-100 mb-4">
                     <AlertCircle className="w-5 h-5 mr-2 flex-shrink-0 mt-0.5" />
@@ -3171,8 +3192,7 @@ export const PaymentFormContent = ({
                   </>
                 )}
               </div>
-              {/* BYPASS DYNAMICORE FOR TESTING: className={(formData.method !== 'Tarjeta Crédito' && formData.method !== 'Tarjeta Débito') ? 'block space-y-6' : 'hidden'} */}
-              <div className={'block space-y-6'}>
+              <div className={(formData.method !== 'Tarjeta Crédito' && formData.method !== 'Tarjeta Débito') ? 'block space-y-6' : 'hidden'}>
                 <div className="space-y-1.5">
                   <label className="text-[11px] font-black uppercase tracking-widest text-slate-400 ml-1">Titular de la Cuenta</label>
                   <input disabled={isReadOnly} type="text" className="w-full bg-white border-2 border-slate-100 rounded-xl py-3.5 px-5 font-bold text-slate-800 focus:border-emerald-500 outline-none transition-all text-base" value={formData.card_holder || ''} onChange={e => setFormData({...formData, card_holder: e.target.value})} placeholder="Nombre como aparece en cuenta" />
@@ -3300,14 +3320,13 @@ const PaymentModal = ({ isOpen, onClose, payment, onSave, clients, contracts, se
           <button onClick={onClose} className="px-10 py-4 rounded-2xl font-black uppercase tracking-widest text-[12px] text-slate-400 hover:text-slate-600 transition-all">Cerrar</button>
           <div className="flex-1" />
           {!isReadOnly && (
-            /* BYPASS DYNAMICORE FOR TESTING: (formData.method === 'Tarjeta Crédito' || formData.method === 'Tarjeta Débito') && !dynamicoreSuccess ? ( */
-            false ? (
+            (formData.method === 'Tarjeta Crédito' || formData.method === 'Tarjeta Débito') && !dynamicoreSuccess ? (
               <button 
                 disabled={iframeLoading || !formData.client_id || !formData.amount}
                 onClick={() => {
                   setIframeError(null);
                   setIframeLoading(true);
-                  const iframe = document.getElementById('dynamicore-iframe');
+                  const iframe = document.getElementById('dynamicore-modal-iframe');
                   if (window.DynamicoreHelper && typeof window.DynamicoreHelper.submit === 'function') {
                     window.DynamicoreHelper.submit();
                   } else if (iframe && iframe.contentWindow) {
