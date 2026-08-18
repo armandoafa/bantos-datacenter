@@ -4385,12 +4385,6 @@ const TrustonicDevicesView = ({ data, onSync, syncing, onEdit, onCreate, session
         action={
           <div className="flex gap-3">
             <button 
-              onClick={onCreate} 
-              className="flex items-center gap-2 bg-white border-2 border-slate-100 hover:border-blue-600 text-slate-900 px-6 py-3 rounded-2xl font-black text-xs uppercase tracking-widest transition-all active:scale-95 shadow-sm"
-            >
-              <Plus size={16} className="text-blue-600" /> Nuevo Dispositivo
-            </button>
-            <button 
               onClick={onSync} 
               disabled={syncing || executingAction} 
               className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl shadow-blue-600/20 transition-all active:scale-95 disabled:opacity-50"
