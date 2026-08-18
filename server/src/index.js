@@ -1082,7 +1082,70 @@ app.delete('/api/backoffice/stores/:id', async (req, res) => {
 });
 
 // --- USER MANAGEMENT (CRUD) ---
+// ── MESSAGE TEMPLATES ───────────────────────────────────────────────────────
+app.get('/api/backoffice/message-templates', async (req, res) => {
+  const { tenantId, module } = req.query;
+  try {
+    let query = 'SELECT * FROM message_templates WHERE tenant_id = ?';
+    const params = [tenantId];
+    if (module && module !== 'Todos') {
+      query += ' AND module = ?';
+      params.push(module);
+    }
+    query += ' ORDER BY created_at DESC';
+    const [rows] = await pool.query(query, params);
+    res.json(rows);
+  } catch (err) {
+    console.error('[message-templates GET]', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/backoffice/message-templates', async (req, res) => {
+  const { tenantId, module, message_type, message_text, logo_base64 } = req.body;
+  try {
+    const [result] = await pool.query(
+      'INSERT INTO message_templates (tenant_id, module, message_type, message_text, logo_base64) VALUES (?, ?, ?, ?, ?)',
+      [tenantId, module, message_type, message_text, logo_base64 || null]
+    );
+    const [rows] = await pool.query('SELECT * FROM message_templates WHERE id = ?', [result.insertId]);
+    res.status(201).json(rows[0]);
+  } catch (err) {
+    console.error('[message-templates POST]', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.put('/api/backoffice/message-templates/:id', async (req, res) => {
+  const { id } = req.params;
+  const { module, message_type, message_text, logo_base64 } = req.body;
+  try {
+    await pool.query(
+      'UPDATE message_templates SET module = ?, message_type = ?, message_text = ?, logo_base64 = ? WHERE id = ?',
+      [module, message_type, message_text, logo_base64 || null, id]
+    );
+    const [rows] = await pool.query('SELECT * FROM message_templates WHERE id = ?', [id]);
+    res.json(rows[0]);
+  } catch (err) {
+    console.error('[message-templates PUT]', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.delete('/api/backoffice/message-templates/:id', async (req, res) => {
+  const { id } = req.params;
+  try {
+    await pool.query('DELETE FROM message_templates WHERE id = ?', [id]);
+    res.json({ success: true });
+  } catch (err) {
+    console.error('[message-templates DELETE]', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── USERS ────────────────────────────────────────────────────────────────────
 app.get('/api/backoffice/users', async (req, res) => {
+
   const { tenantId, storeId, role, userId } = req.query;
   try {
     let query = `SELECT u.id, u.username, COALESCE(u.contact_name, u.username) as contact_name, u.email, u.role as global_role, u.store_id, 
