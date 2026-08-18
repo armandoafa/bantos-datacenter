@@ -5277,7 +5277,7 @@ const OrganizationView = ({ structure, session, refreshData }) => {
         subtitle="Visualización y gestión del árbol operativo"
         action={
           <button onClick={() => { setEditingNode(null); setNodeType('Manager'); setModalOpen(true); }} className="bg-blue-600 text-white px-6 py-3 rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl shadow-blue-600/30 hover:scale-105 transition-all flex items-center gap-2">
-            <Plus size={16} /> Nuevo Nodo
+            <Plus size={16} /> Nueva Unidad
           </button>
         }
       />
@@ -5306,7 +5306,7 @@ const OrganizationView = ({ structure, session, refreshData }) => {
             <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className="bg-white rounded-[40px] w-full max-w-lg shadow-2xl overflow-hidden max-h-[90vh] flex flex-col">
               <div className="p-5 md:p-8 border-b border-slate-100 flex items-center justify-between shrink-0">
                 <div>
-                  <h3 className="text-2xl font-black tracking-tight text-slate-900">{editingNode ? 'Editar Nodo' : 'Nuevo Nodo'}</h3>
+                  <h3 className="text-2xl font-black tracking-tight text-slate-900">{editingNode ? 'Editar Unidad' : 'Nueva Unidad'}</h3>
                   <p className="text-slate-400 font-bold text-xs mt-1">Configuración de jerarquía y propiedades</p>
                 </div>
                 <button onClick={() => setModalOpen(false)} className="w-10 h-10 bg-slate-50 text-slate-400 rounded-2xl flex items-center justify-center hover:bg-slate-100 hover:text-slate-700 transition-colors"><X size={20} /></button>
