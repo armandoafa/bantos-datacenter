@@ -1533,7 +1533,7 @@ const ClientModal = ({ isOpen, onClose, client, onSave, onGenerateWallet, orgStr
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 gap-4">
                 <div>
                   <label className="block text-xs font-black uppercase text-slate-500 tracking-wider mb-2">Nº Cliente</label>
                   <input 
@@ -1541,17 +1541,6 @@ const ClientModal = ({ isOpen, onClose, client, onSave, onGenerateWallet, orgStr
                     placeholder="Ej. C431857491" 
                     value={formData.client_number} 
                     onChange={(e) => setFormData({ ...formData, client_number: e.target.value })} 
-                    className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl p-3.5 font-bold text-slate-800 outline-none focus:border-blue-600 transition-all text-sm" 
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-black uppercase text-slate-500 tracking-wider mb-2">External ID</label>
-                  <input 
-                    type="text" 
-                    placeholder="Ej. ID externo n/a" 
-                    value={formData.external_id} 
-                    onChange={(e) => setFormData({ ...formData, external_id: e.target.value })} 
                     className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl p-3.5 font-bold text-slate-800 outline-none focus:border-blue-600 transition-all text-sm" 
                   />
                 </div>
