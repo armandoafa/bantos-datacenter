@@ -106,9 +106,14 @@ class BantosGatewayService {
     }
 
     // --- DYNAMICARDPAY v2 (Cobro con tarjeta tokenizada via iFrame) ---
-    // URL base diferente a la API privada: https://api.dynamicore.io/marketplace/apps/dynamicardpay/v2
-    get cardPayBaseUrl() {
+    // URL para el Paso 1 (Crear Cliente)
+    get cardPayMarketplaceBaseUrl() {
         return 'https://api.dynamicore.io/marketplace/apps/dynamicardpay/v2';
+    }
+
+    // URL para los Pasos 3 y 4 (Asignar y Cobrar)
+    get cardPayBaseUrl() {
+        return 'https://api.dynamicore.io/dynamicardpay/v2';
     }
 
     /**
@@ -134,11 +139,11 @@ class BantosGatewayService {
             phone:         customerData.phone,
             username:      customerData.username
         };
-        return this.requestCardPay('POST', '/customer/create', payload);
+        return this.requestCardPay('POST', '/customer/create', payload, {}, true); // true = usar marketplace URL
     }
 
-    async requestCardPay(method, path, data = null, params = {}) {
-        const baseUrl = this.cardPayBaseUrl;
+    async requestCardPay(method, path, data = null, params = {}, useMarketplaceUrl = false) {
+        const baseUrl = useMarketplaceUrl ? this.cardPayMarketplaceBaseUrl : this.cardPayBaseUrl;
         const queryString = Object.keys(params).length > 0 ? '?' + new URLSearchParams(params).toString() : '';
         const authHeader = this.generateAuthHeader(method, path, data, queryString, baseUrl);
         try {
