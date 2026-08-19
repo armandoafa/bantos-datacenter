@@ -111,6 +111,32 @@ class BantosGatewayService {
         return 'https://api.dynamicore.io/marketplace/apps/dynamicardpay/v2';
     }
 
+    /**
+     * Paso 1: Registrar cliente en DynamiCardPay
+     * POST https://api.dynamicore.io/marketplace/apps/dynamicardpay/v2/customer/create
+     * @param {object} customerData - { first_name, last_name, address_one, city, state, zipcode,
+     *   email, country, date_of_birth (DD/MM), last4ssn, phone, username }
+     * @returns {Promise} { status, message: { id (customer_id), first_name, last_name, email,
+     *   phone, status, created_at, ... } }
+     */
+    async createCardPayCustomer(customerData) {
+        const payload = {
+            first_name:    customerData.first_name,
+            last_name:     customerData.last_name,
+            address_one:   customerData.address_one   || '',
+            city:          customerData.city           || '',
+            state:         customerData.state          || '',
+            zipcode:       customerData.zipcode        || '',
+            email:         customerData.email,
+            country:       customerData.country        || 'Mexico',
+            date_of_birth: customerData.date_of_birth  || '',
+            last4ssn:      customerData.last4ssn        || '',
+            phone:         customerData.phone,
+            username:      customerData.username
+        };
+        return this.requestCardPay('POST', '/customer/create', payload);
+    }
+
     async requestCardPay(method, path, data = null, params = {}) {
         const baseUrl = this.cardPayBaseUrl;
         const queryString = Object.keys(params).length > 0 ? '?' + new URLSearchParams(params).toString() : '';

@@ -49,26 +49,25 @@ export default function PaymentCardForm({ amount, clientId }) {
 
     // Escuchar el evento de tokenización (mensaje desde el iframe de Dynamicore)
     const handleMessage = async (event) => {
-      console.log('📨 [DEBUG] Recibido mensaje window.message:', event.data);
       if (!event.data) return;
 
       let tokenId = null;
 
       if (typeof event.data === 'object' && event.data.type === 'DYNAMICORE_TOKEN') {
         tokenId = event.data.token_id || event.data.token;
-        console.log('✅ [DEBUG] Token extraído desde objeto DYNAMICORE_TOKEN:', tokenId);
       } else if (typeof event.data === 'string' && event.data.includes('TOKEN:')) {
         const match = event.data.match(/TOKEN:\s*([a-zA-Z0-9-]+)/);
-        if (match) {
-          tokenId = match[1];
-          console.log('✅ [DEBUG] Token extraído desde string regex:', tokenId);
-        }
+        if (match) tokenId = match[1];
       }
 
       if (tokenId) {
+        console.log('\n═══════════════════════════════════════════════════');
+        console.log('🟧 [WEBVIEW PASO 2] Token recibido desde iframe (Pinpeo/Dynamicore)');
+        console.log('  ⬅️  token_id:', tokenId);
+        console.log('═══════════════════════════════════════════════════\n');
         processPayment(tokenId);
       } else {
-        console.warn('⚠️ [DEBUG] No se encontró tokenId en el mensaje.');
+        console.warn('⚠️ [PASO 2] Mensaje recibido sin token_id reconocible:', event.data);
       }
     };
 
@@ -102,51 +101,56 @@ export default function PaymentCardForm({ amount, clientId }) {
     try {
       setLoading(true);
       setError(null);
-      console.group('💸 [DEBUG] processPayment (Backend Flow)');
-      console.log('Token ID recibido:', tokenId);
-      
+
       const baseURL = import.meta.env.VITE_API_URL || 'https://bantos.cloud/datacenter-api/webview';
 
       // Paso 3: Asignar tarjeta al cliente → obtener payment_method_id real (message.id)
       const assignPayload = { customer_id: clientId, token_id: tokenId };
-      console.log('➡️ [REQ 1] POST /card-payments/assign-card | Payload:', assignPayload);
+      console.log('\n═══════════════════════════════════════════════════');
+      console.log('🟩 [WEBVIEW PASO 3] POST /card-payments/assign-card');
+      console.log('  ➡️  REQ payload:', JSON.stringify(assignPayload, null, 2));
       const res1 = await axios.post(`${baseURL}/card-payments/assign-card`, assignPayload);
-      console.log('⬅️ [RES 1] Status:', res1.status, '| Data:', res1.data);
+      console.log('  ⬅️  RES status:', res1.status);
+      console.log('  ⬅️  RES data:', JSON.stringify(res1.data, null, 2));
+      console.log('═══════════════════════════════════════════════════\n');
 
       // Usar el payment_method_id real del Paso 3 (no el token_id directamente)
       const paymentMethodId = res1.data.payment_method_id || tokenId;
-      console.log('💳 [DEBUG] payment_method_id para el cargo:', paymentMethodId);
 
       // Paso 4: Ejecutar el cargo directo con el payment_method correcto
       const transPayload = { customer_id: clientId, payment_method: paymentMethodId, amount: parseFloat(amount) };
-      console.log('➡️ [REQ 2] POST /card-payments/transactions | Payload:', transPayload);
+      console.log('\n═══════════════════════════════════════════════════');
+      console.log('🟨 [WEBVIEW PASO 4] POST /card-payments/transactions');
+      console.log('  ➡️  REQ payload:', JSON.stringify(transPayload, null, 2));
       const res2 = await axios.post(`${baseURL}/card-payments/transactions`, transPayload);
-      console.log('⬅️ [RES 2] Status:', res2.status, '| Data:', res2.data);
-
-      console.groupEnd();
+      console.log('  ⬅️  RES status:', res2.status);
+      console.log('  ⬅️  RES data:', JSON.stringify(res2.data, null, 2));
+      console.log('═══════════════════════════════════════════════════\n');
 
       // 3-D Secure: redirigir al challenge del banco emisor si existe redirection_url
       if (res2.data.redirection_url) {
-        console.log('🔐 [DEBUG] Redirigiendo al challenge 3DS:', res2.data.redirection_url);
+        console.log('🔐 [PASO 4] Redirigiendo al challenge 3DS:', res2.data.redirection_url);
         window.location.href = res2.data.redirection_url;
-        return; // El flujo continúa en accept_url / cancel_url (https://payment.bantos.cloud)
+        return;
       }
 
       setSuccess(true);
     } catch (err) {
-      console.groupEnd();
-      console.error('❌ [DEBUG] Error procesando pago:', err);
+      console.error('\n═══════════════════════════════════════════════════');
+      console.error('❌ [WEBVIEW PAGO] Error procesando pago:', err.message);
       if (err.response) {
-        console.error('Data del backend:', err.response.data);
-        console.error('Status:', err.response.status);
+        console.error('  Status:', err.response.status);
+        console.error('  Data:', JSON.stringify(err.response.data, null, 2));
       } else if (err.request) {
-        console.error('Request no tuvo respuesta:', err.request);
+        console.error('  Request sin respuesta:', err.request);
       }
+      console.error('═══════════════════════════════════════════════════\n');
       setError('Hubo un error al procesar tu pago. Verifica los fondos o intenta con otra tarjeta.');
     } finally {
       setLoading(false);
     }
   };
+
 
   const handleTokenize = () => {
     setLoading(true);

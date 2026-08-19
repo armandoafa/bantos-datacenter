@@ -3092,20 +3092,108 @@ app.post('/api/webview/validate-device', async (req, res) => {
   }
 });
 
+// --- PASO 1 DE 4: Registrar cliente en DynamiCardPay ---
+// Crea el cliente en Dynamicore y guarda el customer_id (message.id) localmente.
+// Con idempotencia: si el mismo username o email ya fue registrado, devuelve el ID existente.
+app.post('/api/webview/card-payments/create-customer', async (req, res) => {
+  const {
+    first_name, last_name, address_one, city, state,
+    zipcode, email, country, date_of_birth, last4ssn, phone, username
+  } = req.body;
+
+  console.log('\n═══════════════════════════════════════════════════');
+  console.log('🟦 [WEBVIEW PASO 1] POST /card-payments/create-customer');
+  console.log('  ➡️  REQ body:', JSON.stringify({
+    first_name, last_name, email, phone, username,
+    address_one, city, state, zipcode, country, date_of_birth,
+    last4ssn: last4ssn ? '****' : undefined
+  }, null, 2));
+
+  if (!first_name || !last_name || !email || !phone || !username) {
+    const errBody = { success: false, message: 'Campos requeridos: first_name, last_name, email, phone, username' };
+    console.log('  ❌ ERR validación:', JSON.stringify(errBody));
+    return res.status(400).json(errBody);
+  }
+
+  try {
+    // Idempotencia: verificar si el cliente ya existe localmente
+    const [existing] = await pool.query(
+      'SELECT customer_id FROM webview_customers WHERE username = ? OR email = ? LIMIT 1',
+      [username, email]
+    );
+
+    if (existing.length > 0) {
+      const customerId = existing[0].customer_id;
+      const cached = { success: true, customer_id: customerId, from_cache: true };
+      console.log('  💾 CACHE HIT — cliente ya registrado');
+      console.log('  ⬅️  RES:', JSON.stringify(cached));
+      console.log('═══════════════════════════════════════════════════\n');
+      return res.json(cached);
+    }
+
+    // Llamar al Paso 1 de la guía: POST /customer/create
+    console.log(`  🌐 Llamando Dynamicore POST /customer/create para: ${email}`);
+    const result = await dynamicore.createCardPayCustomer({
+      first_name, last_name, address_one, city, state,
+      zipcode, email, country, date_of_birth, last4ssn, phone, username
+    });
+    console.log('  ⬅️  Dynamicore RAW response:', JSON.stringify(result, null, 2));
+
+    const customerId = result?.message?.id;
+    if (!customerId) {
+      throw new Error('Dynamicore no devolvió un customer_id válido en message.id');
+    }
+
+    // Persistir localmente para idempotencia futura
+    try {
+      await pool.query(
+        `INSERT INTO webview_customers
+           (customer_id, username, email, first_name, last_name, phone)
+         VALUES (?, ?, ?, ?, ?, ?)
+         ON DUPLICATE KEY UPDATE customer_id = VALUES(customer_id)`,
+        [customerId, username, email, first_name, last_name, phone]
+      );
+      console.log('  💾 Cliente persistido en BD local.');
+    } catch (dbErr) {
+      console.warn('  ⚠️  No se pudo persistir en BD local:', dbErr.message);
+    }
+
+    const resBody = { success: true, customer_id: customerId, from_cache: false };
+    console.log('  ⬅️  RES:', JSON.stringify(resBody));
+    console.log('═══════════════════════════════════════════════════\n');
+    return res.json(resBody);
+
+  } catch (error) {
+    const errDetail = error.response?.data || error.message;
+    console.error('  ❌ ERR Dynamicore:', JSON.stringify(errDetail, null, 2));
+    console.log('═══════════════════════════════════════════════════\n');
+    return res.status(400).json({
+      success: false,
+      error: error.response?.data?.message || 'Error al registrar el cliente en Dynamicore'
+    });
+  }
+});
+
 app.post('/api/webview/card-payments/assign-card', async (req, res) => {
   const { customer_id, token_id } = req.body;
-  console.log(`>>> [WEBVIEW CARD] Asignando tarjeta ${token_id} a cliente ${customer_id}`);
+
+  console.log('\n═══════════════════════════════════════════════════');
+  console.log('🟩 [WEBVIEW PASO 3] POST /card-payments/assign-card');
+  console.log('  ➡️  REQ body:', JSON.stringify({ customer_id, token_id }, null, 2));
+
   try {
     const result = await dynamicore.assignCardToCustomer(customer_id, token_id);
+    console.log('  ⬅️  Dynamicore RAW response:', JSON.stringify(result, null, 2));
+
     const paymentMethodId = result?.message?.id;
-    console.log(`>>> [WEBVIEW CARD] Tarjeta asignada. payment_method_id: ${paymentMethodId}`);
-    res.json({
-      success: true,
-      payment_method_id: paymentMethodId,
-      data: result.message
-    });
+    const resBody = { success: true, payment_method_id: paymentMethodId, data: result.message };
+    console.log('  ⬅️  RES:', JSON.stringify(resBody));
+    console.log('═══════════════════════════════════════════════════\n');
+    res.json(resBody);
   } catch (error) {
-    console.error('[WEBVIEW CARD] Error asignando tarjeta:', error.response?.data || error.message);
+    const errDetail = error.response?.data || error.message;
+    console.error('  ❌ ERR Dynamicore:', JSON.stringify(errDetail, null, 2));
+    console.log('═══════════════════════════════════════════════════\n');
     res.status(400).json({
       success: false,
       error: error.response?.data?.message || 'Error al asignar la tarjeta al cliente'
@@ -3115,20 +3203,25 @@ app.post('/api/webview/card-payments/assign-card', async (req, res) => {
 
 app.post('/api/webview/card-payments/transactions', async (req, res) => {
   const { customer_id, payment_method, amount } = req.body;
-  console.log(`>>> [WEBVIEW CARD] Procesando cargo de $${amount} para cliente ${customer_id} con método ${payment_method}`);
-  try {
-    const chargeResult = await dynamicore.directCharge({
-      payment_method,
-      customer_id,
-      amount: parseFloat(amount),
-      sc: 0,
-      accept_url: 'https://payment.bantos.cloud',
-      cancel_url: 'https://payment.bantos.cloud'
-    });
 
-    const externalId = chargeResult?.message?.external_id;
+  console.log('\n═══════════════════════════════════════════════════');
+  console.log('🟨 [WEBVIEW PASO 4] POST /card-payments/transactions');
+  const chargePayload = {
+    payment_method,
+    customer_id,
+    amount: parseFloat(amount),
+    sc: 0,
+    accept_url: 'https://payment.bantos.cloud',
+    cancel_url: 'https://payment.bantos.cloud'
+  };
+  console.log('  ➡️  REQ body (hacia Dynamicore):', JSON.stringify(chargePayload, null, 2));
+
+  try {
+    const chargeResult = await dynamicore.directCharge(chargePayload);
+    console.log('  ⬅️  Dynamicore RAW response:', JSON.stringify(chargeResult, null, 2));
+
+    const externalId     = chargeResult?.message?.external_id;
     const redirectionUrl = chargeResult?.message?.redirection_url;
-    console.log(`>>> [WEBVIEW CARD] Cargo iniciado. external_id: ${externalId}`);
 
     // Registrar en BD local (no crítico si falla)
     try {
@@ -3137,20 +3230,22 @@ app.post('/api/webview/card-payments/transactions', async (req, res) => {
         `INSERT INTO payments (
           upya_id, transaction_id, tenant_id, contract_id, client_id, amount, method, status, payment_date
         ) VALUES (?, ?, ?, ?, ?, ?, 'Tarjeta (Dynamicore)', 'PENDING_3DS', NOW())`,
-        [payId, `TX-${payId}`, 'c-romel', 'CTR-WEBVIEW-01', customer_id || 'CLI-001', amount || 0]
+        [payId, `TX-${payId}`, 'c-romel', 'CTR-WEBVIEW-01', customer_id, amount || 0]
       );
+      console.log(`  💾 Pago registrado en BD local. payId: ${payId}`);
     } catch (dbErr) {
-      console.warn('[WEBVIEW CARD] No se pudo registrar en BD local:', dbErr.message);
+      console.warn('  ⚠️  No se pudo registrar en BD local:', dbErr.message);
     }
 
-    res.json({
-      success: true,
-      external_id: externalId,
-      redirection_url: redirectionUrl,
-      status: 'PENDING_3DS'
-    });
+    const resBody = { success: true, external_id: externalId, redirection_url: redirectionUrl, status: 'PENDING_3DS' };
+    console.log('  ⬅️  RES:', JSON.stringify(resBody));
+    console.log('  🔐 3DS redirection_url:', redirectionUrl || '(ninguna — pago directo)');
+    console.log('═══════════════════════════════════════════════════\n');
+    res.json(resBody);
   } catch (error) {
-    console.error('[WEBVIEW CARD] Error procesando cargo:', error.response?.data || error.message);
+    const errDetail = error.response?.data || error.message;
+    console.error('  ❌ ERR Dynamicore:', JSON.stringify(errDetail, null, 2));
+    console.log('═══════════════════════════════════════════════════\n');
     res.status(400).json({
       success: false,
       error: error.response?.data?.message || 'Error al procesar el cargo de la tarjeta'
@@ -3546,4 +3641,28 @@ app.post('/api/insight/trustonic-sync', async (req, res) => {
   }
 });
 
-app.listen(PORT, () => console.log(`Bantos Data Center API → puerto ${PORT}`));
+app.listen(PORT, async () => {
+  console.log(`Bantos Data Center API → puerto ${PORT}`);
+
+  // Crear tabla de idempotencia para clientes del webview de pagos
+  try {
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS webview_customers (
+        id            INT AUTO_INCREMENT PRIMARY KEY,
+        customer_id   VARCHAR(255) NOT NULL,
+        username      VARCHAR(255) NOT NULL,
+        email         VARCHAR(255) NOT NULL,
+        first_name    VARCHAR(255),
+        last_name     VARCHAR(255),
+        phone         VARCHAR(50),
+        created_at    DATETIME DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE KEY uq_username (username),
+        UNIQUE KEY uq_email    (email)
+      )
+    `);
+    console.log('>>> [DB] Tabla webview_customers lista.');
+  } catch (e) {
+    console.warn('>>> [DB] No se pudo crear tabla webview_customers:', e.message);
+  }
+});
+
