@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { CreditCard, Lock, RefreshCw, AlertCircle } from 'lucide-react';
 import axios from 'axios';
 
@@ -9,6 +9,15 @@ export default function PaymentCardForm({ amount, clientId }) {
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(false);
   
+  // Usar refs para evitar stale closures en el event listener sin re-montar el iframe
+  const amountRef = React.useRef(amount);
+  const clientIdRef = React.useRef(clientId);
+  
+  useEffect(() => {
+    amountRef.current = amount;
+    clientIdRef.current = clientId;
+  }, [amount, clientId]);
+
   // NOTE: En un entorno de producción, las llaves deben venir de una configuración central o variables de entorno.
   const dynamicorePublicKey = import.meta.env.VITE_DYNAMICORE_PUBLIC_KEY || 'REEMPLAZAR_PUBLIC_KEY';
   const dynamicoreKeyId = import.meta.env.VITE_DYNAMICORE_KEY_ID || 'REEMPLAZAR_KEY_ID';
@@ -105,7 +114,8 @@ export default function PaymentCardForm({ amount, clientId }) {
       const baseURL = import.meta.env.VITE_API_URL || 'https://bantos.cloud/datacenter-api/webview';
 
       // Paso 3: Asignar tarjeta al cliente → obtener payment_method_id real (message.id)
-      const assignPayload = { customer_id: clientId, token_id: tokenId };
+      const currentClientId = clientIdRef.current;
+      const assignPayload = { customer_id: currentClientId, token_id: tokenId };
       console.log('\n═══════════════════════════════════════════════════');
       console.log('🟩 [WEBVIEW PASO 3] POST /card-payments/assign-card');
       console.log('  ➡️  REQ payload:', JSON.stringify(assignPayload, null, 2));
@@ -118,7 +128,9 @@ export default function PaymentCardForm({ amount, clientId }) {
       const paymentMethodId = res1.data.payment_method_id || tokenId;
 
       // Paso 4: Ejecutar el cargo directo con el payment_method correcto
-      const transPayload = { customer_id: clientId, payment_method: paymentMethodId, amount: parseFloat(amount) };
+      const currentAmount = parseFloat(amountRef.current);
+      const currentClientId = clientIdRef.current;
+      const transPayload = { customer_id: currentClientId, payment_method: paymentMethodId, amount: currentAmount };
       console.log('\n═══════════════════════════════════════════════════');
       console.log('🟨 [WEBVIEW PASO 4] POST /card-payments/transactions');
       console.log('  ➡️  REQ payload:', JSON.stringify(transPayload, null, 2));
