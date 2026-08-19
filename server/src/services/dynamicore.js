@@ -153,7 +153,16 @@ class BantosGatewayService {
             if (data && method !== 'GET') config.data = data;
             console.log(`>>> [DynamiCardPay Request] ${method} ${config.url}`, JSON.stringify(data));
             const response = await axios(config);
-            return response.data;
+            const resData = response.data;
+
+            // Interceptar "falsos positivos" HTTP 200 que contienen errores en el JSON
+            if (resData?.status === 'error' || resData?.message?.status === 'error' || resData?.data?.status === 'error') {
+                const nestedMsg = resData?.message?.message?.message || resData?.message?.message || resData?.data?.message?.message || resData?.message || 'Error interno reportado por Dynamicore';
+                const errString = typeof nestedMsg === 'string' ? nestedMsg : JSON.stringify(nestedMsg);
+                throw new Error(errString);
+            }
+
+            return resData;
         } catch (error) {
             console.error(`[DynamiCardPay Error] ${method} ${baseUrl}${path}:`, error.response?.data || error.message);
             if (error.response?.data) console.error('Full Error Response:', JSON.stringify(error.response.data));
