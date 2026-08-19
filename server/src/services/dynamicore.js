@@ -151,11 +151,11 @@ class BantosGatewayService {
                 }
             };
             if (data && method !== 'GET') config.data = data;
-            console.log(`>>> [DynamiCardPay Request] ${method} ${path}`, JSON.stringify(data));
+            console.log(`>>> [DynamiCardPay Request] ${method} ${config.url}`, JSON.stringify(data));
             const response = await axios(config);
             return response.data;
         } catch (error) {
-            console.error(`[DynamiCardPay Error] ${method} ${path}:`, error.response?.data || error.message);
+            console.error(`[DynamiCardPay Error] ${method} ${baseUrl}${path}:`, error.response?.data || error.message);
             if (error.response?.data) console.error('Full Error Response:', JSON.stringify(error.response.data));
             throw error;
         }
