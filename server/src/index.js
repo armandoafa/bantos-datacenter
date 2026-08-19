@@ -3185,6 +3185,11 @@ app.post('/api/webview/card-payments/assign-card', async (req, res) => {
     const result = await dynamicore.assignCardToCustomer(customer_id, token_id);
     console.log('  ⬅️  Dynamicore RAW response:', JSON.stringify(result, null, 2));
 
+    if (result.status === 'error' || result?.data?.status === 'error') {
+      const errMsg = result?.message?.message || result?.data?.message?.message || 'Error desconocido de Dynamicore';
+      throw new Error(`Dynamicore API Error: ${errMsg}`);
+    }
+
     const paymentMethodId = result?.message?.id;
     const resBody = { success: true, payment_method_id: paymentMethodId, data: result.message };
     console.log('  ⬅️  RES:', JSON.stringify(resBody));
