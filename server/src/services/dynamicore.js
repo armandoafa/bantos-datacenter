@@ -186,13 +186,15 @@ class BantosGatewayService {
     }
 
     /**
-     * Paso 4: Generar cobro con cargo directo (incluye 3-D Secure)
-     * POST https://api.dynamicore.io/marketplace/apps/dynamicardpay/v2/transactions/directCharge
-     * @param {object} chargeData - { payment_method, customer_id, amount, sc, accept_url, cancel_url }
+     * Paso 4: Ejecutar cargo
+     * POST https://api.dynamicore.io/marketplace/apps/dynamicardpay/v2/transactions/ccTransaction
+     * @param {Object} payload - { payment_method, customer_id, amount, sc, accept_url, cancel_url }
      * @returns {Promise} { status, message: { external_id, date, client, message, redirection_url } }
      */
-    async directCharge(chargeData) {
-        return this.requestCardPay('POST', '/transactions/directCharge', chargeData);
+    async directCharge(payload) {
+        // En base a la arquitectura actual (donde el cliente se crea como app de marketplace),
+        // este endpoint también DEBE usar el prefijo base del marketplace, al igual que los demás pasos.
+        return this.requestCardPay('POST', '/transactions/ccTransaction', payload);
     }
 }
 
