@@ -129,7 +129,6 @@ export default function PaymentCardForm({ amount, clientId }) {
 
       // Paso 4: Ejecutar el cargo directo con el payment_method correcto
       const currentAmount = parseFloat(amountRef.current);
-      const currentClientId = clientIdRef.current;
       const transPayload = { customer_id: currentClientId, payment_method: paymentMethodId, amount: currentAmount };
       console.log('\n═══════════════════════════════════════════════════');
       console.log('🟨 [WEBVIEW PASO 4] POST /card-payments/transactions');
