@@ -17,6 +17,10 @@ export default function ConfigSetup({ session }) {
     whitelabel_name: '',
     whitelabel_logo: ''
   });
+  const [saleConfigData, setSaleConfigData] = useState({
+    upfront_type: 'Monto',
+    interest_type: 'Porciento'
+  });
   const [loading, setLoading] = useState(false);
   const [successMsg, setSuccessMsg] = useState('');
 
@@ -41,6 +45,10 @@ export default function ConfigSetup({ session }) {
           whitelabel_name: res.data.whitelabel_name || '',
           whitelabel_logo: res.data.whitelabel_logo || ''
         });
+        setSaleConfigData({
+          upfront_type: res.data.upfront_type || 'Monto',
+          interest_type: res.data.interest_type || 'Porciento'
+        });
       }
     } catch (e) {
       console.error(e);
@@ -62,6 +70,24 @@ export default function ConfigSetup({ session }) {
     } catch (err) {
       console.error('Error saving whitelabel data:', err);
       alert('Error guardando la personalización: ' + err.message);
+    }
+    setLoading(false);
+  };
+
+  const handleSaveSaleConfig = async () => {
+    setLoading(true);
+    setSuccessMsg('');
+    try {
+      await axios.post(`${API}/backoffice/settings`, {
+        tenantId: session.tenantId,
+        ...saleConfigData
+      });
+      window.dispatchEvent(new Event('whitelabel-updated')); // triggers App.jsx reload of global settings
+      setSuccessMsg('Configuración de venta guardada exitosamente.');
+      setTimeout(() => setSuccessMsg(''), 3000);
+    } catch (err) {
+      console.error('Error saving sale config:', err);
+      alert('Error guardando la configuración de venta: ' + err.message);
     }
     setLoading(false);
   };
@@ -162,16 +188,63 @@ export default function ConfigSetup({ session }) {
             </div>
           </div>
         </div>
-        <div className="p-6 border-t border-slate-100 bg-slate-50/50 flex items-center justify-between">
-          <div>
-            {successMsg === 'Personalización guardada exitosamente.' && <span className="text-emerald-600 font-bold text-sm">{successMsg}</span>}
-          </div>
+        <div className="p-6 md:p-8 bg-slate-50 border-t border-slate-100 flex justify-end">
           <button 
+            type="button" 
             onClick={handleSaveWhitelabel}
             disabled={loading}
-            className="px-6 py-2.5 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 shadow-lg shadow-blue-600/30 transition-all disabled:opacity-50 flex items-center gap-2"
+            className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3.5 rounded-2xl font-black text-sm uppercase tracking-widest shadow-xl shadow-blue-600/30 transition-all active:scale-95 flex items-center gap-2 disabled:opacity-50"
           >
             <Save size={18} /> {loading ? 'Guardando...' : 'Guardar Personalización'}
+          </button>
+        </div>
+      </div>
+
+      {/* Configuración de Venta */}
+      <div className="bg-white rounded-[24px] border-2 border-slate-100 shadow-sm overflow-hidden mb-6">
+        <div className="p-6 border-b border-slate-100 bg-slate-50/50 flex items-center gap-3">
+          <Settings className="text-slate-400" size={20} />
+          <h3 className="font-bold text-slate-800">Configuración de Venta</h3>
+        </div>
+        <div className="p-6 md:p-8 space-y-6">
+          <p className="text-sm text-slate-500 mb-2">
+            Define cómo se expresarán y calcularán el enganche y el interés en los planes de financiamiento.
+          </p>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-1.5">
+              <label className="text-[11px] font-black uppercase tracking-widest text-slate-400 ml-1">Tipo de Enganche</label>
+              <select 
+                className="w-full bg-slate-50 border-2 border-slate-100 rounded-xl py-3.5 px-5 font-bold text-slate-800 focus:border-blue-500 outline-none transition-all appearance-none"
+                value={saleConfigData.upfront_type}
+                onChange={e => setSaleConfigData({...saleConfigData, upfront_type: e.target.value})}
+              >
+                <option value="Monto">Monto Fijo ($)</option>
+                <option value="Porciento">Porcentaje (%)</option>
+              </select>
+            </div>
+            
+            <div className="space-y-1.5">
+              <label className="text-[11px] font-black uppercase tracking-widest text-slate-400 ml-1">Tipo de Interés</label>
+              <select 
+                className="w-full bg-slate-50 border-2 border-slate-100 rounded-xl py-3.5 px-5 font-bold text-slate-800 focus:border-blue-500 outline-none transition-all appearance-none"
+                value={saleConfigData.interest_type}
+                onChange={e => setSaleConfigData({...saleConfigData, interest_type: e.target.value})}
+              >
+                <option value="Porciento">Porcentaje (%)</option>
+                <option value="Monto">Monto Fijo ($)</option>
+              </select>
+            </div>
+          </div>
+        </div>
+        <div className="p-6 md:p-8 bg-slate-50 border-t border-slate-100 flex justify-end">
+          <button 
+            type="button" 
+            onClick={handleSaveSaleConfig}
+            disabled={loading}
+            className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3.5 rounded-2xl font-black text-sm uppercase tracking-widest shadow-xl shadow-blue-600/30 transition-all active:scale-95 flex items-center gap-2 disabled:opacity-50"
+          >
+            <Save size={18} /> {loading ? 'Guardando...' : 'Guardar Configuración de Venta'}
           </button>
         </div>
       </div>

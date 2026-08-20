@@ -682,7 +682,7 @@ const ProductModal = ({ isOpen, onClose, product, onSave, session, inventory = [
 };
 
 // --- MODAL DE TÉRMINOS ---
-const TermModal = ({ isOpen, onClose, term, onSave }) => {
+const TermModal = ({ isOpen, onClose, term, onSave, globalSettings }) => {
   const [formData, setFormData] = useState({
     type: 'Contado', name: '', status: 'Active', description: '', upfront_percentage: '', interest_percentage: '', frequency_days: 7, installments_count: 1, credit_period_months: 12, ...term
   });
@@ -745,11 +745,11 @@ const TermModal = ({ isOpen, onClose, term, onSave }) => {
             {formData.type === 'Crédito' && (
               <>
                 <div className="space-y-1.5">
-                  <label className="text-[11px] font-black uppercase tracking-widest text-slate-400 ml-1">Enganche ($)</label>
+                  <label className="text-[11px] font-black uppercase tracking-widest text-slate-400 ml-1">Enganche ({globalSettings?.upfront_type === 'Porciento' ? '%' : '$'})</label>
                   <input type="text" className="w-full bg-slate-50 border-2 border-slate-100 rounded-xl py-3.5 px-5 font-bold text-slate-800 focus:border-blue-600 outline-none transition-all text-base" value={formData.upfront_percentage} onChange={e => setFormData({...formData, upfront_percentage: e.target.value})} />
                 </div>
                 <div className="space-y-1.5">
-                  <label className="text-[11px] font-black uppercase tracking-widest text-slate-400 ml-1">% Interés</label>
+                  <label className="text-[11px] font-black uppercase tracking-widest text-slate-400 ml-1">Interés ({globalSettings?.interest_type === 'Monto' ? '$' : '%'})</label>
                   <input type="text" className="w-full bg-slate-50 border-2 border-slate-100 rounded-xl py-3.5 px-5 font-bold text-slate-800 focus:border-blue-600 outline-none transition-all text-base" value={formData.interest_percentage || ''} onChange={e => setFormData({...formData, interest_percentage: e.target.value})} />
                 </div>
                 <div className="space-y-1.5">
@@ -6330,7 +6330,11 @@ const ActionFormView = ({ actionType, prefillData, onBack, onSaveDraft, deals, p
                       const rawUpfront = deal.upfront_percentage;
                       const parsedUpfront = rawUpfront !== null && rawUpfront !== '' ? parseFloat(rawUpfront) : NaN;
                       if (!isNaN(parsedUpfront)) {
-                        upfront = parsedUpfront;
+                        if (globalSettings?.upfront_type === 'Porciento') {
+                          upfront = totalCost * (parsedUpfront / 100);
+                        } else {
+                          upfront = parsedUpfront;
+                        }
                       } else {
                         upfront = ['INSTALMENTS', 'ABONO', 'CRÉDITO', 'CREDITO'].includes(dealType) ? 0 : totalCost;
                       }
@@ -6338,7 +6342,14 @@ const ActionFormView = ({ actionType, prefillData, onBack, onSaveDraft, deals, p
                       if (['INSTALMENTS', 'ABONO', 'CRÉDITO', 'CREDITO'].includes(dealType)) {
                         const baseBalance = totalCost - upfront;
                         const interestPercentage = parseFloat(deal.interest_percentage) || 0;
-                        const interestAmount = baseBalance * (interestPercentage / 100);
+                        
+                        let interestAmount = 0;
+                        if (globalSettings?.interest_type === 'Monto') {
+                          interestAmount = interestPercentage;
+                        } else {
+                          interestAmount = baseBalance * (interestPercentage / 100);
+                        }
+                        
                         const balance = baseBalance + interestAmount;
                         
                         const installments = parseInt(deal.installments_count) || 1;
@@ -6355,7 +6366,11 @@ const ActionFormView = ({ actionType, prefillData, onBack, onSaveDraft, deals, p
                               <div>
                                 <p className="text-[11px] font-black uppercase tracking-widest text-blue-400 mb-1">Saldo a Financiar</p>
                                 <p className="text-2xl font-black text-blue-700">${balance.toFixed(2)}</p>
-                                {interestPercentage > 0 && <p className="text-xs font-bold text-blue-500 mt-1">(Incl. {interestPercentage}% de interés)</p>}
+                                {interestPercentage > 0 && (
+                                  <p className="text-xs font-bold text-blue-500 mt-1">
+                                    (Incl. {globalSettings?.interest_type === 'Monto' ? `$${interestPercentage}` : `${interestPercentage}%`} de interés)
+                                  </p>
+                                )}
                               </div>
                               <div>
                                 <p className="text-[11px] font-black uppercase tracking-widest text-blue-400 mb-1">Pago cada {deal.frequency_days || 7} días</p>
@@ -7268,6 +7283,7 @@ const App = () => {
   const [isRegistering, setIsRegistering] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [whitelabel, setWhitelabel] = useState(null);
+  const [globalSettings, setGlobalSettings] = useState(null);
 
   const fetchGlobalSettings = useCallback(async (tenantId) => {
     try {
@@ -7277,12 +7293,15 @@ const App = () => {
           whitelabel_name: res.data.whitelabel_name || '',
           whitelabel_logo: res.data.whitelabel_logo || ''
         });
+        setGlobalSettings(res.data);
       } else {
         setWhitelabel(null);
+        setGlobalSettings(null);
       }
     } catch (e) {
       console.error('Error fetching global settings:', e);
       setWhitelabel(null);
+      setGlobalSettings(null);
     }
   }, []);
 
@@ -8146,7 +8165,7 @@ const App = () => {
         </div>
 
         <ProductModal isOpen={modalState.open && modalState.type === 'product'} onClose={() => setModalState({ type: null, open: false, item: null })} onSave={handleSaveProduct} product={modalState.item} inventory={data.inventory} products={data.products} users={data.users} onAddInventory={handleAddInventory} onEditInventory={handleEditInventory} refreshData={refreshData} session={session} />
-        <TermModal isOpen={modalState.open && modalState.type === 'term'} onClose={() => setModalState({ type: null, open: false, item: null })} onSave={handleSaveTerm} term={modalState.item} />
+        <TermModal isOpen={modalState.open && modalState.type === 'term'} onClose={() => setModalState({ type: null, open: false, item: null })} onSave={handleSaveTerm} term={modalState.item} globalSettings={globalSettings} />
         <DataCollectionModal isOpen={modalState.open && modalState.type === 'collection'} onClose={() => setModalState({ type: null, open: false, item: null })} onSave={handleSaveCollection} collection={modalState.item} />
         <ActionModal isOpen={modalState.open && modalState.type === 'action'} onClose={() => setModalState({ type: null, open: false, item: null })} onSave={handleSaveAction} action={modalState.item} />
         <PaymentModal isOpen={modalState.open && modalState.type === 'payment'} onClose={() => setModalState({ type: null, open: false, item: null })} onSave={handleSavePayment} payment={modalState.item} clients={data.clients} contracts={data.contracts} session={session} products={data.products} inventory={data.inventory} deals={data.paymentPlans} onOpenClientModal={() => setModalState({ type: 'client', open: true, item: null })} onSaveContract={handleSaveContract} />
