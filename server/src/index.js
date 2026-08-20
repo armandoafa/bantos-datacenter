@@ -2696,9 +2696,13 @@ app.get('/api/backoffice/products', async (req, res) => {
         return { ...prod, stock_available: inv ? inv.count : 0 };
       });
 
-      // Filter out out-of-stock products for specific stores
+      // Filter out out-of-stock products for specific stores, EXCEPT "Tienda Central"
       if (orgId) {
-        result = result.filter(prod => prod.stock_available > 0);
+        const [orgRows] = await pool.query('SELECT name FROM org_structure WHERE id = ?', [orgId]);
+        const isCentralStore = orgRows.length > 0 && orgRows[0].name.toUpperCase().includes('CENTRAL');
+        if (!isCentralStore) {
+          result = result.filter(prod => prod.stock_available > 0);
+        }
       }
       
       res.json(result);
