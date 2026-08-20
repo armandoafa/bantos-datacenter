@@ -4,20 +4,21 @@ async function migrate() {
   try {
     console.log('Connected to DB, running migration...');
     
-    try {
-      await pool.query("ALTER TABLE tenant_settings ADD COLUMN upfront_type VARCHAR(50) DEFAULT 'Monto'");
-      console.log('Added upfront_type column.');
-    } catch (e) {
-      if (e.code !== 'ER_DUP_FIELDNAME') console.log('upfront_type error:', e.message);
-      else console.log('upfront_type already exists.');
-    }
-    
-    try {
-      await pool.query("ALTER TABLE tenant_settings ADD COLUMN interest_type VARCHAR(50) DEFAULT 'Porciento'");
-      console.log('Added interest_type column.');
-    } catch (e) {
-      if (e.code !== 'ER_DUP_FIELDNAME') console.log('interest_type error:', e.message);
-      else console.log('interest_type already exists.');
+    const columns = [
+      "ALTER TABLE tenant_settings ADD COLUMN whitelabel_name VARCHAR(255) DEFAULT NULL",
+      "ALTER TABLE tenant_settings ADD COLUMN whitelabel_logo TEXT DEFAULT NULL",
+      "ALTER TABLE tenant_settings ADD COLUMN upfront_type VARCHAR(50) DEFAULT 'Monto'",
+      "ALTER TABLE tenant_settings ADD COLUMN interest_type VARCHAR(50) DEFAULT 'Porciento'"
+    ];
+
+    for (let q of columns) {
+      try {
+        await pool.query(q);
+        console.log('Success:', q);
+      } catch (e) {
+        if (e.code !== 'ER_DUP_FIELDNAME') console.log('error:', e.message);
+        else console.log('already exists for query:', q);
+      }
     }
     
     console.log('Migration complete.');
