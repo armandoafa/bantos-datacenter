@@ -684,7 +684,7 @@ const ProductModal = ({ isOpen, onClose, product, onSave, session, inventory = [
 // --- MODAL DE TÉRMINOS ---
 const TermModal = ({ isOpen, onClose, term, onSave }) => {
   const [formData, setFormData] = useState({
-    type: 'Contado', name: '', status: 'Active', description: '', upfront_percentage: '', interest_percentage: '', frequency_days: 7, installments_count: 1, ...term
+    type: 'Contado', name: '', status: 'Active', description: '', upfront_percentage: '', interest_percentage: '', frequency_days: 7, installments_count: 1, credit_period_months: 12, ...term
   });
   
   useEffect(() => {
@@ -694,22 +694,25 @@ const TermModal = ({ isOpen, onClose, term, onSave }) => {
       if (tType === 'INSTALMENTS' || tType === 'Abono' || tType === 'CRÉDITO') tType = 'Crédito';
       setFormData({ ...term, type: tType });
     }
-    else setFormData({ type: 'Contado', name: '', status: 'Active', description: '', upfront_percentage: '', interest_percentage: '', frequency_days: 7, installments_count: 1 });
+    else setFormData({ type: 'Contado', name: '', status: 'Active', description: '', upfront_percentage: '', interest_percentage: '', frequency_days: 7, installments_count: 1, credit_period_months: 12 });
   }, [term]);
 
   useEffect(() => {
     if (formData.type === 'Crédito' || formData.type === 'INSTALMENTS' || formData.type === 'Abono') {
       let iters = 1;
       const freq = parseInt(formData.frequency_days) || 7;
+      const period = parseInt(formData.credit_period_months) || 12;
       if (freq === 7) iters = 52;
       else if (freq === 15) iters = 24;
       else if (freq === 30) iters = 12;
       
+      iters = Math.round(iters * (period / 12));
+
       if (formData.installments_count !== iters) {
         setFormData(prev => ({ ...prev, installments_count: iters }));
       }
     }
-  }, [formData.frequency_days, formData.type]);
+  }, [formData.frequency_days, formData.type, formData.credit_period_months]);
 
   if (!isOpen) return null;
 
@@ -748,6 +751,12 @@ const TermModal = ({ isOpen, onClose, term, onSave }) => {
                 <div className="space-y-1.5">
                   <label className="text-[11px] font-black uppercase tracking-widest text-slate-400 ml-1">% Interés</label>
                   <input type="text" className="w-full bg-slate-50 border-2 border-slate-100 rounded-xl py-3.5 px-5 font-bold text-slate-800 focus:border-blue-600 outline-none transition-all text-base" value={formData.interest_percentage || ''} onChange={e => setFormData({...formData, interest_percentage: e.target.value})} />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-[11px] font-black uppercase tracking-widest text-slate-400 ml-1">Período (Meses)</label>
+                  <select className="w-full bg-slate-50 border-2 border-slate-100 rounded-xl py-3.5 px-5 font-bold text-slate-800 focus:border-blue-600 outline-none transition-all text-base appearance-none" value={formData.credit_period_months || 12} onChange={e => setFormData({...formData, credit_period_months: parseInt(e.target.value)})}>
+                    {[12, 18].map(t => <option key={t} value={t}>{t} meses</option>)}
+                  </select>
                 </div>
                 <div className="space-y-1.5">
                   <label className="text-[11px] font-black uppercase tracking-widest text-slate-400 ml-1">Frecuencia (Días)</label>
