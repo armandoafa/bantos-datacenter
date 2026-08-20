@@ -897,9 +897,10 @@ app.get('/api/backoffice/settings', async (req, res) => {
 });
 
 app.post('/api/backoffice/settings', async (req, res) => {
-  const { tenantId, whitelabel_name, whitelabel_logo, smtp_host, smtp_port, smtp_user, smtp_pass, smtp_secure, upfront_type, interest_type } = req.body;
-  if (!tenantId) return res.status(400).json({ error: 'tenantId is required' });
+  console.log('>>> Request: POST /api/backoffice/settings', req.body ? 'has body' : 'no body');
   try {
+    const { tenantId, whitelabel_name, whitelabel_logo, smtp_host, smtp_port, smtp_user, smtp_pass, smtp_secure, upfront_type, interest_type } = req.body || {};
+    if (!tenantId) return res.status(400).json({ error: 'tenantId is required' });
     const [existing] = await pool.query('SELECT tenant_id FROM tenant_settings WHERE tenant_id = ?', [tenantId]);
     if (existing.length > 0) {
       const updates = [];
