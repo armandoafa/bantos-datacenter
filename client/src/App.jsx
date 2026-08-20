@@ -8023,21 +8023,25 @@ const App = () => {
             >
               {session.role === 'admin' && <option value="">Global / Central</option>}
               <optgroup label="Tiendas y Organizaciones">
-                {data.orgStructure.map(o => (
+                {data.orgStructure.filter(o => o.type !== 'COUNTRY').map(o => (
                   <option key={`org_${o.id}`} value={`org_${o.id}`}>
-                    {o.type === 'COUNTRY' ? '🌎 ' : o.type === 'BRANCH' ? '🏢 ' : '🛒 '} {o.name}
+                    {o.type === 'BRANCH' ? '🏢 ' : '🛒 '} {o.name}
                   </option>
                 ))}
               </optgroup>
-              {data.users && data.users.filter(u => u.role !== 'admin').length > 0 && (
-                <optgroup label="Agentes / Usuarios">
-                  {data.users.filter(u => u.role !== 'admin').map(u => (
-                    <option key={`user_${u.id}`} value={`user_${u.id}`}>
-                      👤 {u.name || u.username} ({u.role})
-                    </option>
-                  ))}
-                </optgroup>
-              )}
+              {data.users && (() => {
+                const uniqueUsers = [...new Map(data.users.filter(u => u.global_role !== 'admin' && u.global_role !== 'superadmin').map(u => [u.id, u])).values()];
+                if (uniqueUsers.length === 0) return null;
+                return (
+                  <optgroup label="Agentes / Usuarios">
+                    {uniqueUsers.map(u => (
+                      <option key={`user_${u.id}`} value={`user_${u.id}`}>
+                        👤 {u.contact_name || u.username} ({u.global_role})
+                      </option>
+                    ))}
+                  </optgroup>
+                );
+              })()}
             </select>
             {activeScope && (
               <div className="mt-3 flex items-center gap-2 px-1">
