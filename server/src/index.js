@@ -881,7 +881,7 @@ app.get('/api/backoffice/settings', async (req, res) => {
   const { tenantId } = req.query;
   if (!tenantId) return res.status(400).json({ error: 'tenantId is required' });
   try {
-    const [rows] = await pool.query('SELECT whitelabel_name, whitelabel_logo, smtp_host, smtp_port, smtp_user, smtp_secure FROM tenant_settings WHERE tenant_id = ?', [tenantId]);
+    const [rows] = await pool.query('SELECT whitelabel_name, whitelabel_logo, smtp_host, smtp_port, smtp_user, smtp_secure, upfront_type, interest_type FROM tenant_settings WHERE tenant_id = ?', [tenantId]);
     if (rows.length > 0) {
       res.json(rows[0]);
     } else {
@@ -893,7 +893,7 @@ app.get('/api/backoffice/settings', async (req, res) => {
 });
 
 app.post('/api/backoffice/settings', async (req, res) => {
-  const { tenantId, whitelabel_name, whitelabel_logo, smtp_host, smtp_port, smtp_user, smtp_pass, smtp_secure } = req.body;
+  const { tenantId, whitelabel_name, whitelabel_logo, smtp_host, smtp_port, smtp_user, smtp_pass, smtp_secure, upfront_type, interest_type } = req.body;
   if (!tenantId) return res.status(400).json({ error: 'tenantId is required' });
   try {
     const [existing] = await pool.query('SELECT id FROM tenant_settings WHERE tenant_id = ?', [tenantId]);
@@ -907,6 +907,8 @@ app.post('/api/backoffice/settings', async (req, res) => {
       if (smtp_user !== undefined) { updates.push('smtp_user = ?'); values.push(smtp_user); }
       if (smtp_pass !== undefined) { updates.push('smtp_pass = ?'); values.push(smtp_pass); }
       if (smtp_secure !== undefined) { updates.push('smtp_secure = ?'); values.push(smtp_secure); }
+      if (upfront_type !== undefined) { updates.push('upfront_type = ?'); values.push(upfront_type); }
+      if (interest_type !== undefined) { updates.push('interest_type = ?'); values.push(interest_type); }
       
       if (updates.length > 0) {
         values.push(tenantId);
@@ -914,8 +916,8 @@ app.post('/api/backoffice/settings', async (req, res) => {
       }
     } else {
       await pool.query(
-        'INSERT INTO tenant_settings (tenant_id, whitelabel_name, whitelabel_logo, smtp_host, smtp_port, smtp_user, smtp_pass, smtp_secure) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-        [tenantId, whitelabel_name || null, whitelabel_logo || null, smtp_host || null, smtp_port || null, smtp_user || null, smtp_pass || null, smtp_secure !== undefined ? smtp_secure : true]
+        'INSERT INTO tenant_settings (tenant_id, whitelabel_name, whitelabel_logo, smtp_host, smtp_port, smtp_user, smtp_pass, smtp_secure, upfront_type, interest_type) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+        [tenantId, whitelabel_name || null, whitelabel_logo || null, smtp_host || null, smtp_port || null, smtp_user || null, smtp_pass || null, smtp_secure !== undefined ? smtp_secure : true, upfront_type || 'Monto', interest_type || 'Porciento']
       );
     }
     res.json({ success: true });
