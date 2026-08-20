@@ -4225,13 +4225,25 @@ const TrustonicActionModal = ({ isOpen, onClose, device, actionType, onConfirm, 
   );
 };
 
-const TrustonicDevicesView = ({ data, onSync, syncing, onEdit, onCreate, session, onRefresh }) => {
+const TrustonicDevicesView = ({ data, logs = [], onSync, syncing, onEdit, onCreate, session, onRefresh }) => {
   const { devices = [], summary = [] } = data;
   const [filters, setFilters] = useState({ imei: '', service: '', status: '', brand: '', model: '' });
   const [selectedDevice, setSelectedDevice] = useState(null);
   const [openMenuImei, setOpenMenuImei] = useState(null);
   const [actionModalState, setActionModalState] = useState({ open: false, device: null, actionType: null });
   const [executingAction, setExecutingAction] = useState(false);
+
+  const getExpirationText = (device) => {
+    if (logs && logs.length > 0) {
+      const deviceLogs = logs.filter(l => l.imei1 === device.imei1);
+      const logMatch = deviceLogs.find(l => l.comment && l.comment.toLowerCase().includes('hora de caducidad del dispositivo es'));
+      if (logMatch) {
+        const match = logMatch.comment.match(/hora de caducidad del dispositivo es (.+?)(?:\.|$)/i);
+        if (match) return match[1].trim();
+      }
+    }
+    return formatDate(device.expiration_date);
+  };
 
   // Cerrar menú emergente al hacer clic fuera
   useEffect(() => {
@@ -4553,7 +4565,7 @@ const TrustonicDevicesView = ({ data, onSync, syncing, onEdit, onCreate, session
             </td>
             <td className="px-8 py-5 font-black text-sm uppercase text-slate-800">{d.brand || '—'}</td>
             <td className="px-8 py-5 text-slate-600 font-bold text-sm">{d.model || '—'}</td>
-            <td className="px-8 py-5 text-xs text-slate-500 font-bold">{formatDate(d.expiration_date)}</td>
+            <td className="px-8 py-5 text-xs text-slate-500 font-bold max-w-[200px] leading-relaxed truncate whitespace-normal">{getExpirationText(d)}</td>
             <td className="px-8 py-5 text-xs text-slate-500 font-bold">{formatDate(d.last_connection)}</td>
             <td className="px-8 py-5">
               <div className="flex items-center gap-2">
@@ -4697,7 +4709,7 @@ const TrustonicDevicesView = ({ data, onSync, syncing, onEdit, onCreate, session
                 </div>
                 <div className="col-span-2">
                   <p className="text-[10px] font-black uppercase text-slate-400">Fecha de caducidad</p>
-                  <p>{formatDate(selectedDevice.expiration_date)}</p>
+                  <p>{getExpirationText(selectedDevice)}</p>
                 </div>
                 <div className="col-span-2">
                   <p className="text-[10px] font-black uppercase text-slate-400">Última Conexión</p>
@@ -8084,6 +8096,7 @@ const App = () => {
             {view === 'manage-trustonic' && (
               <TrustonicDevicesView 
                 data={data.trustonic} 
+                logs={data.trustonicLogs}
                 onSync={handleSyncTrustonic} 
                 syncing={syncingTrustonic} 
                 onEdit={(d) => setModalState({ type: 'trustonic-device', open: true, item: d })}
