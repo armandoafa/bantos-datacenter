@@ -825,9 +825,10 @@ async function getScopeFilter(tenantId, userId, role, scopeOrgId, scopeRole, tab
 
   // Nivel 2: Manager (Ve su org y todas las sub-orgs)
   if (scopeRole === 'MANAGER' && scopeOrgId) {
+    const orgField = (tableAlias === 'i' || tableAlias === 'inventory') ? 'store_id' : 'org_id';
     // Usamos una CTE recursiva para obtener todos los hijos de la organización
     return { 
-      filter: `${tableAlias}.org_id IN (
+      filter: `${tableAlias}.${orgField} IN (
         WITH RECURSIVE subordinates AS (
           SELECT id FROM org_structure WHERE id = ?
           UNION ALL
