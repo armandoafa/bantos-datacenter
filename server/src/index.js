@@ -2665,13 +2665,15 @@ app.get('/api/backoffice/products', async (req, res) => {
       const [rows] = await pool.query('SELECT * FROM products WHERE tenant_id = ? ORDER BY name ASC', [tenantId]);
       
       // Attach availability count
-      const result = rows.map(prod => {
+      let result = rows.map(prod => {
         const inv = assignedInventory.find(i => 
           (i.model && prod.model && i.model === prod.model) || 
           (i.model && prod.name && prod.name.toUpperCase().includes(i.model.toUpperCase()))
         );
         return { ...prod, stock_available: inv ? inv.count : 0 };
       });
+      // Filter out out-of-stock products for specific agents
+      result = result.filter(prod => prod.stock_available > 0);
       return res.json(result);
     } else {
       let inventoryQuery = 'SELECT model, COUNT(*) as count FROM inventory WHERE tenant_id = ? AND status != ? GROUP BY model';
@@ -2685,13 +2687,19 @@ app.get('/api/backoffice/products', async (req, res) => {
       const [inventory] = await pool.query(inventoryQuery, inventoryParams);
       const [rows] = await pool.query('SELECT * FROM products WHERE tenant_id = ? ORDER BY name ASC', [tenantId]);
       
-      const result = rows.map(prod => {
+      let result = rows.map(prod => {
         const inv = inventory.find(i => 
           (i.model && prod.model && i.model === prod.model) || 
           (i.model && prod.name && prod.name.toUpperCase().includes(i.model.toUpperCase()))
         );
         return { ...prod, stock_available: inv ? inv.count : 0 };
       });
+
+      // Filter out out-of-stock products for specific stores
+      if (orgId) {
+        result = result.filter(prod => prod.stock_available > 0);
+      }
+      
       res.json(result);
     }
   } catch (e) { res.status(500).json({ error: e.message }); }
