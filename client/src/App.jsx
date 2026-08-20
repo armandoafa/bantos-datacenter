@@ -7832,8 +7832,8 @@ const App = () => {
         { id: 'setup-products', label: 'Productos', icon: Tag },
         ...(isAdmin ? [{ id: 'setup-terms', label: 'Términos & Condiciones', icon: ShieldCheck }] : []),
         ...(isAdmin ? [{ id: 'setup-org', label: 'Organización', icon: Building2 }] : []),
-        { id: 'setup-users', label: 'Usuarios', icon: Users },
-        { id: 'setup-transfers', label: 'Transferencias', icon: ArrowRightLeft },
+        ...(isAdmin ? [{ id: 'setup-users', label: 'Usuarios', icon: Users }] : []),
+        ...(isAdmin ? [{ id: 'setup-transfers', label: 'Transferencias', icon: ArrowRightLeft }] : []),
       ]},
       { id: 'records', label: 'Registro', icon: BookOpen, children: [
         { id: 'record-actions', label: 'Ventas', icon: Zap },
@@ -7847,7 +7847,7 @@ const App = () => {
       ]},
       { id: 'manage-audit', label: 'Auditoría', icon: Clock },
     ]},
-    { section: 'Estructura', items: [ { id: 'setup-messaging', label: 'Mensajería', icon: Mail }, { id: 'setup-config', label: 'Sistema', icon: Settings2 } ]},
+    ...(isAdmin ? [{ section: 'Estructura', items: [ { id: 'setup-messaging', label: 'Mensajería', icon: Mail }, { id: 'setup-config', label: 'Sistema', icon: Settings2 } ]}] : []),
   ];
 
   const isAgent = session?.role === 'agent' || session?.role === 'agente';
