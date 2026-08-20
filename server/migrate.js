@@ -1,11 +1,7 @@
-import mysql from 'mysql2/promise';
-import dotenv from 'dotenv';
-
-dotenv.config();
+import pool from './src/config/db.js';
 
 async function migrate() {
   try {
-    const pool = mysql.createPool(process.env.DATABASE_URL);
     console.log('Connected to DB, running migration...');
     
     try {
