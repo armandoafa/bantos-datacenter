@@ -418,12 +418,7 @@ const ProductModal = ({ isOpen, onClose, product, onSave, session, inventory = [
                     </div>
                   )}
                 </div>
-                <div className="space-y-4 px-2">
-                  <label className="flex items-center gap-3 cursor-pointer group">
-                    <div onClick={() => setFormData({...formData, lockable: !formData.lockable})} className={`w-5 h-5 rounded-lg border-2 flex items-center justify-center transition-all ${formData.lockable ? 'bg-emerald-500 border-emerald-500 text-white' : 'border-slate-200'}`}>{formData.lockable && <Zap size={12} />}</div>
-                    <span className="text-sm font-black text-slate-600 uppercase tracking-wider">Lockable</span>
-                  </label>
-                </div>
+
               </div>
               <div className="col-span-3 space-y-1.5">
                 <label className="text-[11px] font-black uppercase tracking-widest text-slate-400 ml-1">Descripción Detallada</label>
@@ -4538,7 +4533,7 @@ const TrustonicDevicesView = ({ data, onSync, syncing, onEdit, onCreate, session
 
       {/* Tabla de Dispositivos tipo Trustonic Portal */}
       <Table 
-        cols={['IMEI 1', 'IMEI 2', 'Servicio', 'Estado actual', 'Marca', 'Modelo', 'Último cambio', 'Última conexión', 'Acciones']} 
+        cols={['IMEI 1', 'IMEI 2', 'Servicio', 'Estado actual', 'Marca', 'Modelo', 'Fecha de caducidad', 'Última conexión', 'Acciones']} 
         rows={filteredDevices} 
         render={d => (
           <>
@@ -4558,7 +4553,7 @@ const TrustonicDevicesView = ({ data, onSync, syncing, onEdit, onCreate, session
             </td>
             <td className="px-8 py-5 font-black text-sm uppercase text-slate-800">{d.brand || '—'}</td>
             <td className="px-8 py-5 text-slate-600 font-bold text-sm">{d.model || '—'}</td>
-            <td className="px-8 py-5 text-xs text-slate-500 font-bold">{formatDate(d.last_change)}</td>
+            <td className="px-8 py-5 text-xs text-slate-500 font-bold">{formatDate(d.expiration_date)}</td>
             <td className="px-8 py-5 text-xs text-slate-500 font-bold">{formatDate(d.last_connection)}</td>
             <td className="px-8 py-5">
               <div className="flex items-center gap-2">
@@ -4701,8 +4696,8 @@ const TrustonicDevicesView = ({ data, onSync, syncing, onEdit, onCreate, session
                   <p>{selectedDevice.model || '—'}</p>
                 </div>
                 <div className="col-span-2">
-                  <p className="text-[10px] font-black uppercase text-slate-400">Último Cambio</p>
-                  <p>{formatDate(selectedDevice.last_change)}</p>
+                  <p className="text-[10px] font-black uppercase text-slate-400">Fecha de caducidad</p>
+                  <p>{formatDate(selectedDevice.expiration_date)}</p>
                 </div>
                 <div className="col-span-2">
                   <p className="text-[10px] font-black uppercase text-slate-400">Última Conexión</p>
