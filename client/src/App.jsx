@@ -5102,13 +5102,13 @@ const UsersView = ({ users, structure, session, refreshData }) => {
                     </div>
                     <div className="col-span-2">
                       <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-2">Usuario</label>
-                      <input name="username" required defaultValue={editingUser?.username || ''} className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl py-3 px-5 mt-1 font-bold outline-none focus:border-blue-600 transition-all" />
+                      <input name="username" required defaultValue={editingUser?.username || ''} autoComplete="new-password" className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl py-3 px-5 mt-1 font-bold outline-none focus:border-blue-600 transition-all" />
                     </div>
                     <div className="col-span-2">
                       <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-2">
                         Contraseña {editingUser?.id ? '(Dejar en blanco para no cambiar)' : ''}
                       </label>
-                      <input name="password" type="password" placeholder={editingUser?.id ? "••••••••" : "Ingresa contraseña..."} required={!editingUser?.id} className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl py-3 px-5 mt-1 font-bold outline-none focus:border-blue-600 transition-all" />
+                      <input name="password" type="password" placeholder={editingUser?.id ? "••••••••" : "Ingresa contraseña..."} required={!editingUser?.id} autoComplete="new-password" className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl py-3 px-5 mt-1 font-bold outline-none focus:border-blue-600 transition-all" />
                     </div>
                   </div>
                   
@@ -5325,7 +5325,7 @@ const OrganizationView = ({ structure, session, refreshData }) => {
                 </div>
                 <button onClick={() => setModalOpen(false)} className="w-10 h-10 bg-slate-50 text-slate-400 rounded-2xl flex items-center justify-center hover:bg-slate-100 hover:text-slate-700 transition-colors"><X size={20} /></button>
               </div>
-              <form onSubmit={handleSave} className="p-5 md:p-8 space-y-6 overflow-y-auto">
+              <form onSubmit={handleSave} autoComplete="off" className="p-5 md:p-8 space-y-6 overflow-y-auto">
                 <div className="space-y-4">
                   <div>
                     <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-2">Nombre del Nodo</label>
