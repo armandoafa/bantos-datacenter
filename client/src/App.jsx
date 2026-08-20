@@ -3219,7 +3219,7 @@ export const PaymentFormContent = ({
   );
 };
 
-const PaymentModal = ({ isOpen, onClose, payment, onSave, clients, contracts, session, products, inventory, deals, onOpenClientModal, onSaveContract }) => {
+const PaymentModal = ({ isOpen, onClose, payment, onSave, clients, contracts, session, products, inventory, deals, onOpenClientModal, onSaveContract, globalSettings }) => {
   const [formData, setFormData] = useState({
     amount: 0, method: 'Transferencia', status: 'Pending', contract_id: '', client_id: '',
     payment_date: new Date().toISOString().split('T')[0],
@@ -8168,7 +8168,7 @@ const App = () => {
         <TermModal isOpen={modalState.open && modalState.type === 'term'} onClose={() => setModalState({ type: null, open: false, item: null })} onSave={handleSaveTerm} term={modalState.item} globalSettings={globalSettings} />
         <DataCollectionModal isOpen={modalState.open && modalState.type === 'collection'} onClose={() => setModalState({ type: null, open: false, item: null })} onSave={handleSaveCollection} collection={modalState.item} />
         <ActionModal isOpen={modalState.open && modalState.type === 'action'} onClose={() => setModalState({ type: null, open: false, item: null })} onSave={handleSaveAction} action={modalState.item} />
-        <PaymentModal isOpen={modalState.open && modalState.type === 'payment'} onClose={() => setModalState({ type: null, open: false, item: null })} onSave={handleSavePayment} payment={modalState.item} clients={data.clients} contracts={data.contracts} session={session} products={data.products} inventory={data.inventory} deals={data.paymentPlans} onOpenClientModal={() => setModalState({ type: 'client', open: true, item: null })} onSaveContract={handleSaveContract} />
+        <PaymentModal isOpen={modalState.open && modalState.type === 'payment'} onClose={() => setModalState({ type: null, open: false, item: null })} onSave={handleSavePayment} payment={modalState.item} clients={data.clients} contracts={data.contracts} session={session} products={data.products} inventory={data.inventory} deals={data.paymentPlans} onOpenClientModal={() => setModalState({ type: 'client', open: true, item: null })} onSaveContract={handleSaveContract} globalSettings={globalSettings} />
         <ContractModal isOpen={modalState.open && modalState.type === 'contract'} onClose={() => setModalState({ type: null, open: false, item: null })} onSave={handleSaveContract} contract={modalState.item} clients={data.clients} products={data.products} inventory={data.inventory} paymentPlans={data.paymentPlans} tenantId={session?.tenantId} onOpenPayment={handleOpenPaymentForContract} />
         <SignatureModal isOpen={modalState.open && modalState.type === 'signature'} onClose={() => setModalState({ type: null, open: false, item: null })} onSave={handleSaveSignature} contract={modalState.item} />
         <TrustonicDeviceModal isOpen={modalState.open && modalState.type === 'trustonic-device'} onClose={() => setModalState({ type: null, open: false, item: null })} onSave={handleSaveDevice} device={modalState.item} />
