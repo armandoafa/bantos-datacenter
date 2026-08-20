@@ -926,6 +926,7 @@ app.post('/api/backoffice/settings', async (req, res) => {
     }
     res.json({ success: true });
   } catch (e) {
+    console.error('Settings POST Error:', e);
     res.status(500).json({ error: e.message });
   }
 });
