@@ -8132,6 +8132,7 @@ const App = () => {
                   inventory={data.inventory}
                   clients={data.clients}
                   session={session}
+                  globalSettings={globalSettings}
                   onOpenClientModal={() => setModalState({ type: 'client', open: true, item: null })}
                   onSaveContract={handleSaveContract}
                   onSavePayment={handleSavePayment}
