@@ -6872,112 +6872,6 @@ const PlaceholderView = ({ title, subtitle }) => (
   </div>
 );
 
-const StoresView = ({ stores, session, refreshData }) => {
-  const [modalOpen, setModalOpen] = useState(false);
-  const [editingStore, setEditingStore] = useState(null);
-
-  const handleSave = async (e) => {
-    e.preventDefault();
-    if (session?.role === 'manager') return;
-    const fd = new FormData(e.target);
-    const payload = Object.fromEntries(fd.entries());
-    payload.tenantId = session.tenantId;
-    try {
-      if (editingStore) {
-        await axios.put(`${API}/backoffice/stores/${editingStore.id}`, payload);
-      } else {
-        await axios.post(`${API}/backoffice/stores`, payload);
-      }
-      setModalOpen(false);
-      refreshData();
-    } catch (err) { alert('Error guardando la tienda: ' + err.message); }
-  };
-
-  const handleDelete = async (id) => {
-    if (!confirm('¿Estás seguro de eliminar esta tienda?')) return;
-    try {
-      await axios.delete(`${API}/backoffice/stores/${id}`, { params: { tenantId: session.tenantId } });
-      refreshData();
-    } catch (err) { alert('Error al eliminar la tienda: ' + err.message); }
-  };
-
-  return (
-    <div className="space-y-10 pb-20">
-      <PageHeader 
-        title="Gestión de Tiendas" 
-        subtitle="Administración de establecimientos operativos"
-        action={
-          session?.role !== 'manager' && (
-            <button onClick={() => { setEditingStore(null); setModalOpen(true); }} className="bg-blue-600 text-white px-6 py-3 rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl shadow-blue-600/30 hover:scale-105 transition-all flex items-center gap-2">
-              <Plus size={16} /> Nueva Tienda
-            </button>
-          )
-        }
-      />
-      <div className="bg-white rounded-[32px] shadow-xl border border-slate-100 overflow-hidden">
-        <Table cols={['ID', 'Nombre', 'Dirección', 'Estado', 'Acciones']} rows={stores} render={store => (
-          <>
-            <td className="px-6 py-4 font-bold text-slate-800">{store.id}</td>
-            <td className="px-6 py-4 font-bold text-slate-800">{store.name}</td>
-            <td className="px-6 py-4 text-slate-500 text-sm">{store.address}</td>
-            <td className="px-6 py-4"><Badge status={store.status} /></td>
-            <td className="px-6 py-4 flex items-center gap-2">
-              <button onClick={() => { setEditingStore(store); setModalOpen(true); }} className="text-blue-600 hover:text-blue-800 p-2"><Edit size={16}/></button>
-              {session?.role === 'admin' && (
-                <button onClick={() => handleDelete(store.id)} className="text-rose-600 hover:text-rose-800 p-2"><Trash2 size={16}/></button>
-              )}
-            </td>
-          </>
-        )} renderMobile={store => (
-          <div className="p-4 bg-slate-50 rounded-xl space-y-2">
-            <p className="font-bold text-slate-800">{store.name}</p>
-            <p className="text-sm text-slate-500">{store.address}</p>
-            <div className="flex gap-2">
-              <button onClick={() => { setEditingStore(store); setModalOpen(true); }} className="text-blue-600 font-bold text-xs">EDITAR</button>
-              {session?.role === 'admin' && (
-                <button onClick={() => handleDelete(store.id)} className="text-rose-600 font-bold text-xs">ELIMINAR</button>
-              )}
-            </div>
-          </div>
-        )}/>
-      </div>
-
-      <AnimatePresence>
-        {modalOpen && (
-          <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-            <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className="bg-white rounded-[40px] w-full max-w-lg shadow-2xl p-8">
-              <h3 className="text-2xl font-black text-slate-900 mb-6">{editingStore ? 'Editar Tienda' : 'Nueva Tienda'}</h3>
-              <form onSubmit={handleSave} className="space-y-4">
-                <div>
-                  <label className="text-xs font-black uppercase text-slate-400">Nombre</label>
-                  <input name="name" defaultValue={editingStore?.name || ''} required disabled={session?.role === 'manager'} className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl py-3 px-5 mt-1 font-bold outline-none focus:border-blue-600 disabled:opacity-50" />
-                </div>
-                <div>
-                  <label className="text-xs font-black uppercase text-slate-400">Dirección</label>
-                  <input name="address" defaultValue={editingStore?.address || ''} disabled={session?.role === 'manager'} className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl py-3 px-5 mt-1 font-bold outline-none focus:border-blue-600 disabled:opacity-50" />
-                </div>
-                <div>
-                  <label className="text-xs font-black uppercase text-slate-400">Estado</label>
-                  <select name="status" defaultValue={editingStore?.status || 'Active'} disabled={session?.role === 'manager'} className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl py-3 px-5 mt-1 font-bold outline-none focus:border-blue-600 disabled:opacity-50">
-                    <option value="Active">Active</option>
-                    <option value="Inactive">Inactive</option>
-                  </select>
-                </div>
-                <div className="flex gap-4 pt-4">
-                  <button type="button" onClick={() => setModalOpen(false)} className="flex-1 bg-slate-100 text-slate-600 font-bold py-4 rounded-2xl">Cancelar</button>
-                  {session?.role !== 'manager' && (
-                    <button type="submit" className="flex-1 bg-blue-600 text-white font-bold py-4 rounded-2xl">Guardar</button>
-                  )}
-                </div>
-              </form>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
-    </div>
-  );
-};
-
 const TransferenciasView = ({ stores, inventory, session, refreshData, users }) => {
   const [transfers, setTransfers] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -7371,7 +7265,7 @@ const App = () => {
           scopeRole: activeScope?.role
         } 
       };
-      const [sumRes, cliRes, conRes, invRes, payRes, proRes, ppRes, orgRes, actRes, dcRes, audRes, truRes, truLogRes, usrRes, strRes] = await Promise.allSettled([
+      const [sumRes, cliRes, conRes, invRes, payRes, proRes, ppRes, orgRes, actRes, dcRes, audRes, truRes, truLogRes, usrRes] = await Promise.allSettled([
         axios.get(`${API}/backoffice/summary`, config),
         axios.get(`${API}/backoffice/clients`, config),
         axios.get(`${API}/backoffice/contracts`, config),
@@ -7385,8 +7279,7 @@ const App = () => {
         axios.get(`${API}/backoffice/audit`, config),
         axios.get(`${API}/backoffice/trustonic-devices`, config),
         axios.get(`${API}/backoffice/trustonic-logs`, config),
-        axios.get(`${API}/backoffice/users`, config),
-        axios.get(`${API}/backoffice/stores`, config)
+        axios.get(`${API}/backoffice/users`, config)
       ]);
       if (sumRes.status === 'fulfilled') setSummary(sumRes.value.data);
       setData({
@@ -7402,8 +7295,7 @@ const App = () => {
         audit: audRes.status === 'fulfilled' ? audRes.value.data : [],
         trustonic: truRes.status === 'fulfilled' ? truRes.value.data : { devices: [], summary: [] },
         trustonicLogs: truLogRes && truLogRes.status === 'fulfilled' ? truLogRes.value.data : [],
-        users: usrRes.status === 'fulfilled' ? usrRes.value.data : [],
-        stores: strRes.status === 'fulfilled' ? strRes.value.data : [],
+        users: usrRes.status === 'fulfilled' ? usrRes.value.data : []
       });
     } catch (e) { console.error(e); }
   }, [session, activeScope]);
@@ -7941,7 +7833,6 @@ const App = () => {
         ...(isAdmin ? [{ id: 'setup-terms', label: 'Términos & Condiciones', icon: ShieldCheck }] : []),
         ...(isAdmin ? [{ id: 'setup-org', label: 'Organización', icon: Building2 }] : []),
         { id: 'setup-users', label: 'Usuarios', icon: Users },
-        { id: 'setup-stores', label: 'Tiendas', icon: Store },
         { id: 'setup-transfers', label: 'Transferencias', icon: ArrowRightLeft },
       ]},
       { id: 'records', label: 'Registro', icon: BookOpen, children: [
@@ -8160,8 +8051,7 @@ const App = () => {
             {view === 'setup-terms' && <TermsView deals={data.paymentPlans} onEdit={(d) => setModalState({ type: 'term', open: true, item: d })} onCreate={() => setModalState({ type: 'term', open: true, item: null })} onDelete={handleDeleteTerm} />}
             {view === 'setup-org' && <OrganizationView structure={data.orgStructure} session={session} refreshData={refreshData} />}
             {view === 'setup-users' && <UsersView users={data.users} structure={data.orgStructure} session={session} refreshData={refreshData} />}
-            {view === 'setup-stores' && <StoresView stores={data.stores} session={session} refreshData={refreshData} />}
-            {view === 'setup-transfers' && <TransferenciasView stores={data.stores} inventory={data.inventory} session={session} refreshData={refreshData} users={data.users} />}
+            {view === 'setup-transfers' && <TransferenciasView stores={data.orgStructure?.filter(o => o.type === 'Manager' || o.type === 'BRANCH')} inventory={data.inventory} session={session} refreshData={refreshData} users={data.users} />}
             
             {/* Navigational state for Actions Form vs List */}
             {view === 'record-actions' && !actionFormState.open && (

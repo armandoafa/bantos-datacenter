@@ -1033,56 +1033,6 @@ app.delete('/api/backoffice/org-structure/:id', async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// --- STORES MANAGEMENT (CRUD) ---
-app.get('/api/backoffice/stores', async (req, res) => {
-  const { tenantId } = req.query;
-  try {
-    const [rows] = await pool.query("SELECT id, name, address, 'Active' as status FROM org_structure WHERE tenant_id = ? AND type = 'Manager' ORDER BY id ASC", [tenantId]);
-    res.json(rows);
-  } catch (e) { res.status(500).json({ error: e.message }); }
-});
-
-app.post('/api/backoffice/stores', async (req, res) => {
-  const { tenantId, name, address, status } = req.body;
-  try {
-    let [[rootNode]] = await pool.query('SELECT id FROM org_structure WHERE tenant_id = ? AND parent_id IS NULL LIMIT 1', [tenantId]);
-    if (!rootNode) {
-      const [rootResult] = await pool.query(
-        "INSERT INTO org_structure (tenant_id, upya_id, name, type, administrator) VALUES (?, ?, 'Central', 'Administración', 'Admin')",
-        [tenantId, `local-root-${tenantId}`]
-      );
-      rootNode = { id: rootResult.insertId };
-    }
-    const upyaId = `local-store-${Date.now()}`;
-    const [result] = await pool.query(
-      "INSERT INTO org_structure (tenant_id, upya_id, name, type, parent_id, address) VALUES (?, ?, ?, 'Manager', ?, ?)",
-      [tenantId, upyaId, name, rootNode.id, address]
-    );
-    res.json({ success: true, id: result.insertId });
-  } catch (e) { res.status(500).json({ error: e.message }); }
-});
-
-app.put('/api/backoffice/stores/:id', async (req, res) => {
-  const { tenantId, name, address, status } = req.body;
-  try {
-    await pool.query(
-      "UPDATE org_structure SET name = ?, address = ? WHERE id = ? AND tenant_id = ? AND type = 'Manager'",
-      [name, address, req.params.id, tenantId]
-    );
-    res.json({ success: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
-});
-
-app.delete('/api/backoffice/stores/:id', async (req, res) => {
-  const { tenantId } = req.query;
-  try {
-    await pool.query(
-      "DELETE FROM org_structure WHERE id = ? AND tenant_id = ? AND type = 'Manager'",
-      [req.params.id, tenantId]
-    );
-    res.json({ success: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
-});
 
 // --- USER MANAGEMENT (CRUD) ---
 // ── MESSAGE TEMPLATES ───────────────────────────────────────────────────────
