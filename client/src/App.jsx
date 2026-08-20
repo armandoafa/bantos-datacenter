@@ -7860,7 +7860,7 @@ const App = () => {
   ];
 
   const isAgent = session?.role === 'agent' || session?.role === 'agente';
-  const allowedAgentItems = ['manage-dashboard', 'setup-products', 'record-actions', 'manage-payments'];
+  const allowedAgentItems = ['manage-dashboard', 'setup-products', 'record-actions', 'manage-contracts', 'manage-payments'];
 
   const filteredNavItems = isAgent
     ? navItems.map(section => {
