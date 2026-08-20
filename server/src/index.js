@@ -2610,8 +2610,8 @@ app.get('/api/backoffice/products', async (req, res) => {
     const isSeller = (scopeRole === 'STAFF' || role === 'seller' || role === 'agent' || role === 'assistant');
     
     if (isSeller && userId) {
-      // Find the models assigned to this seller OR unassigned models available in the store
-      const [assignedInventory] = await pool.query('SELECT model, COUNT(*) as count FROM inventory WHERE tenant_id = ? AND (assigned_to_user_id = ? OR assigned_to_user_id IS NULL) AND status != ? GROUP BY model', [tenantId, userId, 'SOLD']);
+      // Find the models assigned to this seller
+      const [assignedInventory] = await pool.query('SELECT model, COUNT(*) as count FROM inventory WHERE tenant_id = ? AND assigned_to_user_id = ? AND status != ? GROUP BY model', [tenantId, userId, 'SOLD']);
       
       const [rows] = await pool.query('SELECT * FROM products WHERE tenant_id = ? ORDER BY name ASC', [tenantId]);
       
