@@ -1136,7 +1136,7 @@ app.post('/api/backoffice/users', async (req, res) => {
     if (org_id) {
       await pool.query(
         'INSERT INTO user_scopes (user_id, org_id, role, tenant_id) VALUES (?, ?, ?, ?)',
-        [uRes.insertId, org_id, scope_role || 'STAFF', tenantId]
+        [uRes.insertId, org_id, (scope_role || 'STAFF').toLowerCase(), tenantId]
       );
     }
     res.json({ success: true, id: uRes.insertId });
@@ -1166,7 +1166,7 @@ app.put('/api/backoffice/users/:id', async (req, res) => {
     if (org_id) {
       await pool.query(
         'INSERT INTO user_scopes (user_id, org_id, role, tenant_id) VALUES (?, ?, ?, ?)',
-        [userId, org_id, scope_role || 'STAFF', tenantId]
+        [userId, org_id, (scope_role || 'STAFF').toLowerCase(), tenantId]
       );
     }
     res.json({ success: true });
