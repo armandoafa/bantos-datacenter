@@ -5089,7 +5089,7 @@ const UsersView = ({ users, structure, session, refreshData }) => {
                 </div>
                 <button onClick={() => setModalOpen(false)} className="w-10 h-10 bg-slate-50 text-slate-400 rounded-2xl flex items-center justify-center hover:bg-slate-100 hover:text-slate-700 transition-colors"><X size={20} /></button>
               </div>
-              <form key={editingUser?.id || 'new'} onSubmit={handleSave} className="p-5 md:p-8 space-y-6 overflow-y-auto">
+              <form key={editingUser?.id || 'new'} onSubmit={handleSave} autoComplete="off" className="p-5 md:p-8 space-y-6 overflow-y-auto">
                 <div className="space-y-4">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
