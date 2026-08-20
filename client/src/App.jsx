@@ -7356,8 +7356,8 @@ const App = () => {
       const config = { 
         params: { 
           tenantId,
-          userId: session?.id,
-          username: session?.username,
+          userId: activeScope?.userId || session?.id,
+          username: activeScope?.username || session?.username,
           role: session?.role,
           storeId: session?.storeId,
           orgId: activeScope?.orgId,
@@ -8006,22 +8006,38 @@ const App = () => {
             </div>
             <select 
               className="w-full bg-white border-2 border-slate-100 rounded-2xl py-2.5 px-4 text-xs font-bold text-slate-700 outline-none focus:border-blue-600 transition-all cursor-pointer shadow-sm"
-              value={activeScope?.orgId || ''}
+              value={activeScope?.userId ? `user_${activeScope.userId}` : activeScope?.orgId ? `org_${activeScope.orgId}` : ''}
               onChange={(e) => {
-                const id = e.target.value;
-                if (!id) setActiveScope(session.role === 'admin' ? null : session.scope);
-                else {
+                const val = e.target.value;
+                if (!val) setActiveScope(session.role === 'admin' ? null : session.scope);
+                else if (val.startsWith('org_')) {
+                  const id = val.replace('org_', '');
                   const org = data.orgStructure.find(o => o.id == id);
                   setActiveScope({ orgId: org.id, orgName: org.name, orgType: org.type, role: 'MANAGER' });
+                } else if (val.startsWith('user_')) {
+                  const id = val.replace('user_', '');
+                  const user = data.users.find(u => u.id == id);
+                  setActiveScope({ userId: user.id, username: user.username, orgType: 'Agente', role: 'STAFF' });
                 }
               }}
             >
               {session.role === 'admin' && <option value="">Global / Central</option>}
-              {data.orgStructure.map(o => (
-                <option key={o.id} value={o.id}>
-                  {o.type === 'COUNTRY' ? '🌎 ' : o.type === 'BRANCH' ? '🏢 ' : '🛒 '} {o.name}
-                </option>
-              ))}
+              <optgroup label="Tiendas y Organizaciones">
+                {data.orgStructure.map(o => (
+                  <option key={`org_${o.id}`} value={`org_${o.id}`}>
+                    {o.type === 'COUNTRY' ? '🌎 ' : o.type === 'BRANCH' ? '🏢 ' : '🛒 '} {o.name}
+                  </option>
+                ))}
+              </optgroup>
+              {data.users && data.users.filter(u => u.role !== 'admin').length > 0 && (
+                <optgroup label="Agentes / Usuarios">
+                  {data.users.filter(u => u.role !== 'admin').map(u => (
+                    <option key={`user_${u.id}`} value={`user_${u.id}`}>
+                      👤 {u.name || u.username} ({u.role})
+                    </option>
+                  ))}
+                </optgroup>
+              )}
             </select>
             {activeScope && (
               <div className="mt-3 flex items-center gap-2 px-1">
