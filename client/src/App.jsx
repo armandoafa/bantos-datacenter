@@ -5821,7 +5821,7 @@ const MobileDocScannerView = ({ sessionId }) => {
   );
 };
 
-const ActionFormView = ({ actionType, prefillData, onBack, onSaveDraft, deals, products, inventory, clients, onOpenClientModal, onSaveContract, onSavePayment, session }) => {
+const ActionFormView = ({ actionType, prefillData, onBack, onSaveDraft, deals, products, inventory, clients, onOpenClientModal, onSaveContract, onSavePayment, session, globalSettings }) => {
   const [selectedDeal, setSelectedDeal] = useState(prefillData?.dealId || '');
   const [selectedProductId, setSelectedProductId] = useState(() => {
     if (prefillData?.selectedProductId) return prefillData.selectedProductId;
