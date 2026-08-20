@@ -258,7 +258,7 @@ const getCatalogHistory = (key, initialItems = []) => {
 };
 
 // --- MODAL DE PRODUCTO ---
-const ProductModal = ({ isOpen, onClose, product, onSave, session, inventory = [], products = [], users = [], onAddInventory, onEditInventory, refreshData }) => {
+const ProductModal = ({ isOpen, onClose, product, onSave, session, inventory = [], products = [], users = [], onAddInventory, onEditInventory, refreshData, activeScope }) => {
   const [activeTab, setActiveTab] = useState('general');
   const [isAddImeiOpen, setIsAddImeiOpen] = useState(false);
   const [isAssignOpen, setIsAssignOpen] = useState(false);
@@ -630,9 +630,16 @@ const ProductModal = ({ isOpen, onClose, product, onSave, session, inventory = [
                               onChange={e => setAssignSellerId(e.target.value)}
                             >
                               <option value="">-- Quitar Asignación --</option>
-                              {users.filter(u => u.store_id == session?.storeId && (u.role === 'agent' || u.role === 'agente' || u.role === 'seller')).map(u => (
-                                <option key={u.id} value={u.id}>{u.username} ({u.role})</option>
-                              ))}
+                              {(() => {
+                                const targetStore = activeScope?.orgId || session?.storeId;
+                                const availableAgents = [...new Map(users.filter(u => 
+                                  (u.global_role === 'agent' || u.global_role === 'agente' || u.global_role === 'seller' || u.scope_role === 'STAFF') &&
+                                  (!targetStore || u.store_id == targetStore)
+                                ).map(u => [u.id, u])).values()];
+                                return availableAgents.map(u => (
+                                  <option key={u.id} value={u.id}>{u.contact_name || u.username} ({u.global_role || u.scope_role})</option>
+                                ));
+                              })()}
                             </select>
                           </div>
                           <div className="pt-2 flex justify-end gap-3">
@@ -8202,7 +8209,7 @@ const App = () => {
         </AnimatePresence>
         </div>
 
-        <ProductModal isOpen={modalState.open && modalState.type === 'product'} onClose={() => setModalState({ type: null, open: false, item: null })} onSave={handleSaveProduct} product={modalState.item} inventory={data.inventory} products={data.products} users={data.users} onAddInventory={handleAddInventory} onEditInventory={handleEditInventory} refreshData={refreshData} session={session} />
+        <ProductModal isOpen={modalState.open && modalState.type === 'product'} onClose={() => setModalState({ type: null, open: false, item: null })} onSave={handleSaveProduct} product={modalState.item} inventory={data.inventory} products={data.products} users={data.users} onAddInventory={handleAddInventory} onEditInventory={handleEditInventory} refreshData={refreshData} session={session} activeScope={activeScope} />
         <TermModal isOpen={modalState.open && modalState.type === 'term'} onClose={() => setModalState({ type: null, open: false, item: null })} onSave={handleSaveTerm} term={modalState.item} globalSettings={globalSettings} />
         <DataCollectionModal isOpen={modalState.open && modalState.type === 'collection'} onClose={() => setModalState({ type: null, open: false, item: null })} onSave={handleSaveCollection} collection={modalState.item} />
         <ActionModal isOpen={modalState.open && modalState.type === 'action'} onClose={() => setModalState({ type: null, open: false, item: null })} onSave={handleSaveAction} action={modalState.item} />

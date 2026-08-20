@@ -2654,7 +2654,7 @@ app.post('/api/backoffice/contracts/generate-and-sign', async (req, res) => {
 });
 
 app.get('/api/backoffice/products', async (req, res) => {
-  const { tenantId, userId, role, scopeRole } = req.query;
+  const { tenantId, userId, role, scopeRole, orgId } = req.query;
   try {
     const isSeller = (scopeRole === 'STAFF' || role === 'seller' || role === 'agent' || role === 'assistant');
     
@@ -2674,7 +2674,15 @@ app.get('/api/backoffice/products', async (req, res) => {
       });
       return res.json(result);
     } else {
-      const [inventory] = await pool.query('SELECT model, COUNT(*) as count FROM inventory WHERE tenant_id = ? AND status != ? GROUP BY model', [tenantId, 'SOLD']);
+      let inventoryQuery = 'SELECT model, COUNT(*) as count FROM inventory WHERE tenant_id = ? AND status != ? GROUP BY model';
+      let inventoryParams = [tenantId, 'SOLD'];
+      
+      if (orgId) {
+        inventoryQuery = 'SELECT model, COUNT(*) as count FROM inventory WHERE tenant_id = ? AND status != ? AND store_id = ? GROUP BY model';
+        inventoryParams = [tenantId, 'SOLD', orgId];
+      }
+
+      const [inventory] = await pool.query(inventoryQuery, inventoryParams);
       const [rows] = await pool.query('SELECT * FROM products WHERE tenant_id = ? ORDER BY name ASC', [tenantId]);
       
       const result = rows.map(prod => {
