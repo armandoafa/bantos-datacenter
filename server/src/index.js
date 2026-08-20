@@ -828,15 +828,15 @@ async function getScopeFilter(tenantId, userId, role, scopeOrgId, scopeRole, tab
     const orgField = (tableAlias === 'i' || tableAlias === 'inventory') ? 'store_id' : 'org_id';
     // Usamos una CTE recursiva para obtener todos los hijos de la organización
     return { 
-      filter: `${tableAlias}.${orgField} IN (
+      filter: `(${tableAlias}.${orgField} IN (
         WITH RECURSIVE subordinates AS (
           SELECT id FROM org_structure WHERE id = ?
           UNION ALL
           SELECT o.id FROM org_structure o INNER JOIN subordinates s ON o.parent_id = s.id
         )
         SELECT id FROM subordinates
-      )`, 
-      params: [scopeOrgId] 
+      ) OR (SELECT parent_id FROM org_structure WHERE id = ?) IS NULL)`, 
+      params: [scopeOrgId, scopeOrgId] 
     };
   }
 
