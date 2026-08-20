@@ -5978,7 +5978,8 @@ const ActionFormView = ({ actionType, prefillData, onBack, onSaveDraft, deals, p
                 amount: upfront,
                 method: 'Tarjeta Débito',
                 is_recurring: true,
-                recurring_dates: [String(nextDay.getDate()).padStart(2, '0')]
+                recurring_dates: [String(nextDay.getDate()).padStart(2, '0')],
+                repayment_frequency: deal.frequency_days ? parseInt(deal.frequency_days) : null
               }));
               return; // Salimos temprano si configuramos pagos recurrentes
             }
