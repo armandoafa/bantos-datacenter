@@ -3086,7 +3086,12 @@ export const PaymentFormContent = ({
                       {showSchedule && (
                         <div className="mt-3 bg-white rounded-xl border border-blue-100 p-4 max-h-[200px] overflow-y-auto relative">
                           <div className="flex justify-between items-center mb-3">
-                            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">Próximos 12 pagos proyectados</p>
+                            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">
+                              Próximos {(() => {
+                                const deal = deals?.find(d => String(d.name) === String(selectedDeal));
+                                return deal?.installments_count ? parseInt(deal.installments_count) : 12;
+                              })()} pagos proyectados
+                            </p>
                             <button type="button" onClick={() => {
                               const printContent = document.getElementById('payment-schedule-content').innerHTML;
                               const printWindow = window.open('', '', 'height=600,width=800');
@@ -3107,10 +3112,13 @@ export const PaymentFormContent = ({
                                 ? new Date(pyear, pmonth - 1, pday, 12, 0, 0)
                                 : new Date();
                               const dates = [];
+                              
+                              const deal = deals?.find(d => String(d.name) === String(selectedDeal));
+                              const totalPayments = deal?.installments_count ? parseInt(deal.installments_count) : 12;
 
                               if (formData.repayment_frequency) {
                                 let nextDate = new Date(now.getTime());
-                                for (let i = 0; i < 12; i++) {
+                                for (let i = 0; i < totalPayments; i++) {
                                   dates.push(new Date(nextDate.getTime()));
                                   nextDate.setDate(nextDate.getDate() + formData.repayment_frequency);
                                 }
@@ -3119,7 +3127,7 @@ export const PaymentFormContent = ({
                                 if (!days.length) return null;
                                 let currentMonth = now.getMonth();
                                 let currentYear = now.getFullYear();
-                                for (let i = 0; i < 12; i++) {
+                                for (let i = 0; i < totalPayments; i++) {
                                   for (const day of days) {
                                     if (i === 0 && day <= now.getDate()) continue;
                                     const date = new Date(currentYear, currentMonth, day, 12, 0, 0);
@@ -3131,7 +3139,7 @@ export const PaymentFormContent = ({
                                 }
                               }
 
-                              return dates.slice(0, 12).map((d, i) => (
+                              return dates.slice(0, totalPayments).map((d, i) => (
                                 <div key={i} className="item flex justify-between items-center py-2 border-b border-slate-50 last:border-0">
                                   <span className="text-sm font-bold text-slate-700">Pago #{i + 1}</span>
                                   <span className="text-sm font-medium text-slate-500">
