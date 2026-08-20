@@ -1220,7 +1220,7 @@ const ClientsView = ({ clients = [], onEdit, onCreate }) => {
       </div>
 
       <Table 
-        cols={['Nº Cliente', 'Cliente / Nombre', 'Entidad', 'Agente', 'Contacto (Email/Tel)', 'CLABE STP', 'Estado', 'Acciones']} 
+        cols={['Nº Cliente', 'Cliente / Nombre', 'Entidad', 'Agente', 'Creado por', 'Contacto (Email/Tel)', 'CLABE STP', 'Estado', 'Acciones']} 
         rows={filtered} 
         render={c => (
           <>
@@ -1231,6 +1231,7 @@ const ClientsView = ({ clients = [], onEdit, onCreate }) => {
             </td>
             <td className="px-8 py-5 text-slate-700 font-bold text-xs">{c.entity || '—'}</td>
             <td className="px-8 py-5 text-slate-500 font-medium text-xs">{c.agent || '—'}</td>
+            <td className="px-8 py-5 text-slate-700 font-medium text-xs">{c.creator_name || '—'}</td>
             <td className="px-8 py-5 text-slate-500 text-xs">
               <p className="font-semibold text-slate-700">{c.email || '—'}</p>
               {c.phone && <p className="font-mono text-slate-400 text-[11px]">{c.phone}</p>}
@@ -1823,7 +1824,7 @@ const ContractsView = ({ contracts = [], onNew, onEdit, onSign, onSettle, sessio
       </div>
 
       <Table 
-        cols={['Contrato', 'Cliente', 'Producto', 'Plan', 'Progreso', 'Estado', 'Acciones']} 
+        cols={['Contrato', 'Cliente', 'Producto', 'Plan', 'Creado por', 'Progreso', 'Estado', 'Acciones']} 
         rows={filtered} 
         render={c => (
           <>
@@ -1840,6 +1841,9 @@ const ContractsView = ({ contracts = [], onNew, onEdit, onSign, onSettle, sessio
             </td>
             <td className="px-8 py-5">
               <p className="text-[11px] text-slate-500 font-bold">{c.deal_name || 'Plan Estándar'}</p>
+            </td>
+            <td className="px-8 py-5">
+              <p className="text-[11px] text-slate-700 font-bold">{c.creator_name || '—'}</p>
             </td>
             <td className="px-8 py-5 w-48">
               <div className="space-y-2">
@@ -2566,7 +2570,7 @@ const PaymentsView = ({ payments = [], onEdit, onCreate, session }) => {
       </div>
 
       <Table 
-        cols={['Fecha', 'Contrato', 'Cliente', 'Monto', 'Método', 'Estado', 'Acciones']} 
+        cols={['Fecha', 'Contrato', 'Cliente', 'Monto', 'Método', 'Registrado por', 'Estado', 'Acciones']} 
         rows={filtered} 
         render={p => (
           <>
@@ -2591,6 +2595,7 @@ const PaymentsView = ({ payments = [], onEdit, onCreate, session }) => {
                 <span className="text-slate-600 text-xs font-bold">{normalizeMethod(p.payment_method || p.method)}</span>
               </div>
             </td>
+            <td className="px-8 py-5 font-bold text-slate-700 text-xs">{p.creator_name || '—'}</td>
             <td className="px-8 py-5"><Badge status={p.status} /></td>
             <td className="px-8 py-5 flex items-center gap-2">
               <button 
@@ -4980,6 +4985,10 @@ const UsersView = ({ users, structure, session, refreshData }) => {
     e.preventDefault();
     const fd = new FormData(e.target);
     const payload = Object.fromEntries(fd.entries());
+    payload.username = payload.sys_username;
+    payload.password = payload.sys_password;
+    delete payload.sys_username;
+    delete payload.sys_password;
     payload.tenantId = session.tenantId;
 
     try {
@@ -5102,13 +5111,13 @@ const UsersView = ({ users, structure, session, refreshData }) => {
                     </div>
                     <div className="col-span-2">
                       <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-2">Usuario</label>
-                      <input name="username" required defaultValue={editingUser?.username || ''} autoComplete="new-password" className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl py-3 px-5 mt-1 font-bold outline-none focus:border-blue-600 transition-all" />
+                      <input name="sys_username" required readOnly={!!editingUser?.id} defaultValue={editingUser?.username || ''} autoComplete="new-password" className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl py-3 px-5 mt-1 font-bold outline-none focus:border-blue-600 transition-all read-only:bg-slate-200 read-only:text-slate-500" />
                     </div>
                     <div className="col-span-2">
                       <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-2">
                         Contraseña {editingUser?.id ? '(Dejar en blanco para no cambiar)' : ''}
                       </label>
-                      <input name="password" type="password" placeholder={editingUser?.id ? "••••••••" : "Ingresa contraseña..."} required={!editingUser?.id} autoComplete="new-password" className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl py-3 px-5 mt-1 font-bold outline-none focus:border-blue-600 transition-all" />
+                      <input name="sys_password" type="password" placeholder={editingUser?.id ? "••••••••" : "Ingresa contraseña..."} required={!editingUser?.id} autoComplete="new-password" className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl py-3 px-5 mt-1 font-bold outline-none focus:border-blue-600 transition-all" />
                     </div>
                   </div>
                   

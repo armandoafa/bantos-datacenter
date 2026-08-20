@@ -1384,18 +1384,18 @@ app.get('/api/backoffice/data-collections', async (req, res) => {
 app.get('/api/backoffice/clients', async (req, res) => {
   const { tenantId, storeId, role, username } = req.query;
   try {
-    let query = 'SELECT * FROM client_history WHERE tenant_id = ?';
+    let query = 'SELECT ch.*, u.contact_name AS creator_name FROM client_history ch LEFT JOIN users u ON ch.created_by_user_id = u.id WHERE ch.tenant_id = ?';
     let params = [tenantId];
     
     if (role === 'seller' || role === 'agent') {
-      query += ' AND store_id = ? AND agent = ?';
+      query += ' AND ch.store_id = ? AND ch.agent = ?';
       params.push(storeId, username);
     } else if (role === 'manager') {
-      query += ' AND (store_id = ? OR store_id IS NULL)';
+      query += ' AND (ch.store_id = ? OR ch.store_id IS NULL)';
       params.push(storeId);
     }
     
-    query += ' ORDER BY name ASC';
+    query += ' ORDER BY ch.name ASC';
     const [rows] = await pool.query(query, params);
     res.json(rows);
   } catch (e) { 
@@ -1405,7 +1405,7 @@ app.get('/api/backoffice/clients', async (req, res) => {
 });
 
 app.post('/api/backoffice/clients', async (req, res) => {
-  const { tenantId, storeId, name, first_name, last_name, email, phone, reference_contact, reference_phone, entity, agent, status, client_number, external_id, signing_date } = req.body;
+  const { tenantId, storeId, name, first_name, last_name, email, phone, reference_contact, reference_phone, entity, agent, status, client_number, external_id, signing_date, userId } = req.body;
   try {
     const fullName = name || (first_name || last_name ? `${first_name || ''} ${last_name || ''}`.trim() : 'Sin Nombre');
     if (!tenantId) return res.status(400).json({ error: 'tenantId es requerido' });
@@ -1414,9 +1414,9 @@ app.post('/api/backoffice/clients', async (req, res) => {
 
     await pool.query(
       `INSERT INTO client_history 
-       (upya_id, client_number, tenant_id, store_id, name, first_name, last_name, external_id, email, phone, reference_contact, reference_phone, entity, agent, status, signing_date) 
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [upyaId, num, tenantId, storeId || null, fullName, first_name || null, last_name || null, external_id || null, email || null, phone || null, reference_contact || null, reference_phone || null, entity || null, agent || null, status || 'Signed', signing_date || new Date()]
+       (upya_id, client_number, tenant_id, store_id, name, first_name, last_name, external_id, email, phone, reference_contact, reference_phone, entity, agent, status, signing_date, created_by_user_id) 
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [upyaId, num, tenantId, storeId || null, fullName, first_name || null, last_name || null, external_id || null, email || null, phone || null, reference_contact || null, reference_phone || null, entity || null, agent || null, status || 'Signed', signing_date || new Date(), userId || null]
     );
     res.json({ success: true, upya_id: upyaId });
   } catch (e) {
@@ -1836,10 +1836,11 @@ app.get('/api/backoffice/contracts', async (req, res) => {
   try {
     const scope = await getScopeFilter(tenantId, userId, role, orgId, scopeRole, 'ch', storeId, username);
     const [rows] = await pool.query(
-      `SELECT ch.*, cl.name AS client_name, cl.email 
+      `SELECT ch.*, cl.name AS client_name, cl.email, u.contact_name AS creator_name 
        FROM contract_history ch 
        LEFT JOIN client_history cl ON (ch.client_id = cl.upya_id OR (ch.client_number = cl.client_number AND ch.client_number IS NOT NULL)) 
        AND ch.tenant_id = cl.tenant_id
+       LEFT JOIN users u ON ch.created_by_user_id = u.id
        WHERE ch.tenant_id = ? AND (${scope.filter})
        ORDER BY ch.synced_at DESC`,
       [tenantId, ...scope.params]
@@ -2275,10 +2276,11 @@ app.get('/api/backoffice/payments', async (req, res) => {
   try {
     const scope = await getScopeFilter(tenantId, userId, role, orgId, scopeRole, 'p', storeId, username);
     const query = `
-      SELECT p.*, c.name as client_name, h.product_name, c.client_number, c.email, h.repayment_frequency, h.repayment_amount
+      SELECT p.*, c.name as client_name, h.product_name, c.client_number, c.email, h.repayment_frequency, h.repayment_amount, u.contact_name AS creator_name
       FROM payments p
       LEFT JOIN contract_history h ON (p.contract_id = h.contract_number AND p.tenant_id = h.tenant_id)
       LEFT JOIN client_history c ON (c.upya_id = COALESCE(p.client_id, h.client_id) AND c.tenant_id = p.tenant_id)
+      LEFT JOIN users u ON p.created_by_user_id = u.id
       WHERE p.tenant_id = ? AND (${scope.filter})
       ORDER BY p.payment_date DESC
     `;
