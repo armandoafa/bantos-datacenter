@@ -748,12 +748,20 @@ const ProductModal = ({ isOpen, onClose, product, onSave, session, inventory = [
                                 }
                               });
                               try {
-                                await axios.post(`${API}/backoffice/inventory/assign`, {
-                                  tenantId: session.tenantId,
-                                  storeId: session.storeId,
-                                  sellerId: assignSellerId || null,
-                                  inventoryIds: [editingInventoryItem.id]
-                                });
+                                if (!assignSellerId) {
+                                  await axios.post(`${API}/backoffice/inventory/unassign`, {
+                                    tenantId: session.tenantId,
+                                    storeId: session.storeId,
+                                    inventoryIds: [editingInventoryItem.id]
+                                  });
+                                } else {
+                                  await axios.post(`${API}/backoffice/inventory/assign`, {
+                                    tenantId: session.tenantId,
+                                    storeId: session.storeId,
+                                    sellerId: assignSellerId,
+                                    inventoryIds: [editingInventoryItem.id]
+                                  });
+                                }
                                 console.log('--- FRONTEND ASSIGN SUCCESS ---');
                                 setIsAssignOpen(false);
                                 setEditingInventoryItem(null);
