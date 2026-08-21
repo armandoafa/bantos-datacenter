@@ -6238,7 +6238,7 @@ const ActionFormView = ({ actionType, prefillData, onBack, onSaveDraft, deals, p
                       <select className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-blue-500/20 font-bold text-slate-800" value={selectedProductId} onChange={e => setSelectedProductId(e.target.value)}>
                         <option value="">-- Selecciona un dispositivo --</option>
                         {products && products.filter(p => p.name.toLowerCase().includes(productSearch.toLowerCase()) || p.manufacturer?.toLowerCase().includes(productSearch.toLowerCase())).map(p => (
-                          <option key={p.upya_id} value={p.upya_id}>{p.manufacturer ? `${p.manufacturer} ` : ''}{p.name}</option>
+                          <option key={p.upya_id} value={p.upya_id}>{`${p.manufacturer || ''} ${p.model || p.name || ''} ${p.variant || ''}`.replace(/\s+/g, ' ').trim().toUpperCase()}</option>
                         ))}
                       </select>
                     </div>
