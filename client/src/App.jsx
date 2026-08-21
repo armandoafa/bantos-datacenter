@@ -379,7 +379,14 @@ const ProductModal = ({ isOpen, onClose, product, onSave, session, inventory = [
     }
   };
 
-  const existingModels = dynamicModels;
+  const existingModels = Array.from(new Set([
+    ...getCatalogHistory('bantos_catalog_models', [
+      ...products.filter(p => !formData.manufacturer || (p.manufacturer && p.manufacturer.toLowerCase() === formData.manufacturer.toLowerCase())).map(p => p.model),
+      ...inventory.filter(i => !formData.manufacturer || (i.manufacturer && i.manufacturer.toLowerCase() === formData.manufacturer.toLowerCase())).map(i => i.model),
+      product?.model
+    ]),
+    ...dynamicModels
+  ])).filter(Boolean).sort();
 
   // 3. Opciones de Variante acumuladas y limpias
   const existingVariants = getCatalogHistory('bantos_catalog_variants', [
