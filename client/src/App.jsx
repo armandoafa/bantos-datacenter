@@ -534,7 +534,7 @@ const ProductModal = ({ isOpen, onClose, product, onSave, session, inventory = [
                     render={a => (
                       <>
                         <td className="px-6 py-4 font-mono text-sm font-bold text-slate-800">{a.serial_number}</td>
-                        <td className="px-6 py-4 text-xs text-slate-500">{`${a.manufacturer || formData.manufacturer || ''} ${a.model || formData.model || ''} ${a.variant || ''}`.replace(/\s+/g, ' ').trim().toUpperCase()}</td>
+                        <td className="px-6 py-4 text-xs text-slate-500">{`${formData.manufacturer || ''} ${formData.model || ''} ${a.variant || formData.variant || ''}`.replace(/\s+/g, ' ').trim().toUpperCase()}</td>
                         <td className="px-6 py-4 text-xs text-slate-500">
                           {a.assigned_to_user_id ? users.find(u => u.id === a.assigned_to_user_id)?.username || a.assigned_to_user_id : 'No Asignado'}
                         </td>
@@ -572,7 +572,7 @@ const ProductModal = ({ isOpen, onClose, product, onSave, session, inventory = [
                       <div className="bg-white p-4 rounded-xl border border-slate-100 flex justify-between items-center">
                         <div className="space-y-1">
                           <p className="font-mono text-sm font-bold text-slate-800">{a.serial_number}</p>
-                          <p className="text-slate-500 text-[10px]">{a.model}</p>
+                          <p className="text-slate-500 text-[10px]">{`${formData.manufacturer || ''} ${formData.model || ''} ${a.variant || formData.variant || ''}`.replace(/\s+/g, ' ').trim().toUpperCase()}</p>
                         </div>
                         <div className="flex items-center gap-3">
                           <button
