@@ -2680,12 +2680,25 @@ app.get('/api/backoffice/products', async (req, res) => {
       const [rows] = await pool.query('SELECT * FROM products WHERE tenant_id = ? ORDER BY name ASC', [tenantId]);
       
       // Attach availability count
+      const matchesProduct = (invModel, prodName) => {
+        if (!invModel || !prodName) return false;
+        const iM = invModel.toLowerCase();
+        const pN = prodName.toLowerCase();
+        if (iM === pN) return true;
+        if (iM.includes(pN) || pN.includes(iM)) return true;
+        
+        const extractWords = (str) => str.replace(/[^a-z0-9]/g, ' ').split(/\s+/).filter(w => w.length > 2);
+        const iMWords = extractWords(iM);
+        const pNWords = extractWords(pN);
+        
+        const intersection = iMWords.filter(w => pNWords.includes(w));
+        return intersection.length >= 2 && intersection.some(w => /\d/.test(w));
+      };
+
       let result = rows.map(prod => {
-        const inv = assignedInventory.find(i => 
-          (i.model && prod.model && i.model === prod.model) || 
-          (i.model && prod.name && prod.name.toUpperCase().includes(i.model.toUpperCase()))
-        );
-        return { ...prod, stock_available: inv ? inv.count : 0 };
+        const matchedInv = assignedInventory.filter(i => matchesProduct(i.model, prod.name));
+        const stock = matchedInv.reduce((acc, i) => acc + i.count, 0);
+        return { ...prod, stock_available: stock };
       });
       // Filter out out-of-stock products for specific agents
       result = result.filter(prod => prod.stock_available > 0);
@@ -2703,12 +2716,25 @@ app.get('/api/backoffice/products', async (req, res) => {
 
       const [rows] = await pool.query('SELECT * FROM products WHERE tenant_id = ? ORDER BY name ASC', [tenantId]);
       
+      const matchesProduct = (invModel, prodName) => {
+        if (!invModel || !prodName) return false;
+        const iM = invModel.toLowerCase();
+        const pN = prodName.toLowerCase();
+        if (iM === pN) return true;
+        if (iM.includes(pN) || pN.includes(iM)) return true;
+        
+        const extractWords = (str) => str.replace(/[^a-z0-9]/g, ' ').split(/\s+/).filter(w => w.length > 2);
+        const iMWords = extractWords(iM);
+        const pNWords = extractWords(pN);
+        
+        const intersection = iMWords.filter(w => pNWords.includes(w));
+        return intersection.length >= 2 && intersection.some(w => /\d/.test(w));
+      };
+
       let result = rows.map(prod => {
-        const inv = inventory.find(i => 
-          (i.model && prod.model && i.model === prod.model) || 
-          (i.model && prod.name && prod.name.toUpperCase().includes(i.model.toUpperCase()))
-        );
-        return { ...prod, stock_available: inv ? inv.count : 0 };
+        const matchedInv = inventory.filter(i => matchesProduct(i.model, prod.name));
+        const stock = matchedInv.reduce((acc, i) => acc + i.count, 0);
+        return { ...prod, stock_available: stock };
       });
       
       console.log('--- PRODUCT RESULTS ---', result.filter(r => r.name.includes('Oppo')));
