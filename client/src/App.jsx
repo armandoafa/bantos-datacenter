@@ -528,7 +528,7 @@ const ProductModal = ({ isOpen, onClose, product, onSave, session, inventory = [
                     render={a => (
                       <>
                         <td className="px-6 py-4 font-mono text-sm font-bold text-slate-800">{a.serial_number}</td>
-                        <td className="px-6 py-4 text-xs text-slate-500">{a.model}</td>
+                        <td className="px-6 py-4 text-xs text-slate-500">{`${formData.manufacturer || a.manufacturer || ''} ${formData.model || a.model || ''}`.trim().toUpperCase()}</td>
                         <td className="px-6 py-4 text-xs text-slate-500">{a.variant || '—'}</td>
                         <td className="px-6 py-4"><Badge status={a.status} /></td>
                         <td className="px-6 py-4 text-xs text-slate-500">
