@@ -1920,6 +1920,7 @@ app.post('/api/backoffice/scan-session/create', (req, res) => {
     tenantId: tenantId || 'c-romel',
     idFront: null,
     proofAddress: null,
+    selfie: null,
     createdAt: Date.now()
   };
   scanSessions.set(sessionId, sessionData);
@@ -1947,6 +1948,8 @@ app.post('/api/backoffice/scan-session/:sessionId/upload', (req, res) => {
     sessionData.idFront = image;
   } else if (field === 'proofAddress') {
     sessionData.proofAddress = image;
+  } else if (field === 'selfie') {
+    sessionData.selfie = image;
   }
 
   scanSessions.set(sessionId, sessionData);
@@ -2590,11 +2593,11 @@ app.post('/api/backoffice/contracts/generate-and-sign', async (req, res) => {
     // Upsert Client
     await pool.query(
       `INSERT INTO client_history 
-       (upya_id, client_number, tenant_id, name, phone, reference_contact, entity, signing_date)
-       VALUES (?, ?, ?, ?, ?, ?, ?, NOW())
+       (upya_id, client_number, tenant_id, name, phone, reference_contact, entity, client_id_front, client_proof_address, client_selfie, signing_date)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
        ON DUPLICATE KEY UPDATE 
-       name=VALUES(name), phone=VALUES(phone), reference_contact=VALUES(reference_contact)`,
-       [clientId, clientNumber, tenantId, contractData.client_name || 'Cliente', contractData.phone || '', contractData.referenceName || '', contractData.idType || '']
+       name=VALUES(name), phone=VALUES(phone), reference_contact=VALUES(reference_contact), client_id_front=VALUES(client_id_front), client_proof_address=VALUES(client_proof_address), client_selfie=VALUES(client_selfie)`,
+       [clientId, clientNumber, tenantId, contractData.client_name || 'Cliente', contractData.phone || '', contractData.referenceName || '', contractData.idType || '', contractData.idFront || null, contractData.proofAddress || null, contractData.selfie || null]
     );
 
     await pool.query(

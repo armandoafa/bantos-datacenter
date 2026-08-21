@@ -5873,20 +5873,6 @@ const MobileDocScannerView = ({ sessionId }) => {
               <span>{sessionData?.idFront ? 'Volver a Tomar Foto' : 'Tomar Foto / Seleccionar'}</span>
             </div>
           </label>
-        </div>
-
-        <div className="bg-slate-900 p-6 rounded-3xl border border-slate-800 space-y-4">
-          <div className="flex items-center justify-between">
-            <h3 className="text-sm font-black uppercase tracking-widest text-slate-300 flex items-center gap-2">
-              <FileText size={16} className="text-emerald-400" /> Comprobante Domicilio
-            </h3>
-            {sessionData?.proofAddress && (
-              <span className="bg-emerald-500/20 text-emerald-400 text-[10px] font-black uppercase px-2.5 py-1 rounded-full border border-emerald-500/30">
-                ✓ Recibido
-              </span>
-            )}
-          </div>
-
           {sessionData?.proofAddress ? (
             <div className="relative rounded-2xl overflow-hidden border border-slate-700 bg-black">
               <img src={sessionData.proofAddress} alt="Comprobante" className="w-full h-44 object-cover" />
@@ -5909,6 +5895,44 @@ const MobileDocScannerView = ({ sessionId }) => {
             <div className="w-full bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white font-black text-xs uppercase tracking-widest py-4 rounded-2xl text-center cursor-pointer transition-all shadow-lg shadow-emerald-600/20 flex items-center justify-center gap-2">
               {uploadingField === 'proofAddress' ? <RefreshCw className="animate-spin" size={16} /> : <Camera size={16} />}
               <span>{sessionData?.proofAddress ? 'Volver a Tomar Foto' : 'Tomar Foto / Seleccionar'}</span>
+            </div>
+          </label>
+        </div>
+
+        <div className="bg-slate-900 p-6 rounded-3xl border border-slate-800 space-y-4">
+          <div className="flex items-center justify-between">
+            <h3 className="text-sm font-black uppercase tracking-widest text-slate-300 flex items-center gap-2">
+              <Camera size={16} className="text-amber-400" /> Selfie del Cliente
+            </h3>
+            {sessionData?.selfie && (
+              <span className="bg-emerald-500/20 text-emerald-400 text-[10px] font-black uppercase px-2.5 py-1 rounded-full border border-emerald-500/30">
+                ✓ Recibido
+              </span>
+            )}
+          </div>
+
+          {sessionData?.selfie ? (
+            <div className="relative rounded-2xl overflow-hidden border border-slate-700 bg-black">
+              <img src={sessionData.selfie} alt="Selfie" className="w-full h-44 object-cover" />
+            </div>
+          ) : (
+            <div className="w-full h-36 border-2 border-dashed border-slate-700 rounded-2xl bg-slate-950/50 flex flex-col items-center justify-center text-slate-500 gap-2">
+              <Camera size={32} className="text-slate-400" />
+              <span className="text-xs font-bold text-slate-400">Toma una foto selfie</span>
+            </div>
+          )}
+
+          <label className="block w-full">
+            <input 
+              type="file" 
+              accept="image/*" 
+              capture="user" 
+              onChange={(e) => handleFileUpload('selfie', e)}
+              className="hidden" 
+            />
+            <div className="w-full bg-amber-600 hover:bg-amber-500 active:scale-95 text-white font-black text-xs uppercase tracking-widest py-4 rounded-2xl text-center cursor-pointer transition-all shadow-lg shadow-amber-600/20 flex items-center justify-center gap-2">
+              {uploadingField === 'selfie' ? <RefreshCw className="animate-spin" size={16} /> : <Camera size={16} />}
+              <span>{sessionData?.selfie ? 'Volver a Tomar Foto' : 'Tomar Foto / Seleccionar'}</span>
             </div>
           </label>
         </div>
@@ -5995,6 +6019,7 @@ const ActionFormView = ({ actionType, prefillData, onBack, onSaveDraft, deals, p
     signatureName: prefillData?.signatureName || '',
     idFront: prefillData?.idFront || '',
     proofAddress: prefillData?.proofAddress || '',
+    selfie: prefillData?.selfie || '',
     signature: prefillData?.signature || ''
   });
 
@@ -6015,6 +6040,7 @@ const ActionFormView = ({ actionType, prefillData, onBack, onSaveDraft, deals, p
 
   const fileFrontRef = useRef(null);
   const fileProofRef = useRef(null);
+  const fileSelfieRef = useRef(null);
   const salesSignaturePadRef = useRef(null);
   const salesCanvasRef = useRef(null);
   const [scanSessionId, setScanSessionId] = useState(null);
@@ -6050,6 +6076,7 @@ const ActionFormView = ({ actionType, prefillData, onBack, onSaveDraft, deals, p
               ...prev,
               ...(sess.idFront ? { idFront: sess.idFront } : {}),
               ...(sess.proofAddress ? { proofAddress: sess.proofAddress } : {}),
+              ...(sess.selfie ? { selfie: sess.selfie } : {}),
               ...(sess.signature ? { signature: sess.signature } : {})
             }));
             if (sess.signature && salesSignaturePadRef.current && salesSignaturePadRef.current.isEmpty()) {
@@ -6378,6 +6405,7 @@ const ActionFormView = ({ actionType, prefillData, onBack, onSaveDraft, deals, p
                   <>
                     <input type="file" ref={fileFrontRef} accept="image/*" capture="environment" className="hidden" onChange={e => handleFileChange('idFront', e)} />
                     <input type="file" ref={fileProofRef} accept="image/*" capture="environment" className="hidden" onChange={e => handleFileChange('proofAddress', e)} />
+                    <input type="file" ref={fileSelfieRef} accept="image/*" capture="user" className="hidden" onChange={e => handleFileChange('selfie', e)} />
 
                     <div className="col-span-2 md:col-span-1">
                       <label className="block text-sm font-black text-slate-400 uppercase tracking-widest mb-3">Tipo de Identificación</label>
@@ -6437,6 +6465,32 @@ const ActionFormView = ({ actionType, prefillData, onBack, onSaveDraft, deals, p
                           <div className="text-center">
                             <FileText size={24} className="mx-auto mb-2 text-emerald-600" />
                             <span className="text-base font-bold">Tomar Foto / Subir Comprobante</span>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="col-span-2 md:col-span-2">
+                      <label className="block text-sm font-black text-slate-400 uppercase tracking-widest mb-3 flex items-center justify-between">
+                        <span>Captura Selfie</span>
+                        {formData.selfie && <span className="text-emerald-600 font-black text-xs">✓ Capturado</span>}
+                      </label>
+                      {formData.selfie ? (
+                        <div className="relative w-full h-44 rounded-2xl overflow-hidden border-2 border-emerald-500 bg-black group">
+                          <img src={formData.selfie} alt="Selfie" className="w-full h-full object-cover" />
+                          <div className="absolute inset-0 bg-slate-900/60 opacity-0 group-hover:opacity-100 flex items-center justify-center gap-2 transition-all">
+                            <button type="button" onClick={() => fileSelfieRef.current?.click()} className="px-3 py-1.5 bg-blue-600 text-white rounded-xl font-bold text-xs">Cambiar</button>
+                            <button type="button" onClick={() => setFormData({ ...formData, selfie: '' })} className="p-2 bg-rose-600 text-white rounded-xl font-bold text-xs"><Trash2 size={16} /></button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div 
+                          onClick={() => fileSelfieRef.current?.click()} 
+                          className="w-full h-44 border-2 border-dashed border-slate-300 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-500 hover:bg-amber-50 hover:border-amber-300 hover:text-amber-600 transition-colors cursor-pointer"
+                        >
+                          <div className="text-center">
+                            <Camera size={24} className="mx-auto mb-2 text-amber-600" />
+                            <span className="text-base font-bold">Tomar Foto / Subir Selfie</span>
                           </div>
                         </div>
                       )}
@@ -6854,6 +6908,7 @@ const ActionFormView = ({ actionType, prefillData, onBack, onSaveDraft, deals, p
                           const contractPayload = {
                             idFront: formData.idFront,
                             proofAddress: formData.proofAddress,
+                            selfie: formData.selfie,
                             client_name: `${firstName} ${lastName}`.trim(),
                             email: '', // Podríamos agregar email si es necesario
                             client_number: formData.idNumber || Date.now().toString(),
