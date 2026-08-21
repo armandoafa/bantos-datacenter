@@ -1156,13 +1156,13 @@ app.put('/api/backoffice/users/:id', async (req, res) => {
     if (password) {
       const pwdHash = await bcrypt.hash(password, 10);
       await pool.query(
-        'UPDATE users SET username=?, contact_name=?, email=?, password=? WHERE id=? AND tenant_id=?',
-        [username, contact_name, email, pwdHash, userId, tenantId]
+        'UPDATE users SET contact_name=?, email=?, password=? WHERE id=? AND tenant_id=?',
+        [contact_name, email, pwdHash, userId, tenantId]
       );
     } else {
       await pool.query(
-        'UPDATE users SET username=?, contact_name=?, email=? WHERE id=? AND tenant_id=?',
-        [username, contact_name, email, userId, tenantId]
+        'UPDATE users SET contact_name=?, email=? WHERE id=? AND tenant_id=?',
+        [contact_name, email, userId, tenantId]
       );
     }
     
