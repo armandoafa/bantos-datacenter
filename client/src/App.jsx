@@ -525,12 +525,11 @@ const ProductModal = ({ isOpen, onClose, product, onSave, session, inventory = [
                       <Plus size={16}/> Agregar IMEI
                     </button>
                   </div>
-                  <Table cols={['IMEI', 'Modelo Real', 'Variante', 'Estado', 'Asignado a', 'Acciones']} rows={matchedInventory} 
+                  <Table cols={['IMEI', 'Modelo Real', 'Estado', 'Asignado a', 'Acciones']} rows={matchedInventory} 
                     render={a => (
                       <>
                         <td className="px-6 py-4 font-mono text-sm font-bold text-slate-800">{a.serial_number}</td>
-                        <td className="px-6 py-4 text-xs text-slate-500">{`${formData.manufacturer || a.manufacturer || ''} ${formData.model || a.model || ''}`.trim().toUpperCase()}</td>
-                        <td className="px-6 py-4 text-xs text-slate-500">{a.variant || '—'}</td>
+                        <td className="px-6 py-4 text-xs text-slate-500">{`${formData.manufacturer || a.manufacturer || ''} ${formData.model || a.model || ''} ${formData.variant || a.variant || ''}`.replace(/\s+/g, ' ').trim().toUpperCase()}</td>
                         <td className="px-6 py-4"><Badge status={a.status} /></td>
                         <td className="px-6 py-4 text-xs text-slate-500">
                           {a.assigned_to_user_id ? users.find(u => u.id === a.assigned_to_user_id)?.username || a.assigned_to_user_id : 'No Asignado'}
