@@ -7475,8 +7475,8 @@ const App = () => {
           username: activeScope?.username || session?.username,
           role: session?.role,
           storeId: session?.storeId,
-          orgId: activeScope?.orgName === 'Tienda Central' ? undefined : activeScope?.orgId,
-          scopeRole: activeScope?.role
+          orgId: (activeScope?.orgName === 'Tienda Central' || !activeScope?.orgId) ? undefined : activeScope?.orgId,
+          scopeRole: activeScope?.role || undefined
         } 
       };
       const [sumRes, cliRes, conRes, invRes, payRes, proRes, ppRes, orgRes, actRes, dcRes, audRes, truRes, truLogRes, usrRes] = await Promise.allSettled([
