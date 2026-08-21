@@ -945,8 +945,8 @@ app.post('/api/backoffice/payment-plans', async (req, res) => {
   try {
     const upya_id = planData.upya_id || `PLAN-${Date.now()}`;
     await pool.query(
-      'INSERT INTO payment_plans (upya_id, tenant_id, type, name, product_name, total_cost, status, description, upfront_percentage, interest_percentage, frequency_days, installments_count) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-      [upya_id, tenantId, planData.type || 'PAYG', planData.name, planData.product_name, planData.total_cost || 0, planData.status || 'Active', planData.description || '', planData.upfront_percentage || 0, planData.interest_percentage || 0, planData.frequency_days || null, planData.installments_count || null]
+      'INSERT INTO payment_plans (upya_id, tenant_id, type, name, product_name, total_cost, status, description, upfront_percentage, interest_percentage, frequency_days, installments_count, credit_period_months) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      [upya_id, tenantId, planData.type || 'PAYG', planData.name, planData.product_name, planData.total_cost || 0, planData.status || 'Active', planData.description || '', planData.upfront_percentage || 0, planData.interest_percentage || 0, planData.frequency_days || null, planData.installments_count || null, planData.credit_period_months || 12]
     );
     res.json({ success: true, id: upya_id });
   } catch (error) { res.status(500).json({ error: error.message }); }
@@ -957,8 +957,8 @@ app.put('/api/backoffice/payment-plans/:id', async (req, res) => {
   const { planData, tenantId } = req.body;
   try {
     await pool.query(
-      'UPDATE payment_plans SET type=?, name=?, product_name=?, total_cost=?, status=?, description=?, upfront_percentage=?, interest_percentage=?, frequency_days=?, installments_count=? WHERE upya_id = ? AND tenant_id = ?',
-      [planData.type || 'PAYG', planData.name, planData.product_name, planData.total_cost || 0, planData.status || 'Active', planData.description || '', planData.upfront_percentage || 0, planData.interest_percentage || 0, planData.frequency_days || null, planData.installments_count || null, id, tenantId]
+      'UPDATE payment_plans SET type=?, name=?, product_name=?, total_cost=?, status=?, description=?, upfront_percentage=?, interest_percentage=?, frequency_days=?, installments_count=?, credit_period_months=? WHERE upya_id = ? AND tenant_id = ?',
+      [planData.type || 'PAYG', planData.name, planData.product_name, planData.total_cost || 0, planData.status || 'Active', planData.description || '', planData.upfront_percentage || 0, planData.interest_percentage || 0, planData.frequency_days || null, planData.installments_count || null, planData.credit_period_months || 12, id, tenantId]
     );
     res.json({ success: true });
   } catch (error) { res.status(500).json({ error: error.message }); }
