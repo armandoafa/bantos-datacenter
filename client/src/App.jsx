@@ -310,7 +310,7 @@ const ProductModal = ({ isOpen, onClose, product, onSave, session, inventory = [
 
   useEffect(() => {
     if (formData.manufacturer && session?.tenant_id) {
-      fetch(`/api/backoffice/models/${encodeURIComponent(formData.manufacturer)}?tenantId=${session.tenant_id}`)
+      fetch(`${API}/backoffice/models/${encodeURIComponent(formData.manufacturer)}?tenantId=${session.tenant_id}`)
         .then(r => r.json())
         .then(data => {
           if (Array.isArray(data)) setDynamicModels(data);
@@ -327,7 +327,7 @@ const ProductModal = ({ isOpen, onClose, product, onSave, session, inventory = [
       return;
     }
     try {
-      const res = await fetch(`/api/backoffice/models?tenantId=${session.tenant_id}`, {
+      const res = await fetch(`${API}/backoffice/models?tenantId=${session.tenant_id}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ manufacturer: formData.manufacturer, model: newModelName })
