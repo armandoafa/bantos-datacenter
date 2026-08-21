@@ -199,6 +199,27 @@ const SelectableOrCustomInput = ({ label, value, options = [], onChange, placeho
 
       {isOpen && (
         <div className="absolute z-50 left-0 right-0 top-full mt-1 bg-white border-2 border-slate-100 rounded-2xl shadow-xl max-h-52 overflow-y-auto py-2">
+          {onAddOption && (
+            <div className="border-b border-slate-100 mb-1 pb-1">
+              <div
+                onClick={() => {
+                  if (value && !allOptions.includes(value)) {
+                    handleAddOption();
+                  } else {
+                    const newVal = window.prompt(`Ingrese el nombre para el nuevo ${label}:`);
+                    if (newVal && newVal.trim()) {
+                      onAddOption(newVal.trim());
+                      setIsOpen(false);
+                    }
+                  }
+                }}
+                className="px-5 py-2.5 font-bold text-sm cursor-pointer hover:bg-blue-50 text-blue-600 transition-colors flex items-center gap-2"
+              >
+                <Plus size={16} />
+                <span>{value && !allOptions.includes(value) ? `Registrar "${value}"` : `Añadir nuevo...`}</span>
+              </div>
+            </div>
+          )}
           {allOptions.length > 0 ? (
             allOptions.map((opt, idx) => (
               <div
@@ -212,19 +233,7 @@ const SelectableOrCustomInput = ({ label, value, options = [], onChange, placeho
             ))
           ) : (
             <div className="px-5 py-3 text-xs text-slate-400 font-bold">
-              {value ? `Escribe o guarda para registrar "${value}" como nuevo ${label.toLowerCase()}` : `No hay ${label.toLowerCase()}s guardados previamente. Escribe uno nuevo.`}
-            </div>
-          )}
-          
-          {isCustomValue && onAddOption && (
-            <div className="border-t border-slate-100 mt-2 pt-2">
-              <div
-                onClick={handleAddOption}
-                className="px-5 py-2.5 font-bold text-sm cursor-pointer hover:bg-blue-50 text-blue-600 transition-colors flex items-center gap-2"
-              >
-                <Plus size={16} />
-                <span>Registrar "{value}"</span>
-              </div>
+              {value ? `Escribe o usa el botón superior para registrar "${value}" como nuevo ${label.toLowerCase()}` : `No hay ${label.toLowerCase()}s guardados previamente.`}
             </div>
           )}
         </div>
@@ -312,15 +321,8 @@ const ProductModal = ({ isOpen, onClose, product, onSave, session, inventory = [
     }
   }, [session?.tenant_id]);
 
-  // 1. Opciones de Fabricante (Marca) acumuladas y limpias
-  const existingManufacturers = Array.from(new Set([
-    ...getCatalogHistory('bantos_catalog_manufacturers', [
-      ...products.map(p => p.manufacturer),
-      ...inventory.map(i => i.manufacturer),
-      product?.manufacturer
-    ]),
-    ...dynamicManufacturers
-  ])).filter(Boolean).sort();
+  // 1. Opciones de Fabricante (Marca) dinámicas
+  const existingManufacturers = dynamicManufacturers;
 
   const handleAddCustomManufacturer = async (newManufacturerName) => {
     try {
@@ -379,14 +381,7 @@ const ProductModal = ({ isOpen, onClose, product, onSave, session, inventory = [
     }
   };
 
-  const existingModels = Array.from(new Set([
-    ...getCatalogHistory('bantos_catalog_models', [
-      ...products.filter(p => !formData.manufacturer || (p.manufacturer && p.manufacturer.toLowerCase() === formData.manufacturer.toLowerCase())).map(p => p.model),
-      ...inventory.filter(i => !formData.manufacturer || (i.manufacturer && i.manufacturer.toLowerCase() === formData.manufacturer.toLowerCase())).map(i => i.model),
-      product?.model
-    ]),
-    ...dynamicModels
-  ])).filter(Boolean).sort();
+  const existingModels = dynamicModels;
 
   // 3. Opciones de Variante acumuladas y limpias
   const existingVariants = getCatalogHistory('bantos_catalog_variants', [
