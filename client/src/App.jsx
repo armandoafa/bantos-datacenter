@@ -717,7 +717,7 @@ const ProductModal = ({ isOpen, onClose, product, onSave, session, inventory = [
                             >
                               <option value="">-- Quitar Asignación --</option>
                               {(() => {
-                                const targetStore = activeScope?.orgId || session?.storeId;
+                                const targetStore = activeScope?.orgName === 'Tienda Central' ? null : (activeScope?.orgId || session?.storeId);
                                 const getDescendantIds = (nodeId, struct) => {
                                   let ids = [nodeId];
                                   const children = struct.filter(n => n.parent_id == nodeId);
@@ -7475,7 +7475,7 @@ const App = () => {
           username: activeScope?.username || session?.username,
           role: session?.role,
           storeId: session?.storeId,
-          orgId: activeScope?.orgId,
+          orgId: activeScope?.orgName === 'Tienda Central' ? undefined : activeScope?.orgId,
           scopeRole: activeScope?.role
         } 
       };
