@@ -144,7 +144,7 @@ const ProductInput = ({ label, value, type = 'text', onChange, readOnly }) => (
   </div>
 );
 
-const SelectableOrCustomInput = ({ label, value, options = [], onChange, placeholder = '' }) => {
+const SelectableOrCustomInput = ({ label, value, options = [], onChange, placeholder = '', onAddOption }) => {
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef(null);
 
@@ -163,7 +163,15 @@ const SelectableOrCustomInput = ({ label, value, options = [], onChange, placeho
     setIsOpen(false);
   };
 
+  const handleAddOption = () => {
+    if (onAddOption) {
+      onAddOption(value);
+      setIsOpen(false);
+    }
+  };
+
   const allOptions = Array.from(new Set(options.filter(Boolean)));
+  const isCustomValue = value && !allOptions.includes(value);
 
   return (
     <div className="space-y-1.5 relative" ref={containerRef}>
@@ -207,13 +215,16 @@ const SelectableOrCustomInput = ({ label, value, options = [], onChange, placeho
               {value ? `Escribe o guarda para registrar "${value}" como nuevo ${label.toLowerCase()}` : `No hay ${label.toLowerCase()}s guardados previamente. Escribe uno nuevo.`}
             </div>
           )}
-
-          {value && !allOptions.includes(value) && (
-            <div 
-              onClick={() => handleSelectOption(value)}
-              className="border-t border-slate-100 mt-1 pt-2 px-5 py-2 text-xs font-black text-blue-600 hover:bg-blue-50 cursor-pointer flex items-center gap-1.5"
-            >
-              <Plus size={14} /> Usar "{value}" como nuevo {label.toLowerCase()}
+          
+          {isCustomValue && onAddOption && (
+            <div className="border-t border-slate-100 mt-2 pt-2">
+              <div
+                onClick={handleAddOption}
+                className="px-5 py-2.5 font-bold text-sm cursor-pointer hover:bg-blue-50 text-blue-600 transition-colors flex items-center gap-2"
+              >
+                <Plus size={16} />
+                <span>Registrar "{value}"</span>
+              </div>
             </div>
           )}
         </div>
@@ -295,13 +306,45 @@ const ProductModal = ({ isOpen, onClose, product, onSave, session, inventory = [
     product?.manufacturer
   ]);
 
-  // 2. Opciones de Modelo acumuladas y limpias
-  const existingModels = getCatalogHistory('bantos_catalog_models', [
-    ...products.map(p => p.model),
-    ...products.map(p => p.name),
-    ...inventory.map(i => i.model),
-    product?.model
-  ]);
+  const [dynamicModels, setDynamicModels] = useState([]);
+
+  useEffect(() => {
+    if (formData.manufacturer && session?.tenant_id) {
+      fetch(`/api/backoffice/models/${encodeURIComponent(formData.manufacturer)}?tenantId=${session.tenant_id}`)
+        .then(r => r.json())
+        .then(data => {
+          if (Array.isArray(data)) setDynamicModels(data);
+        })
+        .catch(console.error);
+    } else {
+      setDynamicModels([]);
+    }
+  }, [formData.manufacturer, session?.tenant_id]);
+
+  const handleAddCustomModel = async (newModelName) => {
+    if (!formData.manufacturer) {
+      alert("Selecciona primero un Fabricante / Marca para agregar el modelo.");
+      return;
+    }
+    try {
+      const res = await fetch(`/api/backoffice/models?tenantId=${session.tenant_id}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ manufacturer: formData.manufacturer, model: newModelName })
+      });
+      if (res.ok) {
+        setDynamicModels(prev => Array.from(new Set([...prev, newModelName])).sort());
+        setFormData(prev => ({ ...prev, model: newModelName }));
+      } else {
+        alert("Error al registrar el modelo.");
+      }
+    } catch (e) {
+      console.error(e);
+      alert("Error de red al registrar modelo.");
+    }
+  };
+
+  const existingModels = dynamicModels;
 
   // 3. Opciones de Variante acumuladas y limpias
   const existingVariants = getCatalogHistory('bantos_catalog_variants', [
@@ -371,31 +414,39 @@ const ProductModal = ({ isOpen, onClose, product, onSave, session, inventory = [
         )}
         <div className="p-8 overflow-y-auto flex-1 max-h-[60vh]">
           {activeTab === 'general' ? (
-            <div className="grid grid-cols-1 md:grid-cols-5 gap-4 md:gap-6">
-              <div className="col-span-1 md:col-span-3 grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-5">
-                <div className="col-span-1 md:col-span-2"><p className="text-[12px] font-black text-blue-600 uppercase tracking-[0.2em] mb-2">Información Técnica</p></div>
-                <ProductInput label="Nombre del Producto (*)" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} />
-                <ProductInput label="Referencia" value={formData.productReference} readOnly />
-                <SelectableOrCustomInput label="Fabricante / Marca" value={formData.manufacturer} options={existingManufacturers} onChange={e => setFormData({...formData, manufacturer: e.target.value})} />
-                <SelectableOrCustomInput label="Modelo" value={formData.model} options={existingModels} onChange={e => setFormData({...formData, model: e.target.value})} />
+            <div className="grid grid-cols-1 md:grid-cols-5 gap-4 md:gap-5 items-start">
+              <div className="col-span-1 md:col-span-3 flex flex-col gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
+                  <div className="col-span-1 md:col-span-2"><p className="text-[12px] font-black text-blue-600 uppercase tracking-[0.2em] mb-1">Información Técnica</p></div>
+                  <ProductInput label="Nombre del Producto (*)" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} />
+                  <ProductInput label="Referencia" value={formData.productReference} readOnly />
+                  <SelectableOrCustomInput label="Fabricante / Marca" value={formData.manufacturer} options={existingManufacturers} onChange={e => setFormData({...formData, manufacturer: e.target.value})} />
+                  <SelectableOrCustomInput label="Modelo" value={formData.model} options={existingModels} onChange={e => setFormData({...formData, model: e.target.value})} onAddOption={handleAddCustomModel} />
 
-                <div className="space-y-1.5">
-                  <label className="text-[11px] font-black uppercase tracking-widest text-slate-400 ml-1">Categoría</label>
-                  <select className="w-full bg-slate-50 border-2 border-slate-100 rounded-xl py-3.5 px-5 font-bold text-slate-800 focus:border-blue-600 outline-none transition-all text-base appearance-none" value={formData.category} onChange={e => setFormData({...formData, category: e.target.value})}>
-                    <option value="Smartphone">Smartphone</option>
-                    <option value="Tablet">Tablet</option>
-                  </select>
+                  <div className="space-y-1.5">
+                    <label className="text-[11px] font-black uppercase tracking-widest text-slate-400 ml-1">Categoría</label>
+                    <select className="w-full bg-slate-50 border-2 border-slate-100 rounded-xl py-3.5 px-5 font-bold text-slate-800 focus:border-blue-600 outline-none transition-all text-base appearance-none" value={formData.category} onChange={e => setFormData({...formData, category: e.target.value})}>
+                      <option value="Smartphone">Smartphone</option>
+                      <option value="Tablet">Tablet</option>
+                    </select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-[11px] font-black uppercase tracking-widest text-slate-400 ml-1">Estatus del Producto</label>
+                    <select className="w-full bg-slate-50 border-2 border-slate-100 rounded-xl py-3.5 px-5 font-bold text-slate-800 focus:border-blue-600 outline-none transition-all text-base appearance-none" value={formData.is_serialized ? 'true' : 'false'} onChange={e => setFormData({...formData, is_serialized: e.target.value === 'true'})}>
+                      <option value="true">Serializado</option>
+                      <option value="false">No serializado</option>
+                    </select>
+                  </div>
                 </div>
-                <div className="space-y-1.5">
-                  <label className="text-[11px] font-black uppercase tracking-widest text-slate-400 ml-1">Estatus del Producto</label>
-                  <select className="w-full bg-slate-50 border-2 border-slate-100 rounded-xl py-3.5 px-5 font-bold text-slate-800 focus:border-blue-600 outline-none transition-all text-base appearance-none" value={formData.is_serialized ? 'true' : 'false'} onChange={e => setFormData({...formData, is_serialized: e.target.value === 'true'})}>
-                    <option value="true">Serializado</option>
-                    <option value="false">No serializado</option>
-                  </select>
+                
+                <div className="space-y-1.5 mt-2">
+                  <label className="text-[11px] font-black uppercase tracking-widest text-slate-400 ml-1">Descripción Detallada</label>
+                  <textarea rows={3} className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl py-4 px-6 font-bold text-slate-800 focus:border-blue-600 outline-none transition-all resize-none text-base" value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} />
                 </div>
               </div>
-              <div className="col-span-1 md:col-span-2 space-y-6">
-                <div><p className="text-[12px] font-black text-emerald-600 uppercase tracking-[0.2em] mb-4">Configuración & Comercial</p></div>
+
+              <div className="col-span-1 md:col-span-2 space-y-5">
+                <div><p className="text-[12px] font-black text-emerald-600 uppercase tracking-[0.2em] mb-3">Configuración & Comercial</p></div>
                 <div className="bg-slate-50 p-6 rounded-[32px] space-y-5 border border-slate-100">
                   <ProductInput label="Precio Base ($)" value={formData.base_value} onChange={e => handleNumericInput('base_value', e.target.value)} />
                   <ProductInput label="Tasa IVA (%)" value={formData.vat_rate} onChange={e => handleNumericInput('vat_rate', e.target.value)} />
@@ -418,11 +469,6 @@ const ProductModal = ({ isOpen, onClose, product, onSave, session, inventory = [
                     </div>
                   )}
                 </div>
-
-              </div>
-              <div className="col-span-3 space-y-1.5">
-                <label className="text-[11px] font-black uppercase tracking-widest text-slate-400 ml-1">Descripción Detallada</label>
-                <textarea rows={3} className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl py-4 px-6 font-bold text-slate-800 focus:border-blue-600 outline-none transition-all resize-none text-base" value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} />
               </div>
             </div>
           ) : (
@@ -654,21 +700,32 @@ const ProductModal = ({ isOpen, onClose, product, onSave, session, inventory = [
                           <div className="pt-2 flex justify-end gap-3">
                             <button onClick={() => setIsAssignOpen(false)} className="px-5 py-3 rounded-xl font-bold uppercase text-[11px] text-slate-400">Cancelar</button>
                             <button 
-                              onClick={async () => {
-                                try {
-                                  await axios.post(`${API}/backoffice/inventory/assign`, {
-                                    tenantId: session.tenantId,
-                                    storeId: session.storeId,
-                                    sellerId: assignSellerId || null,
-                                    inventoryIds: [editingInventoryItem.id]
-                                  });
-                                  setIsAssignOpen(false);
-                                  setEditingInventoryItem(null);
-                                  if (refreshData) refreshData();
-                                } catch (e) {
-                                  alert('Error asignando: ' + e.message);
+                            onClick={async () => {
+                              console.log('--- FRONTEND ASSIGN CLICKED ---', {
+                                url: `${API}/backoffice/inventory/assign`,
+                                payload: {
+                                  tenantId: session.tenantId,
+                                  storeId: session.storeId,
+                                  sellerId: assignSellerId || null,
+                                  inventoryIds: [editingInventoryItem.id]
                                 }
-                              }}
+                              });
+                              try {
+                                await axios.post(`${API}/backoffice/inventory/assign`, {
+                                  tenantId: session.tenantId,
+                                  storeId: session.storeId,
+                                  sellerId: assignSellerId || null,
+                                  inventoryIds: [editingInventoryItem.id]
+                                });
+                                console.log('--- FRONTEND ASSIGN SUCCESS ---');
+                                setIsAssignOpen(false);
+                                setEditingInventoryItem(null);
+                                if (refreshData) refreshData();
+                              } catch (e) {
+                                console.error('--- FRONTEND ASSIGN ERROR ---', e);
+                                alert('Error asignando: ' + e.message);
+                              }
+                            }}
                               className="px-7 py-3 bg-emerald-600 text-white rounded-xl font-black uppercase tracking-widest text-[11px] shadow-lg shadow-emerald-600/30 hover:bg-emerald-700"
                             >Guardar</button>
                           </div>

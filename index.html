@@ -1,0 +1,73 @@
+<!-- ! ESTE  EJEMPLO SOLO MUESTRA CÓMO INTERCEPTAR EL ALERT() DEL IFRAME PARA EXTRAER EL TOKEN. NO BORRA EL IFRAME NI HACE NINGÚN PROCESO DE PAGO. SI QUIERES HACER UN PAGO REAL -->
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PINPEO TOKENIZE</title>
+
+  <script>
+    const config = {
+      targetIFrame: 'mainDiv',
+      keyId: ``,
+      publicKey:
+`-----BEGIN PUBLIC KEY-----
+-----END PUBLIC KEY-----`,
+    }
+
+    // Extrae SOLO el TOKEN de un texto "TOKEN: xxx | TIPO: xxx | LAST4: xxx"
+    function extraerToken(texto) {
+      const m = String(texto).match(/TOKEN:\s*([^|\s]+)/i);
+      return m ? m[1] : null;
+    }
+
+    // Aquí decides qué hacer con el token (mostrarlo, enviarlo a tu backend, etc.)
+    function mostrarToken(token) {
+      const c = document.getElementById('tokenResult');
+      if (c) c.textContent = token;
+      console.log('TOKEN:', token);
+    }
+
+    // El iframe se rellena con contentWindow.document.write() desde el MISMO origen.
+    // Por eso su alert vive en iframe.contentWindow.alert, NO en el window padre.
+    function instalarInterceptor() {
+      const iframe = document.getElementById(config.targetIFrame);
+      if (!iframe || !iframe.contentWindow) return;
+      const cw = iframe.contentWindow;
+      if (cw.__alertHooked) return; // ya interceptado en este window
+
+      const alertOriginal = cw.alert;
+      cw.alert = function (mensaje) {
+        const token = extraerToken(mensaje);
+        if (token) {
+          mostrarToken(token);
+          return; // se suprime el alert cuando trae un TOKEN
+        }
+        return alertOriginal.call(cw, mensaje); // otros alerts siguen normal
+      };
+      cw.__alertHooked = true;
+    }
+
+    // Instalamos el interceptor lo antes posible y lo reintentamos por si el
+    // iframe todavía no existe o se reescribe.
+    const _hook = setInterval(instalarInterceptor, 100);
+    window.addEventListener('load', instalarInterceptor);
+
+    // Respaldo: si el dato también llega por postMessage
+    window.addEventListener('message', (event) => {
+      if (!/dynamipay\.io|cloudfront\.net/.test(event.origin)) return;
+      const token = extraerToken(event.data);
+      if (token) mostrarToken(token);
+    });
+  </script>
+
+  <script src="https://d132t6c8viujz9.cloudfront.net"></script>
+</head>
+
+<body>
+  <div style="width: 100%; display: grid; place-items: center;" id="mainBody">
+    <iframe id="mainDiv" style="border: none;"></iframe>
+    <div id="tokenResult" style="margin-top: 16px; font-family: monospace; font-size: 18px;"></div>
+  </div>
+</body>
+</html>

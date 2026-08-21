@@ -1117,9 +1117,6 @@ app.get('/api/backoffice/users', async (req, res) => {
     if (role === 'seller' || role === 'agent') {
       query += ' AND u.id = ?';
       params.push(userId);
-    } else if (role === 'manager') {
-      query += ' AND (u.store_id = ? OR u.store_id IS NULL)';
-      params.push(storeId);
     }
 
     query += ' ORDER BY COALESCE(u.contact_name, u.username) ASC';
@@ -2232,21 +2229,28 @@ app.post('/api/backoffice/inventory/transfers/:id/revert', async (req, res) => {
 
 app.post('/api/backoffice/inventory/assign', async (req, res) => {
   const { tenantId, storeId, sellerId, inventoryIds } = req.body;
+  console.log('--- INVENTORY ASSIGN CALLED ---', { tenantId, storeId, sellerId, inventoryIds });
   if (!sellerId || !Array.isArray(inventoryIds)) {
+    console.log('--- INVENTORY ASSIGN ERROR: Missing sellerId or inventoryIds ---');
     return res.status(400).json({ error: 'Seller ID and inventory IDs are required' });
   }
   
   try {
-    // Si la lista de IDs está vacía, podríamos estar desasignando todos. Pero aquí asumimos que se añaden.
-    // Para simplificar, la UI enviará los inventoryIds a asignar.
     if (inventoryIds.length > 0) {
-      await pool.query(
-        'UPDATE inventory SET assigned_to_user_id = ? WHERE tenant_id = ? AND store_id = ? AND id IN (?)',
-        [sellerId, tenantId, storeId, inventoryIds]
+      console.log(`Executing UPDATE inventory SET assigned_to_user_id = ${sellerId} WHERE tenant_id = ${tenantId} AND id IN (${inventoryIds.join(',')})`);
+      const [result] = await pool.query(
+        'UPDATE inventory SET assigned_to_user_id = ? WHERE tenant_id = ? AND id IN (?)',
+        [sellerId, tenantId, inventoryIds]
       );
+      console.log('--- INVENTORY ASSIGN RESULT ---', result);
+    } else {
+      console.log('--- INVENTORY ASSIGN: Empty inventoryIds ---');
     }
     res.json({ success: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) {
+    console.error('--- INVENTORY ASSIGN CATCH ERROR ---', e.message);
+    res.status(500).json({ error: e.message });
+  }
 });
 app.post('/api/backoffice/inventory/unassign', async (req, res) => {
   const { tenantId, storeId, inventoryIds } = req.body;
@@ -2256,8 +2260,8 @@ app.post('/api/backoffice/inventory/unassign', async (req, res) => {
   
   try {
     await pool.query(
-      'UPDATE inventory SET assigned_to_user_id = NULL WHERE tenant_id = ? AND store_id = ? AND id IN (?)',
-      [tenantId, storeId, inventoryIds]
+      'UPDATE inventory SET assigned_to_user_id = NULL WHERE tenant_id = ? AND id IN (?)',
+      [tenantId, inventoryIds]
     );
     res.json({ success: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
@@ -2611,8 +2615,35 @@ app.post('/api/backoffice/contracts/generate-and-sign', async (req, res) => {
   }
 });
 
+app.get('/api/backoffice/models/:manufacturer', async (req, res) => {
+  const { tenantId } = req.query;
+  const { manufacturer } = req.params;
+  try {
+    const [rows] = await pool.query('SELECT model FROM product_models WHERE tenant_id = ? AND manufacturer = ? ORDER BY model ASC', [tenantId, manufacturer]);
+    res.json(rows.map(r => r.model));
+  } catch (error) {
+    console.error('Error fetching models:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post('/api/backoffice/models', async (req, res) => {
+  const { tenantId } = req.query;
+  const { manufacturer, model } = req.body;
+  if (!tenantId || !manufacturer || !model) {
+    return res.status(400).json({ error: 'Missing required fields' });
+  }
+  try {
+    await pool.query('INSERT IGNORE INTO product_models (tenant_id, manufacturer, model) VALUES (?, ?, ?)', [tenantId, manufacturer, model]);
+    res.json({ success: true, model });
+  } catch (error) {
+    console.error('Error adding model:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 app.get('/api/backoffice/products', async (req, res) => {
-  const { tenantId, userId, role, scopeRole, orgId } = req.query;
+  const { tenantId, userId, role, scopeRole, orgId, storeId } = req.query;
   try {
     const isSeller = (scopeRole === 'STAFF' || role === 'seller' || role === 'agent' || role === 'assistant');
     
@@ -2634,15 +2665,16 @@ app.get('/api/backoffice/products', async (req, res) => {
       result = result.filter(prod => prod.stock_available > 0);
       return res.json(result);
     } else {
-      let inventoryQuery = 'SELECT model, COUNT(*) as count FROM inventory WHERE tenant_id = ? AND status != ? GROUP BY model';
-      let inventoryParams = [tenantId, 'SOLD'];
+      let { filter: scopeFilter, params: scopeParams } = await getScopeFilter(tenantId, userId, role, orgId, scopeRole, 'inventory', storeId);
       
-      if (orgId) {
-        inventoryQuery = 'SELECT model, COUNT(*) as count FROM inventory WHERE tenant_id = ? AND status != ? AND store_id = ? GROUP BY model';
-        inventoryParams = [tenantId, 'SOLD', orgId];
-      }
+      let inventoryQuery = `SELECT model, COUNT(*) as count FROM inventory WHERE tenant_id = ? AND status != ? AND ${scopeFilter} GROUP BY model`;
+      let inventoryParams = [tenantId, 'SOLD', ...scopeParams];
+
+      console.log('--- PRODUCT DEBUG ---', { tenantId, userId, role, orgId, scopeRole, storeId, inventoryQuery, inventoryParams });
 
       const [inventory] = await pool.query(inventoryQuery, inventoryParams);
+      console.log('--- PRODUCT DEBUG INVENTORY ---', inventory.filter(i => i.model === 'Oppo Reno 10' || i.model === 'Samsung Galaxy S23'));
+
       const [rows] = await pool.query('SELECT * FROM products WHERE tenant_id = ? ORDER BY name ASC', [tenantId]);
       
       let result = rows.map(prod => {
@@ -2652,6 +2684,8 @@ app.get('/api/backoffice/products', async (req, res) => {
         );
         return { ...prod, stock_available: inv ? inv.count : 0 };
       });
+      
+      console.log('--- PRODUCT RESULTS ---', result.filter(r => r.name.includes('Oppo')));
 
       // Filter out out-of-stock products for specific stores, EXCEPT "Tienda Central"
       if (orgId) {
