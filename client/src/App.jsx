@@ -5744,7 +5744,7 @@ const MobileSignaturePad = ({ onSave, uploading }) => {
   );
 };
 
-const MobileDocScannerView = ({ sessionId }) => {
+const MobileDocScannerView = ({ sessionId, mode }) => {
   const [sessionData, setSessionData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -5837,7 +5837,9 @@ const MobileDocScannerView = ({ sessionId }) => {
           </div>
         )}
 
-        <div className="bg-slate-900 p-6 rounded-3xl border border-slate-800 space-y-4">
+        {(!mode || mode === 'docs') && (
+          <>
+            <div className="bg-slate-900 p-6 rounded-3xl border border-slate-800 space-y-4">
           <div className="flex items-center justify-between">
             <h3 className="text-sm font-black uppercase tracking-widest text-slate-300 flex items-center gap-2">
               <Box size={16} className="text-blue-400" /> Identificación (Frente)
@@ -5899,6 +5901,7 @@ const MobileDocScannerView = ({ sessionId }) => {
           </label>
         </div>
 
+        {(!mode || mode === 'sig') && (
         <div className="bg-slate-900 p-6 rounded-3xl border border-slate-800 space-y-4">
           <div className="flex items-center justify-between">
             <h3 className="text-sm font-black uppercase tracking-widest text-slate-300 flex items-center gap-2">
@@ -5979,6 +5982,7 @@ const MobileDocScannerView = ({ sessionId }) => {
             </div>
           )}
         </div>
+        )}
       </div>
 
       <div className="mt-8 text-center border-t border-slate-800 pt-4">
@@ -6048,14 +6052,14 @@ const ActionFormView = ({ actionType, prefillData, onBack, onSaveDraft, deals, p
   const [copiedLink, setCopiedLink] = useState(false);
   const [showScanModal, setShowScanModal] = useState(false);
 
-  const handleStartScanSession = async () => {
+  const handleStartScanSession = async (mode = 'docs') => {
     try {
       const clientName = `${firstName} ${lastName}`.trim() || 'Cliente';
       const res = await axios.post(`${API}/backoffice/scan-session/create`, { clientName });
       if (res.data.success) {
         const sid = res.data.sessionId;
         setScanSessionId(sid);
-        const link = `${window.location.origin}${window.location.pathname}?scanSession=${sid}`;
+        const link = `${window.location.origin}${window.location.pathname}?scanSession=${sid}&scanMode=${mode}`;
         setScanDeepLink(link);
         setShowScanModal(true);
       }
@@ -6508,7 +6512,7 @@ const ActionFormView = ({ actionType, prefillData, onBack, onSaveDraft, deals, p
                       </div>
                       <button 
                         type="button"
-                        onClick={handleStartScanSession}
+                        onClick={() => handleStartScanSession('docs')}
                         className="shrink-0 bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3.5 rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl shadow-indigo-600/20 transition-all active:scale-95 flex items-center gap-2"
                       >
                         <QrCode size={18} /> Generar QR
@@ -7346,21 +7350,30 @@ const App = () => {
   const getScanSessionParam = () => {
     try {
       const searchParams = new URLSearchParams(window.location.search);
-      if (searchParams.get('scanSession')) return searchParams.get('scanSession');
+      let sessionId = searchParams.get('scanSession');
+      let mode = searchParams.get('scanMode');
       
-      const hashParams = new URLSearchParams(window.location.hash.includes('?') ? window.location.hash.split('?')[1] : '');
-      if (hashParams.get('scanSession')) return hashParams.get('scanSession');
+      if (!sessionId) {
+        const hashParams = new URLSearchParams(window.location.hash.includes('?') ? window.location.hash.split('?')[1] : '');
+        sessionId = hashParams.get('scanSession');
+        mode = hashParams.get('scanMode') || mode;
+      }
 
-      const match = window.location.href.match(/[?&]scanSession=([^&]+)/);
-      if (match) return match[1];
+      if (!sessionId) {
+        const match = window.location.href.match(/[?&]scanSession=([^&]+)/);
+        if (match) sessionId = match[1];
+        const modeMatch = window.location.href.match(/[?&]scanMode=([^&]+)/);
+        if (modeMatch) mode = modeMatch[1];
+      }
+
+      return sessionId ? { sessionId, mode } : null;
     } catch {
       return null;
     }
-    return null;
   };
   const scanSessionParam = getScanSessionParam();
   if (scanSessionParam) {
-    return <MobileDocScannerView sessionId={scanSessionParam} />;
+    return <MobileDocScannerView sessionId={scanSessionParam.sessionId} mode={scanSessionParam.mode} />;
   }
 
   const [session, setSession] = useState(() => { try { return JSON.parse(localStorage.getItem('bantos_session')); } catch { return null; } });
