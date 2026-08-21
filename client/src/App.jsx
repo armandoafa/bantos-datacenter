@@ -5840,148 +5840,164 @@ const MobileDocScannerView = ({ sessionId, mode }) => {
         {(!mode || mode === 'docs') && (
           <>
             <div className="bg-slate-900 p-6 rounded-3xl border border-slate-800 space-y-4">
-          <div className="flex items-center justify-between">
-            <h3 className="text-sm font-black uppercase tracking-widest text-slate-300 flex items-center gap-2">
-              <Box size={16} className="text-blue-400" /> Identificación (Frente)
-            </h3>
-            {sessionData?.idFront && (
-              <span className="bg-emerald-500/20 text-emerald-400 text-[10px] font-black uppercase px-2.5 py-1 rounded-full border border-emerald-500/30">
-                ✓ Recibido
-              </span>
-            )}
-          </div>
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-black uppercase tracking-widest text-slate-300 flex items-center gap-2">
+                  <Box size={16} className="text-blue-400" /> Identificación (Frente)
+                </h3>
+                {sessionData?.idFront && (
+                  <span className="bg-emerald-500/20 text-emerald-400 text-[10px] font-black uppercase px-2.5 py-1 rounded-full border border-emerald-500/30">
+                    ✓ Recibido
+                  </span>
+                )}
+              </div>
 
-          {sessionData?.idFront ? (
-            <div className="relative rounded-2xl overflow-hidden border border-slate-700 bg-black">
-              <img src={sessionData.idFront} alt="Identificación" className="w-full h-44 object-cover" />
-            </div>
-          ) : (
-            <div className="w-full h-36 border-2 border-dashed border-slate-700 rounded-2xl bg-slate-950/50 flex flex-col items-center justify-center text-slate-500 gap-2">
-              <Camera size={32} className="text-slate-400" />
-              <span className="text-xs font-bold text-slate-400">Toma una foto clara del frente de la ID</span>
-            </div>
-          )}
+              {sessionData?.idFront ? (
+                <div className="relative rounded-2xl overflow-hidden border border-slate-700 bg-black">
+                  <img src={sessionData.idFront} alt="Identificación" className="w-full h-44 object-cover" />
+                </div>
+              ) : (
+                <div className="w-full h-36 border-2 border-dashed border-slate-700 rounded-2xl bg-slate-950/50 flex flex-col items-center justify-center text-slate-500 gap-2">
+                  <Camera size={32} className="text-slate-400" />
+                  <span className="text-xs font-bold text-slate-400">Toma una foto clara del frente de la ID</span>
+                </div>
+              )}
 
-          <label className="block w-full">
-            <input 
-              type="file" 
-              accept="image/*" 
-              capture="environment" 
-              onChange={(e) => handleFileUpload('idFront', e)}
-              className="hidden" 
-            />
-            <div className="w-full bg-blue-600 hover:bg-blue-500 active:scale-95 text-white font-black text-xs uppercase tracking-widest py-4 rounded-2xl text-center cursor-pointer transition-all shadow-lg shadow-blue-600/20 flex items-center justify-center gap-2">
-              {uploadingField === 'idFront' ? <RefreshCw className="animate-spin" size={16} /> : <Camera size={16} />}
-              <span>{sessionData?.idFront ? 'Volver a Tomar Foto' : 'Tomar Foto / Seleccionar'}</span>
+              <label className="block w-full">
+                <input 
+                  type="file" 
+                  accept="image/*" 
+                  capture="environment" 
+                  onChange={(e) => handleFileUpload('idFront', e)}
+                  className="hidden" 
+                />
+                <div className="w-full bg-blue-600 hover:bg-blue-500 active:scale-95 text-white font-black text-xs uppercase tracking-widest py-4 rounded-2xl text-center cursor-pointer transition-all shadow-lg shadow-blue-600/20 flex items-center justify-center gap-2">
+                  {uploadingField === 'idFront' ? <RefreshCw className="animate-spin" size={16} /> : <Camera size={16} />}
+                  <span>{sessionData?.idFront ? 'Volver a Tomar Foto' : 'Tomar Foto / Seleccionar'}</span>
+                </div>
+              </label>
             </div>
-          </label>
-          {sessionData?.proofAddress ? (
-            <div className="relative rounded-2xl overflow-hidden border border-slate-700 bg-black">
-              <img src={sessionData.proofAddress} alt="Comprobante" className="w-full h-44 object-cover" />
-            </div>
-          ) : (
-            <div className="w-full h-36 border-2 border-dashed border-slate-700 rounded-2xl bg-slate-950/50 flex flex-col items-center justify-center text-slate-500 gap-2">
-              <Camera size={32} className="text-slate-400" />
-              <span className="text-xs font-bold text-slate-400">Toma una foto del comprobante de domicilio</span>
-            </div>
-          )}
 
-          <label className="block w-full">
-            <input 
-              type="file" 
-              accept="image/*" 
-              capture="environment" 
-              onChange={(e) => handleFileUpload('proofAddress', e)}
-              className="hidden" 
-            />
-            <div className="w-full bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white font-black text-xs uppercase tracking-widest py-4 rounded-2xl text-center cursor-pointer transition-all shadow-lg shadow-emerald-600/20 flex items-center justify-center gap-2">
-              {uploadingField === 'proofAddress' ? <RefreshCw className="animate-spin" size={16} /> : <Camera size={16} />}
-              <span>{sessionData?.proofAddress ? 'Volver a Tomar Foto' : 'Tomar Foto / Seleccionar'}</span>
+            <div className="bg-slate-900 p-6 rounded-3xl border border-slate-800 space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-black uppercase tracking-widest text-slate-300 flex items-center gap-2">
+                  <FileText size={16} className="text-emerald-400" /> Comprobante Domicilio
+                </h3>
+                {sessionData?.proofAddress && (
+                  <span className="bg-emerald-500/20 text-emerald-400 text-[10px] font-black uppercase px-2.5 py-1 rounded-full border border-emerald-500/30">
+                    ✓ Recibido
+                  </span>
+                )}
+              </div>
+
+              {sessionData?.proofAddress ? (
+                <div className="relative rounded-2xl overflow-hidden border border-slate-700 bg-black">
+                  <img src={sessionData.proofAddress} alt="Comprobante" className="w-full h-44 object-cover" />
+                </div>
+              ) : (
+                <div className="w-full h-36 border-2 border-dashed border-slate-700 rounded-2xl bg-slate-950/50 flex flex-col items-center justify-center text-slate-500 gap-2">
+                  <Camera size={32} className="text-slate-400" />
+                  <span className="text-xs font-bold text-slate-400">Toma una foto del comprobante de domicilio</span>
+                </div>
+              )}
+
+              <label className="block w-full">
+                <input 
+                  type="file" 
+                  accept="image/*" 
+                  capture="environment" 
+                  onChange={(e) => handleFileUpload('proofAddress', e)}
+                  className="hidden" 
+                />
+                <div className="w-full bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white font-black text-xs uppercase tracking-widest py-4 rounded-2xl text-center cursor-pointer transition-all shadow-lg shadow-emerald-600/20 flex items-center justify-center gap-2">
+                  {uploadingField === 'proofAddress' ? <RefreshCw className="animate-spin" size={16} /> : <Camera size={16} />}
+                  <span>{sessionData?.proofAddress ? 'Volver a Tomar Foto' : 'Tomar Foto / Seleccionar'}</span>
+                </div>
+              </label>
             </div>
-          </label>
-        </div>
+
+            <div className="bg-slate-900 p-6 rounded-3xl border border-slate-800 space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-black uppercase tracking-widest text-slate-300 flex items-center gap-2">
+                  <Camera size={16} className="text-amber-400" /> Selfie del Cliente
+                </h3>
+                {sessionData?.selfie && (
+                  <span className="bg-emerald-500/20 text-emerald-400 text-[10px] font-black uppercase px-2.5 py-1 rounded-full border border-emerald-500/30">
+                    ✓ Recibido
+                  </span>
+                )}
+              </div>
+
+              {sessionData?.selfie ? (
+                <div className="relative rounded-2xl overflow-hidden border border-slate-700 bg-black">
+                  <img src={sessionData.selfie} alt="Selfie" className="w-full h-44 object-cover" />
+                </div>
+              ) : (
+                <div className="w-full h-36 border-2 border-dashed border-slate-700 rounded-2xl bg-slate-950/50 flex flex-col items-center justify-center text-slate-500 gap-2">
+                  <Camera size={32} className="text-slate-400" />
+                  <span className="text-xs font-bold text-slate-400">Toma una foto selfie</span>
+                </div>
+              )}
+
+              <label className="block w-full">
+                <input 
+                  type="file" 
+                  accept="image/*" 
+                  capture="user" 
+                  onChange={(e) => handleFileUpload('selfie', e)}
+                  className="hidden" 
+                />
+                <div className="w-full bg-amber-600 hover:bg-amber-500 active:scale-95 text-white font-black text-xs uppercase tracking-widest py-4 rounded-2xl text-center cursor-pointer transition-all shadow-lg shadow-amber-600/20 flex items-center justify-center gap-2">
+                  {uploadingField === 'selfie' ? <RefreshCw className="animate-spin" size={16} /> : <Camera size={16} />}
+                  <span>{sessionData?.selfie ? 'Volver a Tomar Foto' : 'Tomar Foto / Seleccionar'}</span>
+                </div>
+              </label>
+            </div>
+          </>
+        )}
 
         {(!mode || mode === 'sig') && (
-        <div className="bg-slate-900 p-6 rounded-3xl border border-slate-800 space-y-4">
-          <div className="flex items-center justify-between">
-            <h3 className="text-sm font-black uppercase tracking-widest text-slate-300 flex items-center gap-2">
-              <Camera size={16} className="text-amber-400" /> Selfie del Cliente
-            </h3>
-            {sessionData?.selfie && (
-              <span className="bg-emerald-500/20 text-emerald-400 text-[10px] font-black uppercase px-2.5 py-1 rounded-full border border-emerald-500/30">
-                ✓ Recibido
-              </span>
+          <div className="bg-slate-900 p-6 rounded-3xl border border-slate-800 space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-black uppercase tracking-widest text-slate-300 flex items-center gap-2">
+                <Edit size={16} className="text-indigo-400" /> Firma del Cliente
+              </h3>
+              {sessionData?.signature && (
+                <span className="bg-emerald-500/20 text-emerald-400 text-[10px] font-black uppercase px-2.5 py-1 rounded-full border border-emerald-500/30">
+                  ✓ Recibido
+                </span>
+              )}
+            </div>
+
+            {sessionData?.signature ? (
+              <div className="relative rounded-2xl overflow-hidden border border-slate-700 bg-white p-4">
+                <img src={sessionData.signature} alt="Firma" className="w-full h-32 object-contain" />
+              </div>
+            ) : (
+              <div className="relative w-full border-2 border-dashed border-slate-700 rounded-2xl bg-white overflow-hidden">
+                {/* We create a small interactive canvas inside the mobile view */}
+                <MobileSignaturePad 
+                    onSave={async (base64) => {
+                      setUploadingField('signature');
+                      setSuccessMsg('');
+                      try {
+                        await axios.post(`${API}/backoffice/scan-session/${sessionId}/upload`, {
+                          field: 'signature',
+                          image: base64
+                        });
+                        if (navigator.vibrate) navigator.vibrate(200);
+                        setSuccessMsg(`✅ Firma guardada y sincronizada`);
+                        await fetchSession();
+                      } catch (err) {
+                        alert('Error al subir la firma.');
+                      } finally {
+                        setUploadingField(null);
+                      }
+                    }} 
+                    uploading={uploadingField === 'signature'}
+                />
+              </div>
             )}
           </div>
-
-          {sessionData?.selfie ? (
-            <div className="relative rounded-2xl overflow-hidden border border-slate-700 bg-black">
-              <img src={sessionData.selfie} alt="Selfie" className="w-full h-44 object-cover" />
-            </div>
-          ) : (
-            <div className="w-full h-36 border-2 border-dashed border-slate-700 rounded-2xl bg-slate-950/50 flex flex-col items-center justify-center text-slate-500 gap-2">
-              <Camera size={32} className="text-slate-400" />
-              <span className="text-xs font-bold text-slate-400">Toma una foto selfie</span>
-            </div>
-          )}
-
-          <label className="block w-full">
-            <input 
-              type="file" 
-              accept="image/*" 
-              capture="user" 
-              onChange={(e) => handleFileUpload('selfie', e)}
-              className="hidden" 
-            />
-            <div className="w-full bg-amber-600 hover:bg-amber-500 active:scale-95 text-white font-black text-xs uppercase tracking-widest py-4 rounded-2xl text-center cursor-pointer transition-all shadow-lg shadow-amber-600/20 flex items-center justify-center gap-2">
-              {uploadingField === 'selfie' ? <RefreshCw className="animate-spin" size={16} /> : <Camera size={16} />}
-              <span>{sessionData?.selfie ? 'Volver a Tomar Foto' : 'Tomar Foto / Seleccionar'}</span>
-            </div>
-          </label>
-        </div>
-
-        <div className="bg-slate-900 p-6 rounded-3xl border border-slate-800 space-y-4">
-          <div className="flex items-center justify-between">
-            <h3 className="text-sm font-black uppercase tracking-widest text-slate-300 flex items-center gap-2">
-              <Edit size={16} className="text-indigo-400" /> Firma del Cliente
-            </h3>
-            {sessionData?.signature && (
-              <span className="bg-emerald-500/20 text-emerald-400 text-[10px] font-black uppercase px-2.5 py-1 rounded-full border border-emerald-500/30">
-                ✓ Recibido
-              </span>
-            )}
-          </div>
-
-          {sessionData?.signature ? (
-            <div className="relative rounded-2xl overflow-hidden border border-slate-700 bg-white p-4">
-              <img src={sessionData.signature} alt="Firma" className="w-full h-32 object-contain" />
-            </div>
-          ) : (
-            <div className="relative w-full border-2 border-dashed border-slate-700 rounded-2xl bg-white overflow-hidden">
-               {/* We create a small interactive canvas inside the mobile view */}
-               <MobileSignaturePad 
-                  onSave={async (base64) => {
-                    setUploadingField('signature');
-                    setSuccessMsg('');
-                    try {
-                      await axios.post(`${API}/backoffice/scan-session/${sessionId}/upload`, {
-                        field: 'signature',
-                        image: base64
-                      });
-                      if (navigator.vibrate) navigator.vibrate(200);
-                      setSuccessMsg(`✅ Firma guardada y sincronizada`);
-                      await fetchSession();
-                    } catch (err) {
-                      alert('Error al subir la firma.');
-                    } finally {
-                      setUploadingField(null);
-                    }
-                  }} 
-                  uploading={uploadingField === 'signature'}
-               />
-            </div>
-          )}
-        </div>
         )}
       </div>
 
