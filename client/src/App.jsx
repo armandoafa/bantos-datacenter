@@ -634,7 +634,7 @@ const ProductModal = ({ isOpen, onClose, product, onSave, session, inventory = [
                                 const targetStore = activeScope?.orgId || session?.storeId;
                                 const availableAgents = [...new Map(users.filter(u => 
                                   (u.global_role === 'agent' || u.global_role === 'agente' || u.global_role === 'seller' || u.scope_role === 'STAFF') &&
-                                  (!targetStore || u.store_id == targetStore)
+                                  (!targetStore || u.store_id == targetStore || u.org_id == targetStore)
                                 ).map(u => [u.id, u])).values()];
                                 return availableAgents.map(u => (
                                   <option key={u.id} value={u.id}>{u.contact_name || u.username} ({u.global_role || u.scope_role})</option>
