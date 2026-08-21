@@ -525,12 +525,11 @@ const ProductModal = ({ isOpen, onClose, product, onSave, session, inventory = [
                       <Plus size={16}/> Agregar IMEI
                     </button>
                   </div>
-                  <Table cols={['IMEI', 'Modelo Real', 'Estado', 'Asignado a', 'Acciones']} rows={matchedInventory} 
+                  <Table cols={['IMEI', 'Modelo Real', 'Asignado a', 'Acciones']} rows={matchedInventory} 
                     render={a => (
                       <>
                         <td className="px-6 py-4 font-mono text-sm font-bold text-slate-800">{a.serial_number}</td>
-                        <td className="px-6 py-4 text-xs text-slate-500">{`${formData.manufacturer || a.manufacturer || ''} ${formData.model || a.model || ''} ${formData.variant || a.variant || ''}`.replace(/\s+/g, ' ').trim().toUpperCase()}</td>
-                        <td className="px-6 py-4"><Badge status={a.status} /></td>
+                        <td className="px-6 py-4 text-xs text-slate-500">{`${a.manufacturer || formData.manufacturer || ''} ${a.model || formData.model || ''} ${a.variant || ''}`.replace(/\s+/g, ' ').trim().toUpperCase()}</td>
                         <td className="px-6 py-4 text-xs text-slate-500">
                           {a.assigned_to_user_id ? users.find(u => u.id === a.assigned_to_user_id)?.username || a.assigned_to_user_id : 'No Asignado'}
                         </td>
@@ -571,7 +570,6 @@ const ProductModal = ({ isOpen, onClose, product, onSave, session, inventory = [
                           <p className="text-slate-500 text-[10px]">{a.model}</p>
                         </div>
                         <div className="flex items-center gap-3">
-                          <Badge status={a.status} />
                           <button
                             onClick={() => {
                               setEditingInventoryItem(a);
@@ -6251,7 +6249,7 @@ const ActionFormView = ({ actionType, prefillData, onBack, onSaveDraft, deals, p
                     )}
                     
                     {selectedProduct?.is_serialized ? (() => {
-                      const availableInventory = inventory ? inventory.filter(i => matchesProduct(i.model, selectedProduct.name) && i.status === 'UNASSIGNED') : [];
+                      const availableInventory = inventory ? inventory.filter(i => matchesProduct(i.model, selectedProduct.name) && !i.assigned_to_user_id) : [];
                       return (
                         <div className="col-span-2 md:col-span-1">
                           <label className="block text-sm font-black text-slate-400 uppercase tracking-widest mb-3 flex justify-between items-center">
