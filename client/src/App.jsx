@@ -6254,7 +6254,14 @@ const ActionFormView = ({ actionType, prefillData, onBack, onSaveDraft, deals, p
                     )}
                     
                     {selectedProduct?.is_serialized ? (() => {
-                      const availableInventory = inventory ? inventory.filter(i => matchesProduct(i.model, selectedProduct.name) && !i.assigned_to_user_id) : [];
+                      const availableInventory = inventory ? inventory.filter(i => {
+                        const matchModel = matchesProduct(i.model, selectedProduct.name);
+                        const invVariant = (i.variant || '').trim().toLowerCase();
+                        const prodVariant = (selectedProduct.variant || '').trim().toLowerCase();
+                        const matchVariant = invVariant === prodVariant;
+                        const isAvailableForSale = !i.assigned_to_user_id || (session && session.user && i.assigned_to_user_id === session.user.id);
+                        return matchModel && matchVariant && isAvailableForSale;
+                      }) : [];
                       return (
                         <div className="col-span-2 md:col-span-1">
                           <label className="block text-sm font-black text-slate-400 uppercase tracking-widest mb-3 flex justify-between items-center">
