@@ -311,14 +311,13 @@ const ProductModal = ({ isOpen, onClose, product, onSave, session, inventory = [
   const [dynamicManufacturers, setDynamicManufacturers] = useState([]);
 
   useEffect(() => {
-    if (session?.tenant_id) {
-      fetch(`${API}/backoffice/manufacturers?tenantId=${session.tenant_id}`)
-        .then(r => r.json())
-        .then(data => {
-          if (Array.isArray(data)) setDynamicManufacturers(data);
-        })
-        .catch(console.error);
-    }
+    const tenantId = session?.tenant_id || 'undefined';
+    fetch(`${API}/backoffice/manufacturers?tenantId=${tenantId}`)
+      .then(r => r.json())
+      .then(data => {
+        if (Array.isArray(data)) setDynamicManufacturers(data);
+      })
+      .catch(console.error);
   }, [session?.tenant_id]);
 
   // 1. Opciones de Fabricante (Marca) dinámicas
@@ -346,8 +345,9 @@ const ProductModal = ({ isOpen, onClose, product, onSave, session, inventory = [
   const [dynamicModels, setDynamicModels] = useState([]);
 
   useEffect(() => {
-    if (formData.manufacturer && session?.tenant_id) {
-      fetch(`${API}/backoffice/models/${encodeURIComponent(formData.manufacturer)}?tenantId=${session.tenant_id}`)
+    if (formData.manufacturer) {
+      const tenantId = session?.tenant_id || 'undefined';
+      fetch(`${API}/backoffice/models/${encodeURIComponent(formData.manufacturer)}?tenantId=${tenantId}`)
         .then(r => r.json())
         .then(data => {
           if (Array.isArray(data)) setDynamicModels(data);
