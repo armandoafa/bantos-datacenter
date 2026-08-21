@@ -511,7 +511,12 @@ const ProductModal = ({ isOpen, onClose, product, onSave, session, inventory = [
             </div>
           ) : (
             (() => {
-              const matchedInventory = inventory.filter(i => matchesProduct(i.model, product.name));
+              const matchedInventory = inventory.filter(i => {
+                const matchModel = matchesProduct(i.model, product.name);
+                const invVariant = (i.variant || '').trim().toLowerCase();
+                const prodVariant = (formData.variant || '').trim().toLowerCase();
+                return matchModel && invVariant === prodVariant;
+              });
               
               return (
                 <div className="space-y-4">

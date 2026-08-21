@@ -2675,7 +2675,7 @@ app.get('/api/backoffice/products', async (req, res) => {
     
     if (isSeller && userId) {
       // Find the models assigned to this seller
-      const [assignedInventory] = await pool.query('SELECT model, COUNT(*) as count FROM inventory WHERE tenant_id = ? AND assigned_to_user_id = ? AND status != ? GROUP BY model', [tenantId, userId, 'SOLD']);
+      const [assignedInventory] = await pool.query('SELECT model, variant, COUNT(*) as count FROM inventory WHERE tenant_id = ? AND assigned_to_user_id = ? AND status != ? GROUP BY model, variant', [tenantId, userId, 'SOLD']);
       
       const [rows] = await pool.query('SELECT * FROM products WHERE tenant_id = ? ORDER BY name ASC', [tenantId]);
       
@@ -2696,7 +2696,12 @@ app.get('/api/backoffice/products', async (req, res) => {
       };
 
       let result = rows.map(prod => {
-        const matchedInv = assignedInventory.filter(i => matchesProduct(i.model, prod.name));
+        const matchedInv = assignedInventory.filter(i => {
+          const matchModel = matchesProduct(i.model, prod.name);
+          const invVariant = (i.variant || '').trim().toLowerCase();
+          const prodVariant = (prod.variant || '').trim().toLowerCase();
+          return matchModel && invVariant === prodVariant;
+        });
         const stock = matchedInv.reduce((acc, i) => acc + i.count, 0);
         return { ...prod, stock_available: stock };
       });
@@ -2706,7 +2711,7 @@ app.get('/api/backoffice/products', async (req, res) => {
     } else {
       let { filter: scopeFilter, params: scopeParams } = await getScopeFilter(tenantId, userId, role, orgId, scopeRole, 'inventory', storeId);
       
-      let inventoryQuery = `SELECT model, COUNT(*) as count FROM inventory WHERE tenant_id = ? AND status != ? AND ${scopeFilter} GROUP BY model`;
+      let inventoryQuery = `SELECT model, variant, COUNT(*) as count FROM inventory WHERE tenant_id = ? AND status != ? AND ${scopeFilter} GROUP BY model, variant`;
       let inventoryParams = [tenantId, 'SOLD', ...scopeParams];
 
       console.log('--- PRODUCT DEBUG ---', { tenantId, userId, role, orgId, scopeRole, storeId, inventoryQuery, inventoryParams });
@@ -2732,7 +2737,12 @@ app.get('/api/backoffice/products', async (req, res) => {
       };
 
       let result = rows.map(prod => {
-        const matchedInv = inventory.filter(i => matchesProduct(i.model, prod.name));
+        const matchedInv = inventory.filter(i => {
+          const matchModel = matchesProduct(i.model, prod.name);
+          const invVariant = (i.variant || '').trim().toLowerCase();
+          const prodVariant = (prod.variant || '').trim().toLowerCase();
+          return matchModel && invVariant === prodVariant;
+        });
         const stock = matchedInv.reduce((acc, i) => acc + i.count, 0);
         return { ...prod, stock_available: stock };
       });
