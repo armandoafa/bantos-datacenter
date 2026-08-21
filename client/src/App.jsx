@@ -459,6 +459,7 @@ const ProductModal = ({ isOpen, onClose, product, onSave, session, inventory = [
                   <ProductInput label="Referencia" value={formData.productReference} readOnly />
                   <SelectableOrCustomInput label="Fabricante / Marca" value={formData.manufacturer} options={existingManufacturers} onChange={e => setFormData({...formData, manufacturer: e.target.value})} onAddOption={handleAddCustomManufacturer} />
                   <SelectableOrCustomInput label="Modelo" value={formData.model} options={existingModels} onChange={e => setFormData({...formData, model: e.target.value})} onAddOption={handleAddCustomModel} />
+                  <SelectableOrCustomInput label="Variante (Especificaciones)" value={formData.variant} options={existingVariants} onChange={e => setFormData({...formData, variant: e.target.value})} onAddOption={(val) => setFormData({...formData, variant: val})} />
 
                   <div className="space-y-1.5">
                     <label className="text-[11px] font-black uppercase tracking-widest text-slate-400 ml-1">Categoría</label>
@@ -520,7 +521,7 @@ const ProductModal = ({ isOpen, onClose, product, onSave, session, inventory = [
                       <h4 className="font-black text-slate-800 text-lg">Dispositivos en Inventario</h4>
                       <p className="text-slate-500 text-sm">{matchedInventory.length} unidades en stock</p>
                     </div>
-                    <button onClick={() => { setEditingInventoryItem(null); setNewImei(''); setNewVariant(''); setImeiError(''); setIsAddImeiOpen(true); setIsAssignOpen(false); }} className="px-5 py-2.5 bg-blue-600 text-white font-bold text-sm rounded-xl hover:bg-blue-700 shadow-md transition-all flex items-center gap-2">
+                    <button onClick={() => { setEditingInventoryItem(null); setNewImei(''); setNewVariant(formData.variant || ''); setImeiError(''); setIsAddImeiOpen(true); setIsAssignOpen(false); }} className="px-5 py-2.5 bg-blue-600 text-white font-bold text-sm rounded-xl hover:bg-blue-700 shadow-md transition-all flex items-center gap-2">
                       <Plus size={16}/> Agregar IMEI
                     </button>
                   </div>
