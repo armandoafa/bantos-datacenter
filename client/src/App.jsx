@@ -299,12 +299,47 @@ const ProductModal = ({ isOpen, onClose, product, onSave, session, inventory = [
     });
   }, [products, inventory]);
 
+  const [dynamicManufacturers, setDynamicManufacturers] = useState([]);
+
+  useEffect(() => {
+    if (session?.tenant_id) {
+      fetch(`${API}/backoffice/manufacturers?tenantId=${session.tenant_id}`)
+        .then(r => r.json())
+        .then(data => {
+          if (Array.isArray(data)) setDynamicManufacturers(data);
+        })
+        .catch(console.error);
+    }
+  }, [session?.tenant_id]);
+
   // 1. Opciones de Fabricante (Marca) acumuladas y limpias
-  const existingManufacturers = getCatalogHistory('bantos_catalog_manufacturers', [
-    ...products.map(p => p.manufacturer),
-    ...inventory.map(i => i.manufacturer),
-    product?.manufacturer
-  ]);
+  const existingManufacturers = Array.from(new Set([
+    ...getCatalogHistory('bantos_catalog_manufacturers', [
+      ...products.map(p => p.manufacturer),
+      ...inventory.map(i => i.manufacturer),
+      product?.manufacturer
+    ]),
+    ...dynamicManufacturers
+  ])).filter(Boolean).sort();
+
+  const handleAddCustomManufacturer = async (newManufacturerName) => {
+    try {
+      const res = await fetch(`${API}/backoffice/manufacturers?tenantId=${session.tenant_id}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ manufacturer: newManufacturerName })
+      });
+      if (res.ok) {
+        setDynamicManufacturers(prev => Array.from(new Set([...prev, newManufacturerName])).sort());
+        setFormData(prev => ({ ...prev, manufacturer: newManufacturerName }));
+      } else {
+        alert("Error al registrar la marca.");
+      }
+    } catch (e) {
+      console.error(e);
+      alert("Error de red al registrar marca.");
+    }
+  };
 
   const [dynamicModels, setDynamicModels] = useState([]);
 
@@ -420,7 +455,7 @@ const ProductModal = ({ isOpen, onClose, product, onSave, session, inventory = [
                   <div className="col-span-1 md:col-span-2"><p className="text-[12px] font-black text-blue-600 uppercase tracking-[0.2em] mb-1">Información Técnica</p></div>
                   <ProductInput label="Nombre del Producto (*)" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} />
                   <ProductInput label="Referencia" value={formData.productReference} readOnly />
-                  <SelectableOrCustomInput label="Fabricante / Marca" value={formData.manufacturer} options={existingManufacturers} onChange={e => setFormData({...formData, manufacturer: e.target.value})} />
+                  <SelectableOrCustomInput label="Fabricante / Marca" value={formData.manufacturer} options={existingManufacturers} onChange={e => setFormData({...formData, manufacturer: e.target.value})} onAddOption={handleAddCustomManufacturer} />
                   <SelectableOrCustomInput label="Modelo" value={formData.model} options={existingModels} onChange={e => setFormData({...formData, model: e.target.value})} onAddOption={handleAddCustomModel} />
 
                   <div className="space-y-1.5">

@@ -2642,6 +2642,32 @@ app.post('/api/backoffice/models', async (req, res) => {
   }
 });
 
+app.get('/api/backoffice/manufacturers', async (req, res) => {
+  const { tenantId } = req.query;
+  try {
+    const [rows] = await pool.query('SELECT manufacturer FROM product_manufacturers WHERE tenant_id = ? ORDER BY manufacturer ASC', [tenantId]);
+    res.json(rows.map(r => r.manufacturer));
+  } catch (error) {
+    console.error('Error fetching manufacturers:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post('/api/backoffice/manufacturers', async (req, res) => {
+  const { tenantId } = req.query;
+  const { manufacturer } = req.body;
+  if (!tenantId || !manufacturer) {
+    return res.status(400).json({ error: 'Missing required fields' });
+  }
+  try {
+    await pool.query('INSERT IGNORE INTO product_manufacturers (tenant_id, manufacturer) VALUES (?, ?)', [tenantId, manufacturer]);
+    res.json({ success: true, manufacturer });
+  } catch (error) {
+    console.error('Error adding manufacturer:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 app.get('/api/backoffice/products', async (req, res) => {
   const { tenantId, userId, role, scopeRole, orgId, storeId } = req.query;
   try {
