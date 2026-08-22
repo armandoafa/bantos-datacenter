@@ -7654,8 +7654,10 @@ const App = () => {
       const payload = { ...paymentData, contract_id: finalContractId, tenantId: session.tenantId, userId: session.id, orgId: session.scope?.orgId };
       let savedItem = paymentData;
       
-      if (modalState.item && modalState.item.id) {
-        await axios.put(`${API}/backoffice/payments/${modalState.item.id}`, payload);
+      const paymentIdToUpdate = modalState.item?.upya_id || modalState.item?.id;
+      
+      if (paymentIdToUpdate) {
+        await axios.put(`${API}/backoffice/payments/${paymentIdToUpdate}`, payload);
       } else {
         const res = await axios.post(`${API}/backoffice/payments`, payload);
         if (res.data && res.data.id) {
@@ -7663,7 +7665,7 @@ const App = () => {
         }
       }
       
-      setModalState(prev => ({ ...prev, item: savedItem }));
+      setModalState({ type: null, open: false, item: null });
       refreshData();
       console.log('Pago guardado exitosamente:', savedItem);
       return savedItem;
