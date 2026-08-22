@@ -3162,12 +3162,12 @@ export const PaymentFormContent = ({
  
               <div className="col-span-2 space-y-1.5">
                 <label className="text-[11px] font-black uppercase tracking-widest text-slate-400 ml-1">Fecha de Pago</label>
-                {isWizardMode ? (
+                {isWizardMode && (formData.status?.toUpperCase() === 'PAID' || formData.status?.toUpperCase() === 'PAGADO') ? (
                   <div className="w-full bg-slate-100/50 border-2 border-slate-100 rounded-xl py-3.5 px-5 font-bold text-slate-500 text-base">
                     {new Date(formData.payment_date || new Date()).toLocaleDateString('es-MX', { day: '2-digit', month: '2-digit', year: 'numeric' })}
                   </div>
                 ) : (
-                  <input disabled={isReadOnly} type="date" className="w-full bg-slate-50 border-2 border-slate-100 rounded-xl py-3.5 px-5 font-bold text-slate-800 focus:border-blue-600 outline-none transition-all text-base" value={formData.payment_date} onChange={e => setFormData({...formData, payment_date: e.target.value})} />
+                  <input disabled={isReadOnly || (isWizardMode && (formData.status?.toUpperCase() === 'PAID' || formData.status?.toUpperCase() === 'PAGADO'))} type="date" className="w-full bg-slate-50 border-2 border-slate-100 rounded-xl py-3.5 px-5 font-bold text-slate-800 focus:border-blue-600 outline-none transition-all text-base disabled:bg-slate-100/50 disabled:text-slate-500" value={formData.payment_date ? (formData.payment_date.includes('T') ? formData.payment_date.split('T')[0] : formData.payment_date) : ''} onChange={e => setFormData({...formData, payment_date: e.target.value})} />
                 )}
               </div>
             </div>
