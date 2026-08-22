@@ -2689,8 +2689,8 @@ const PaymentsView = ({ payments = [], onEdit, onCreate, session }) => {
         render={p => (
           <>
             <td className="px-8 py-5">
-              <p className="font-bold text-slate-800">{p.payment_date ? new Date(p.payment_date).toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'}</p>
-              <p className="text-[12px] text-slate-400 font-medium">{p.payment_date ? new Date(p.payment_date).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' }) : ''}</p>
+              <p className="font-bold text-slate-800">{p.payment_date ? new Date(p.payment_date.endsWith('Z') ? p.payment_date.slice(0, -1) : p.payment_date).toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'}</p>
+              <p className="text-[12px] text-slate-400 font-medium">{p.payment_date ? new Date(p.payment_date.endsWith('Z') ? p.payment_date.slice(0, -1) : p.payment_date).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' }) : ''}</p>
             </td>
             <td className="px-8 py-5">
               <span className="text-[11px] bg-slate-100 text-slate-600 px-2 py-1 rounded-lg font-black tracking-wider uppercase border border-slate-200">{p.contract_id || '—'}</span>
@@ -2736,7 +2736,7 @@ const PaymentsView = ({ payments = [], onEdit, onCreate, session }) => {
             <div className="flex justify-between items-start">
               <div>
                 <p className="font-black text-slate-900 text-lg">${Number(p.amount || 0).toLocaleString()}</p>
-                <p className="text-[11px] text-slate-400 font-bold uppercase tracking-widest mt-1">{p.payment_date ? new Date(p.payment_date).toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'}</p>
+                <p className="text-[11px] text-slate-400 font-bold uppercase tracking-widest mt-1">{p.payment_date ? new Date(p.payment_date.endsWith('Z') ? p.payment_date.slice(0, -1) : p.payment_date).toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'}</p>
               </div>
               <Badge status={p.status} />
             </div>
