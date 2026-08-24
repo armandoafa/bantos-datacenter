@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { 
-  Building2, Users, ShieldCheck, Plus, Search, LogOut, Check, X, Edit2, AlertCircle, RefreshCw, Trash2, ShieldAlert
+  Building2, Users, ShieldCheck, Plus, Search, LogOut, Check, X, Edit2, AlertCircle, RefreshCw, Trash2, ShieldAlert, Key
 } from 'lucide-react';
 import './App.css';
 
@@ -25,6 +25,7 @@ function App() {
   const [tenantsWithStats, setTenantsWithStats] = useState([]);
   const [tenants, setTenants] = useState([]);
   const [users, setUsers] = useState([]);
+  const [licenses, setLicenses] = useState([]);
 
   // Modals & CRUD state
   const [showTenantModal, setShowTenantModal] = useState(false);
@@ -35,6 +36,13 @@ function App() {
     upya_user: '',
     upya_pass: '',
     status: 'active'
+  });
+
+  const [showLicenseModal, setShowLicenseModal] = useState(false);
+  const [licenseForm, setLicenseForm] = useState({
+    tenant_id: '',
+    quantity: 1,
+    unit_cost: 0
   });
 
   const [showUserModal, setShowUserModal] = useState(false);
@@ -69,6 +77,7 @@ function App() {
     fetchTenants();
     fetchUsers();
     fetchTenantsStats();
+    if (activeTab === 'licenses') fetchLicenses();
   };
 
   const fetchTenantsStats = async () => {
@@ -98,6 +107,74 @@ function App() {
       if (Array.isArray(data)) setUsers(data);
     } catch (e) {
       console.error('Error fetching users:', e);
+    }
+  };
+
+  const fetchLicenses = async () => {
+    try {
+      const res = await fetch(`${API}/superadmin/licenses`);
+      const data = await res.json();
+      if (Array.isArray(data)) setLicenses(data);
+    } catch (e) {
+      console.error('Error fetching licenses:', e);
+    }
+  };
+
+  const handleGenerateLicenses = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    try {
+      const res = await fetch(`${API}/superadmin/licenses/generate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(licenseForm)
+      });
+      const data = await res.json();
+      if (data.success) {
+        setShowLicenseModal(false);
+        setLicenseForm({ tenant_id: '', quantity: 1, unit_cost: 0 });
+        loadData();
+      } else {
+        alert(data.error || 'Error al generar licencias');
+      }
+    } catch (e) {
+      alert('Error de red');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleToggleLicenseStatus = async (id, currentStatus) => {
+    const newStatus = currentStatus === 'suspended' ? 'available' : 'suspended';
+    try {
+      const res = await fetch(`${API}/superadmin/licenses/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: newStatus })
+      });
+      const data = await res.json();
+      if (data.success) {
+        loadData();
+      } else {
+        alert(data.error || 'Error al actualizar licencia');
+      }
+    } catch (e) {
+      alert('Error de red');
+    }
+  };
+
+  const handleDeleteLicense = async (id) => {
+    if (!confirm('¿Estás seguro de eliminar esta licencia?')) return;
+    try {
+      const res = await fetch(`${API}/superadmin/licenses/${id}`, { method: 'DELETE' });
+      const data = await res.json();
+      if (data.success) {
+        loadData();
+      } else {
+        alert(data.error || 'Error al eliminar licencia');
+      }
+    } catch (e) {
+      alert('Error de red');
     }
   };
 
@@ -373,6 +450,13 @@ function App() {
             <Users size={18} />
             <span>Control de Usuarios</span>
           </button>
+          <button 
+            className={`nav-item ${activeTab === 'licenses' ? 'active' : ''}`}
+            onClick={() => { setActiveTab('licenses'); setSearchQuery(''); }}
+          >
+            <Key size={18} />
+            <span>Licencias</span>
+          </button>
         </nav>
 
         <div className="sidebar-footer">
@@ -397,16 +481,25 @@ function App() {
               {activeTab === 'dashboard' && 'Dashboard de Volumen Multitenant'}
               {activeTab === 'tenants' && 'Aprovisionamiento de Tenants'}
               {activeTab === 'users' && 'Gestión de Usuarios y Permisos'}
+              {activeTab === 'licenses' && 'Gestión de Licencias'}
             </h2>
             <p>Infraestructura global, control de autenticación y flujos de datos.</p>
           </div>
           {activeTab !== 'dashboard' && (
             <button 
               className="btn btn-primary"
-              onClick={activeTab === 'tenants' ? openNewTenantModal : openNewUserModal}
+              onClick={() => {
+                if (activeTab === 'tenants') openNewTenantModal();
+                else if (activeTab === 'users') openNewUserModal();
+                else if (activeTab === 'licenses') setShowLicenseModal(true);
+              }}
             >
               <Plus size={18} />
-              <span>{activeTab === 'tenants' ? 'Nuevo Tenant' : 'Nuevo Usuario'}</span>
+              <span>
+                {activeTab === 'tenants' && 'Nuevo Tenant'}
+                {activeTab === 'users' && 'Nuevo Usuario'}
+                {activeTab === 'licenses' && 'Generar Licencias'}
+              </span>
             </button>
           )}
         </header>
@@ -418,7 +511,7 @@ function App() {
               <Search size={18} className="search-icon" />
               <input 
                 type="text" 
-                placeholder={`Buscar en ${activeTab === 'tenants' ? 'tenants' : 'usuarios'}...`}
+                placeholder={`Buscar en ${activeTab === 'tenants' ? 'tenants' : activeTab === 'users' ? 'usuarios' : 'licencias'}...`}
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
               />
@@ -476,12 +569,15 @@ function App() {
                     <th>Planes (T&C)</th>
                     <th>Contratos</th>
                     <th>Pagos</th>
+                    <th>Licencias (Disp/Tot)</th>
                     <th>Volumen General</th>
                   </tr>
                 </thead>
                 <tbody>
                   {tenantsWithStats.map(t => {
                     const totalRows = t.devices_count + t.plans_count + t.contracts_count + t.payments_count;
+                    const availabilityPercentage = t.total_licenses > 0 ? (t.available_licenses / t.total_licenses) * 100 : 0;
+                    const isLowLicenses = t.total_licenses > 0 && availabilityPercentage <= 10;
                     return (
                       <tr key={t.id}>
                         <td className="font-bold text-indigo">{t.tenant_id}</td>
@@ -495,6 +591,18 @@ function App() {
                         <td>{t.plans_count}</td>
                         <td>{t.contracts_count}</td>
                         <td>{t.payments_count}</td>
+                        <td>
+                          {t.total_licenses > 0 ? (
+                            <div className="flex flex-col gap-1 items-start">
+                              <span>{t.available_licenses} / {t.total_licenses}</span>
+                              {isLowLicenses && (
+                                <span className="badge badge-warning text-xs flex items-center gap-1" title="Menos del 10% de licencias disponibles">
+                                  <AlertCircle size={12} /> Low
+                                </span>
+                              )}
+                            </div>
+                          ) : '—'}
+                        </td>
                         <td className="font-bold">{totalRows} registros</td>
                       </tr>
                     );
@@ -599,6 +707,62 @@ function App() {
                           </button>
                           <button className="btn-icon" onClick={() => openEditUserModal(u)} title="Editar"><Edit2 size={16} /></button>
                           <button className="btn-icon text-danger" onClick={() => handleDeleteUser(u.id)} title="Eliminar"><Trash2 size={16} /></button>
+                        </div>
+                      </td>
+                    </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        {/* 4. LICENSES MANAGEMENT VIEW */}
+        {activeTab === 'licenses' && (
+          <div className="card-table">
+            <table>
+              <thead>
+                <tr>
+                  <th>License Key</th>
+                  <th>Tenant</th>
+                  <th>Dispositivo (IMEI)</th>
+                  <th>Costo Unitario</th>
+                  <th>Estado</th>
+                  <th>Expiración</th>
+                  <th>Acciones</th>
+                </tr>
+              </thead>
+              <tbody>
+                {licenses
+                  .filter(l => l.tenant_id.toLowerCase().includes(searchQuery.toLowerCase()) || l.license_key.toLowerCase().includes(searchQuery.toLowerCase()))
+                  .map(l => (
+                    <tr key={l.id}>
+                      <td className="font-mono text-xs">{l.license_key}</td>
+                      <td className="font-bold text-indigo">{l.tenant_id}</td>
+                      <td>{l.device_imei || '—'}</td>
+                      <td>${parseFloat(l.unit_cost).toFixed(2)}</td>
+                      <td>
+                        <span className={`badge badge-${l.status === 'active' ? 'success' : l.status === 'available' ? 'primary' : 'danger'}`}>
+                          {l.status === 'active' ? 'Activa' : l.status === 'available' ? 'Disponible' : 'Suspendida'}
+                        </span>
+                      </td>
+                      <td>{l.expires_at ? new Date(l.expires_at).toLocaleDateString() : 'Sin expiración'}</td>
+                      <td>
+                        <div className="action-buttons">
+                          <button 
+                            className="btn-icon" 
+                            onClick={() => handleToggleLicenseStatus(l.id, l.status)} 
+                            title={l.status === 'suspended' ? 'Activar' : 'Suspender'}
+                          >
+                            {l.status === 'suspended' ? <Check size={16} /> : <AlertCircle size={16} />}
+                          </button>
+                          <button 
+                            className="btn-icon text-danger" 
+                            onClick={() => handleDeleteLicense(l.id)} 
+                            title="Eliminar"
+                            disabled={l.status === 'active'}
+                          >
+                            <Trash2 size={16} />
+                          </button>
                         </div>
                       </td>
                     </tr>
@@ -790,6 +954,59 @@ function App() {
               <div className="modal-footer">
                 <button type="button" className="btn btn-light" onClick={() => setShowScopeModal(false)}>Cancelar</button>
                 <button type="submit" disabled={loading} className="btn btn-primary">Guardar Configuración</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* LICENSE MODAL */}
+      {showLicenseModal && (
+        <div className="modal-backdrop">
+          <div className="modal">
+            <div className="modal-header">
+              <h3>Generar Licencias</h3>
+              <button className="btn-icon" onClick={() => setShowLicenseModal(false)}><X size={18} /></button>
+            </div>
+            <form onSubmit={handleGenerateLicenses}>
+              <div className="form-group">
+                <label>Seleccionar Tenant</label>
+                <select 
+                  value={licenseForm.tenant_id}
+                  onChange={e => setLicenseForm({ ...licenseForm, tenant_id: e.target.value })}
+                  required
+                >
+                  <option value="">Selecciona un tenant</option>
+                  {tenants.map(t => (
+                    <option key={t.id} value={t.tenant_id}>{t.tenant_id}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="form-group">
+                <label>Cantidad de Licencias a Generar</label>
+                <input 
+                  type="number" 
+                  min="1"
+                  max="1000"
+                  value={licenseForm.quantity}
+                  onChange={e => setLicenseForm({ ...licenseForm, quantity: e.target.value })}
+                  required
+                />
+              </div>
+              <div className="form-group">
+                <label>Costo Unitario (Informativo)</label>
+                <input 
+                  type="number" 
+                  step="0.01"
+                  min="0"
+                  value={licenseForm.unit_cost}
+                  onChange={e => setLicenseForm({ ...licenseForm, unit_cost: e.target.value })}
+                  required
+                />
+              </div>
+              <div className="modal-footer">
+                <button type="button" className="btn btn-light" onClick={() => setShowLicenseModal(false)}>Cancelar</button>
+                <button type="submit" disabled={loading} className="btn btn-primary">Generar</button>
               </div>
             </form>
           </div>

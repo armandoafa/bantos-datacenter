@@ -480,6 +480,25 @@ tr:last-child td {
   color: #475569;
 }
 
+.badge-warning {
+  background-color: #fef3c7;
+  color: #92400e;
+}
+
+.font-mono {
+  font-family: 'Courier New', Courier, monospace;
+}
+
+.text-xs {
+  font-size: 11px;
+}
+
+.flex { display: flex; }
+.flex-col { flex-direction: column; }
+.gap-1 { gap: 4px; }
+.items-start { align-items: flex-start; }
+.items-center { align-items: center; }
+
 .empty-state {
   text-align: center;
   padding: 40px !important;

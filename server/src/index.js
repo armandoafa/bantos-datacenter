@@ -1278,12 +1278,12 @@ app.post('/api/backoffice/auth', /* authLimiter — desactivado en QA */ async (
               tenantId: user.tenant_id,
               role: user.role,
               storeId: user.store_id,
-              scope: {
+              scope: user.org_id ? {
                 orgId: user.org_id,
                 orgName: user.org_name,
                 orgType: user.org_type,
                 role: user.scope_role || 'STAFF'
-              }
+              } : null
             }
           });
         }
@@ -1386,7 +1386,7 @@ app.get('/api/backoffice/data-collections', async (req, res) => {
 app.get('/api/backoffice/clients', async (req, res) => {
   const { tenantId, storeId, role, username } = req.query;
   try {
-    let query = 'SELECT ch.*, u.contact_name AS creator_name FROM client_history ch LEFT JOIN users u ON ch.created_by_user_id = u.id WHERE ch.tenant_id = ?';
+    let query = 'SELECT ch.id, ch.tenant_id, ch.upya_id, ch.client_number, ch.name, ch.email, ch.wallet_client_id, ch.wallet_account_id, ch.clabe, ch.status, ch.synced_at, ch.first_name, ch.last_name, ch.external_id, ch.phone, ch.reference_contact, ch.reference_phone, ch.entity, ch.agent, ch.signing_date, ch.store_id, ch.created_by_user_id, u.contact_name AS creator_name FROM client_history ch LEFT JOIN users u ON ch.created_by_user_id = u.id WHERE ch.tenant_id = ?';
     let params = [tenantId];
     
     if (role === 'seller' || role === 'agent') {
@@ -1406,8 +1406,26 @@ app.get('/api/backoffice/clients', async (req, res) => {
   }
 });
 
+app.get('/api/backoffice/clients/:id/documents', async (req, res) => {
+  const { id } = req.params;
+  const { tenantId } = req.query;
+  try {
+    if (!tenantId) return res.status(400).json({ error: 'tenantId es requerido' });
+    const numericId = !isNaN(Number(id)) ? Number(id) : 0;
+    const [rows] = await pool.query(
+      'SELECT client_id_front, client_proof_address, client_selfie FROM client_history WHERE (id = ? OR upya_id = ?) AND tenant_id = ?',
+      [numericId, id, tenantId]
+    );
+    if (rows.length === 0) return res.status(404).json({ error: 'Client not found' });
+    res.json(rows[0]);
+  } catch (e) {
+    console.error('Clients Documents Error:', e);
+    res.status(500).json({ error: e.message });
+  }
+});
+
 app.post('/api/backoffice/clients', async (req, res) => {
-  const { tenantId, storeId, name, first_name, last_name, email, phone, reference_contact, reference_phone, entity, agent, status, client_number, external_id, signing_date, userId } = req.body;
+  const { tenantId, storeId, name, first_name, last_name, email, phone, reference_contact, reference_phone, entity, agent, status, client_number, external_id, signing_date, userId, client_id_front, client_proof_address, client_selfie } = req.body;
   try {
     const fullName = name || (first_name || last_name ? `${first_name || ''} ${last_name || ''}`.trim() : 'Sin Nombre');
     if (!tenantId) return res.status(400).json({ error: 'tenantId es requerido' });
@@ -1416,9 +1434,9 @@ app.post('/api/backoffice/clients', async (req, res) => {
 
     await pool.query(
       `INSERT INTO client_history 
-       (upya_id, client_number, tenant_id, store_id, name, first_name, last_name, external_id, email, phone, reference_contact, reference_phone, entity, agent, status, signing_date, created_by_user_id) 
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [upyaId, num, tenantId, storeId || null, fullName, first_name || null, last_name || null, external_id || null, email || null, phone || null, reference_contact || null, reference_phone || null, entity || null, agent || null, status || 'Signed', signing_date || new Date(), userId || null]
+       (upya_id, client_number, tenant_id, store_id, name, first_name, last_name, external_id, email, phone, reference_contact, reference_phone, entity, agent, status, signing_date, created_by_user_id, client_id_front, client_proof_address, client_selfie) 
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [upyaId, num, tenantId, storeId || null, fullName, first_name || null, last_name || null, external_id || null, email || null, phone || null, reference_contact || null, reference_phone || null, entity || null, agent || null, status || 'Signed', signing_date || new Date(), userId || null, client_id_front || null, client_proof_address || null, client_selfie || null]
     );
     res.json({ success: true, upya_id: upyaId });
   } catch (e) {
@@ -1429,7 +1447,7 @@ app.post('/api/backoffice/clients', async (req, res) => {
 
 app.put('/api/backoffice/clients/:id', async (req, res) => {
   const { id } = req.params;
-  const { tenantId, name, first_name, last_name, email, phone, reference_contact, reference_phone, entity, agent, status, client_number, external_id, signing_date } = req.body;
+  const { tenantId, name, first_name, last_name, email, phone, reference_contact, reference_phone, entity, agent, status, client_number, external_id, signing_date, client_id_front, client_proof_address, client_selfie } = req.body;
   try {
     if (!tenantId) return res.status(400).json({ error: 'tenantId es requerido' });
     
@@ -1450,7 +1468,10 @@ app.put('/api/backoffice/clients/:id', async (req, res) => {
         status = COALESCE(?, status),
         client_number = COALESCE(?, client_number),
         external_id = COALESCE(?, external_id),
-        signing_date = COALESCE(?, signing_date)
+        signing_date = COALESCE(?, signing_date),
+        client_id_front = COALESCE(?, client_id_front),
+        client_proof_address = COALESCE(?, client_proof_address),
+        client_selfie = COALESCE(?, client_selfie)
        WHERE (upya_id = ? OR id = ? OR client_number = ?) AND tenant_id = ?`,
       [
         fullName,
@@ -1466,6 +1487,9 @@ app.put('/api/backoffice/clients/:id', async (req, res) => {
         client_number || null,
         external_id || null,
         signing_date || null,
+        client_id_front !== undefined ? (client_id_front || null) : null,
+        client_proof_address !== undefined ? (client_proof_address || null) : null,
+        client_selfie !== undefined ? (client_selfie || null) : null,
         id,
         numericId,
         id,
@@ -3389,7 +3413,9 @@ app.get('/api/superadmin/tenants/stats', async (req, res) => {
         (SELECT COUNT(*) FROM inventory WHERE tenant_id = t.tenant_id) AS devices_count,
         (SELECT COUNT(*) FROM payment_plans WHERE tenant_id = t.tenant_id) AS plans_count,
         (SELECT COUNT(*) FROM contract_history WHERE tenant_id = t.tenant_id) AS contracts_count,
-        (SELECT COUNT(*) FROM payments WHERE tenant_id = t.tenant_id) AS payments_count
+        (SELECT COUNT(*) FROM payments WHERE tenant_id = t.tenant_id) AS payments_count,
+        (SELECT COUNT(*) FROM licenses WHERE tenant_id = t.tenant_id) AS total_licenses,
+        (SELECT COUNT(*) FROM licenses WHERE tenant_id = t.tenant_id AND status = 'available') AS available_licenses
       FROM tenants t
     `);
     res.json(rows);
@@ -3535,6 +3561,78 @@ app.put('/api/superadmin/users/:id/scopes', async (req, res) => {
       );
     }
     res.json({ success: true, message: 'Permisos actualizados con éxito.' });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// --- API LICENCIAS (Superadmin) ---
+app.get('/api/superadmin/licenses', async (req, res) => {
+  const { tenant_id } = req.query;
+  try {
+    let query = 'SELECT * FROM licenses';
+    let params = [];
+    if (tenant_id) {
+      query += ' WHERE tenant_id = ?';
+      params.push(tenant_id);
+    }
+    query += ' ORDER BY created_at DESC';
+    const [rows] = await pool.query(query, params);
+    res.json(rows);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.post('/api/superadmin/licenses/generate', async (req, res) => {
+  const { tenant_id, quantity, unit_cost } = req.body;
+  if (!tenant_id || !quantity || quantity <= 0) {
+    return res.status(400).json({ error: 'Faltan datos obligatorios (tenant_id, quantity).' });
+  }
+  try {
+    const qty = parseInt(quantity, 10);
+    const cost = parseFloat(unit_cost) || 0;
+    
+    // Generar N licencias
+    let inserted = 0;
+    for (let i = 0; i < qty; i++) {
+      const license_key = require('crypto').randomUUID();
+      await pool.query(
+        'INSERT INTO licenses (license_key, tenant_id, unit_cost, status) VALUES (?, ?, ?, ?)',
+        [license_key, tenant_id, cost, 'available']
+      );
+      inserted++;
+    }
+    res.json({ success: true, message: `Se generaron ${inserted} licencias exitosamente.` });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.put('/api/superadmin/licenses/:id', async (req, res) => {
+  const { id } = req.params;
+  const { status, device_imei } = req.body;
+  try {
+    await pool.query(
+      'UPDATE licenses SET status = COALESCE(?, status), device_imei = COALESCE(?, device_imei) WHERE id = ?',
+      [status, device_imei, id]
+    );
+    res.json({ success: true, message: 'Licencia actualizada.' });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.delete('/api/superadmin/licenses/:id', async (req, res) => {
+  const { id } = req.params;
+  try {
+    // Solo permitir borrar si no está activa
+    const [rows] = await pool.query('SELECT status FROM licenses WHERE id = ?', [id]);
+    if (rows.length > 0 && rows[0].status === 'active') {
+      return res.status(400).json({ error: 'No se puede eliminar una licencia activa.' });
+    }
+    await pool.query('DELETE FROM licenses WHERE id = ?', [id]);
+    res.json({ success: true, message: 'Licencia eliminada.' });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
