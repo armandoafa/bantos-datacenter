@@ -124,7 +124,7 @@ export const registerTrustonicWebhook = async () => {
                 url: '/webhook/subscription',
                 data: {
                     eventType: event,
-                    url: 'https://bantos.cloud/datacenter-api/api/webhooks/trustonic'
+                    url: 'https://bantos.cloud/datacenter-api/webhooks/trustonic'
                 },
                 headers: { tenantId: 'bantos-msp' }
             });

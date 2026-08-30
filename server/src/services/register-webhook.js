@@ -27,7 +27,7 @@ async function main() {
     const payload = {
         name: 'Bantos Global Webhook',
         config: {
-            url: 'https://bantos.cloud/datacenter-api/api/webhooks/dynamicore',
+            url: 'https://bantos.cloud/datacenter-api/webhooks/dynamicore',
             params: [
                 { key: "Content-Type", value: "application/json" }
             ]
