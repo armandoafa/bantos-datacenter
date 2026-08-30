@@ -18,7 +18,8 @@ function App() {
   const [loading, setLoading] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [syncMessage, setSyncMessage] = useState(null);
-  const [activeView, setActiveView] = useState('dashboard'); // dashboard, reports, trustonic
+  const [clearingData, setClearingData] = useState([]);
+  const [activeView, setActiveView] = useState('dashboard'); // dashboard, reports, trustonic, clearing
 
   useEffect(() => {
     fetchTenants();
@@ -28,7 +29,8 @@ function App() {
     fetchDashboard();
     fetchReports();
     fetchTrustonicStats();
-  }, [selectedTenant, reportType]);
+    if (activeView === 'clearing') fetchClearing();
+  }, [selectedTenant, reportType, activeView]);
 
   const fetchTenants = async () => {
     try {
@@ -67,6 +69,20 @@ function App() {
       setTrustonicData(data);
     } catch (e) {
       console.error('Error fetching trustonic stats:', e);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchClearing = async () => {
+    setLoading(true);
+    try {
+      const url = `${API}/insight/clearing`;
+      const res = await fetch(url);
+      const data = await res.json();
+      setClearingData(data);
+    } catch (e) {
+      console.error('Error fetching clearing data:', e);
     } finally {
       setLoading(false);
     }
@@ -170,6 +186,13 @@ function App() {
           <Smartphone size={18} />
           <span>Auditoría de Dispositivos (Trustonic)</span>
         </button>
+        <button 
+          className={`tab-btn ${activeView === 'clearing' ? 'active' : ''}`}
+          onClick={() => setActiveView('clearing')}
+        >
+          <DollarSign size={18} />
+          <span>Conciliación (Clearing)</span>
+        </button>
       </div>
 
       {activeView === 'trustonic' && (
@@ -249,7 +272,7 @@ function App() {
                   trustonicData.brandBreakdown.map((b, idx) => (
                     <div key={idx} className="status-item">
                       <div className="status-meta">
-                        <span className="status-name">{b.make || 'Desconocido'}</span>
+                        <span className="status-name">{b.brand || 'Desconocido'}</span>
                       </div>
                       <div className="status-bar-bg">
                         <div 
@@ -284,7 +307,11 @@ function App() {
                           title={`${g.count} dispositivos`}
                         />
                       </div>
-                      <span className="bar-label">{`${g.month}/${g.year}`}</span>
+                      <span className="bar-label">
+  			{g.month && g.month.includes('-') 
+    			? `${g.month.split('-')[1]}/${g.month.split('-')[0]}` 
+    			: g.month}
+		      </span>
                     </div>
                   ))
                 ) : (
@@ -465,6 +492,105 @@ function App() {
                 ) : (
                   <tr>
                     <td colSpan="5" className="empty-state">No se registraron operaciones para los filtros seleccionados.</td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {activeView === 'clearing' && (
+        <div className="reports-content">
+          <div className="reports-toolbar" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div>
+              <h2 style={{ margin: 0 }}>Conciliación Financiera (Clearing)</h2>
+              <p className="text-muted" style={{ marginTop: '4px' }}>Auditoría global de transacciones Dynamicore y cálculo de comisiones</p>
+            </div>
+            <button 
+              className="btn-primary" 
+              onClick={fetchClearing}
+              disabled={loading}
+              style={{display: 'flex', alignItems: 'center', gap: '8px'}}
+            >
+              <RefreshCw size={18} className={loading ? 'animate-spin' : ''} />
+              Refrescar Datos
+            </button>
+          </div>
+
+          <div className="kpi-grid" style={{marginTop: '20px'}}>
+            <div className="kpi-card card-gradient">
+              <div className="kpi-icon"><DollarSign size={24} /></div>
+              <div>
+                <h3>Total Transaccionado</h3>
+                <p className="kpi-value">
+                  ${clearingData.reduce((acc, curr) => acc + (curr.status?.toUpperCase() === 'PAID' ? Number(curr.amount) : 0), 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                </p>
+                <span>Suma bruta aprobada</span>
+              </div>
+            </div>
+            <div className="kpi-card" style={{ background: 'linear-gradient(135deg, #fef2f2 0%, #fef2f2 100%)', border: '1px solid #fee2e2' }}>
+              <div className="kpi-icon" style={{ backgroundColor: '#fee2e2', color: '#ef4444' }}><DollarSign size={24} /></div>
+              <div>
+                <h3 style={{ color: '#991b1b' }}>Comisiones Estimadas (Dynamicore)</h3>
+                <p className="kpi-value" style={{ color: '#ef4444' }}>
+                  ${clearingData.reduce((acc, curr) => acc + (curr.status?.toUpperCase() === 'PAID' ? Number(curr.estimated_fee) : 0), 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                </p>
+                <span style={{ color: '#b91c1c' }}>3.5% + $2.50 por Tx Exitosa</span>
+              </div>
+            </div>
+            <div className="kpi-card" style={{ background: 'linear-gradient(135deg, #ecfdf5 0%, #ecfdf5 100%)', border: '1px solid #d1fae5' }}>
+              <div className="kpi-icon" style={{ backgroundColor: '#d1fae5', color: '#10b981' }}><DollarSign size={24} /></div>
+              <div>
+                <h3 style={{ color: '#065f46' }}>Monto a Conciliar (Neto Bantos)</h3>
+                <p className="kpi-value" style={{ color: '#10b981' }}>
+                  ${clearingData.reduce((acc, curr) => acc + (curr.status?.toUpperCase() === 'PAID' ? Number(curr.estimated_net) : 0), 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                </p>
+                <span style={{ color: '#047857' }}>Ingreso neto bancario</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="reports-table-card" style={{ marginTop: '20px' }}>
+            <table>
+              <thead>
+                <tr>
+                  <th>Fecha</th>
+                  <th>Tenant</th>
+                  <th>Transacción</th>
+                  <th>Método</th>
+                  <th>Monto Bruto</th>
+                  <th>Comisión</th>
+                  <th>Monto Neto</th>
+                  <th>Estado</th>
+                </tr>
+              </thead>
+              <tbody>
+                {clearingData.length > 0 ? (
+                  clearingData.map(c => (
+                    <tr key={c.id}>
+                      <td className="text-muted">{new Date(c.payment_date).toLocaleString('es-MX')}</td>
+                      <td className="font-bold">{c.tenant_name || c.tenant_id}</td>
+                      <td>
+                        <div className="detail-preview">
+                          <span className="font-bold text-indigo">{c.transaction_id || 'N/A'}</span>
+                          {c.is_recurring == 1 && <span className="badge badge-success" style={{ marginLeft: '8px', fontSize: '10px' }}>Automático</span>}
+                        </div>
+                      </td>
+                      <td className="text-muted">{c.method || 'Tarjeta Automática'}</td>
+                      <td className="font-bold">${Number(c.amount).toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
+                      <td className="text-danger font-medium">-${Number(c.estimated_fee).toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
+                      <td className="text-success font-bold">${Number(c.estimated_net).toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
+                      <td>
+                        <span className={`badge badge-${c.status?.toUpperCase() === 'PAID' || c.status?.toUpperCase() === 'ACCEPTED' ? 'success' : c.status?.toUpperCase() === 'FAILED' ? 'danger' : 'warning'}`}>
+                          {c.status?.toUpperCase() || 'PENDING'}
+                        </span>
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan="8" className="empty-state">No hay transacciones registradas.</td>
                   </tr>
                 )}
               </tbody>

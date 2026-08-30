@@ -111,3 +111,67 @@ export async function syncMovements(pool, tenantId) {
 
     return { success: true, count: syncedCount, source: source === 'API' ? 'API' : 'Portal' };
 }
+
+// --- WEBHOOK LOGIC ---
+import poolDb from '../config/db.js';
+
+export const registerTrustonicWebhook = async () => {
+    try {
+        const events = ['idle', 'readyForUse', 'enrolled', 'active', 'locked', 'released'];
+        for (const event of events) {
+            await client.request({
+                method: 'POST',
+                url: '/webhook/subscription',
+                data: {
+                    eventType: event,
+                    url: 'https://bantos.cloud/datacenter-api/api/webhooks/trustonic'
+                },
+                headers: { tenantId: 'bantos-msp' }
+            });
+            console.log(`[Trustonic API] Webhook registered for event: ${event}`);
+        }
+    } catch (error) {
+        console.error('[Trustonic API] Error registering webhook:', error.response?.data || error.message);
+    }
+};
+
+export const processTrustonicWebhook = async (payload) => {
+    const { deviceUid, eventType, actionName, status, serviceType, updatedAt } = payload;
+    
+    if (status !== 'actionCompleted') {
+        console.log(`[Trustonic API] Ignorando evento ${eventType} para ${deviceUid} con status ${status}`);
+        return;
+    }
+    
+    console.log(`[Trustonic API] Procesando webhook: ${actionName} -> ${eventType} para IMEI: ${deviceUid}`);
+    
+    const infoRes = await validateDevice(deviceUid);
+    if (!infoRes.success) return;
+    
+    const info = infoRes.device;
+    const tenant = info.tenantName || 'Unknown';
+    let service = serviceType || 'Unknown';
+    if (info.serviceDetails && info.serviceDetails.length > 0) {
+        service = info.serviceDetails.map(s => s.serviceName || s).join(', ');
+    }
+    const tac = info.tac?.tacId || info.tac || null;
+    const brand = info.deviceManufacturer || null;
+    const model = info.deviceModel || null;
+    const state = info.stateInfo || eventType;
+    
+    let expiration = null;
+    if (info.expirationTime) {
+        const d = new Date(parseInt(info.expirationTime));
+        expiration = d.toISOString().split('T')[0];
+    }
+
+    await poolDb.query(
+        `INSERT INTO trustonic_inventory (imei, tenant, service, tac, brand, model, status, expiration_date, last_sync) 
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW()) 
+         ON DUPLICATE KEY UPDATE 
+         tenant=VALUES(tenant), service=VALUES(service), tac=VALUES(tac), brand=VALUES(brand), model=VALUES(model), status=VALUES(status), expiration_date=VALUES(expiration_date), last_sync=NOW()`,
+        [deviceUid, tenant, service, tac, brand, model, state, expiration]
+    );
+    
+    console.log(`[Trustonic API] Dispositivo ${deviceUid} actualizado correctamente vía Webhook.`);
+};

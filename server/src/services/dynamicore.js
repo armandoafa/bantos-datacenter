@@ -119,7 +119,7 @@ class BantosGatewayService {
      * @returns {Promise} { status, message: { id (customer_id), first_name, last_name, email,
      *   phone, status, created_at, ... } }
      */
-    async createCardPayCustomer(customerData) {
+    async createCardPayCustomer(customerData, recurrent = false) {
         const payload = {
             first_name:    customerData.first_name,
             last_name:     customerData.last_name,
@@ -134,6 +134,7 @@ class BantosGatewayService {
             phone:         customerData.phone,
             username:      customerData.username
         };
+        if (recurrent) payload.recurrent = true;
         return this.requestCardPay('POST', '/customer/create', payload);
     }
 
@@ -155,9 +156,9 @@ class BantosGatewayService {
             const response = await axios(config);
             const resData = response.data;
 
-            // Interceptar "falsos positivos" HTTP 200 que contienen errores en el JSON
-            if (resData?.status === 'error' || resData?.message?.status === 'error' || resData?.data?.status === 'error') {
-                const nestedMsg = resData?.message?.message?.message || resData?.message?.message || resData?.data?.message?.message || resData?.message || 'Error interno reportado por Dynamicore';
+            // Interceptar "falsos positivos" HTTP 200 que contienen errores en el JSON o pagos rechazados
+            if (resData?.status === 'error' || resData?.message?.status === 'error' || resData?.data?.status === 'error' || resData?.message?.message === 'RECHAZADA') {
+                const nestedMsg = resData?.message?.display_message || resData?.message?.message?.message || resData?.message?.message || resData?.data?.message?.message || resData?.message || 'Error interno reportado por Dynamicore';
                 const errString = typeof nestedMsg === 'string' ? nestedMsg : JSON.stringify(nestedMsg);
                 throw new Error(errString);
             }
@@ -177,10 +178,11 @@ class BantosGatewayService {
      * @param {string} tokenId - token_id generado por el iFrame (Paso 2)
      * @returns {Promise} { status, message: { id (payment_method), token, default, client, created_at } }
      */
-    async assignCardToCustomer(customerId, tokenId) {
+    async assignCardToCustomer(customerId, tokenId, recurrent = false) {
         const payload = {
             customer_id: customerId,
-            token_id: tokenId
+            token_id: tokenId,
+            recurrent: Boolean(recurrent)
         };
         return this.requestCardPay('POST', '/card/assignToCustomer', payload);
     }
@@ -195,6 +197,37 @@ class BantosGatewayService {
         // En base a la arquitectura actual (donde el cliente se crea como app de marketplace),
         // este endpoint también DEBE usar el prefijo base del marketplace, al igual que los demás pasos.
         return this.requestCardPay('POST', '/transactions/ccTransaction', payload);
+    }
+
+    /**
+     * Paso 4: Ejecutar cargo recurrente
+     * POST https://api.dynamicore.io/marketplace/apps/dynamicardpay/v2/transactions/transactionno3ds
+     * @param {Object} payload - { payment_method, customer_id, amount, sc, recurrent: true, recurring: { type: "mensual" } }
+     */
+    async recurringCharge(payload) {
+        return this.requestCardPay('POST', '/transactions/transactionno3ds', payload);
+    }
+
+    // --- Webhooks ---
+    async registerWebhook(name, url) {
+        const payload = {
+            name: name,
+            config: {
+                url: url,
+                params: [
+                    { key: "Content-Type", value: "application/json" }
+                ]
+            }
+        };
+        return this.requestCardPay('POST', '/tools/webhooks', payload);
+    }
+
+    /**
+     * Paso 5: Automatización / Suscripción
+     * POST https://api.dynamicore.io/marketplace/apps/dynamicardpay/v2/customer/subscribe
+     */
+    async subscribe(payload) {
+        return this.requestCardPay('POST', '/customer/subscribe', payload);
     }
 }
 

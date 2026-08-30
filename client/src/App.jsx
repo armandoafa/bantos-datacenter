@@ -8,7 +8,7 @@ import {
   BookOpen, Zap, CheckSquare, MessageSquare, ListTodo, ClipboardCheck,
   Upload, PenTool, Send, AlertCircle, Printer, Activity, Menu, Calendar,
   FileSpreadsheet, Check, Eye, EyeOff, MoreVertical, Lock, Unlock, Ban, CheckCircle2, Bell, KeyRound, ShieldAlert,
-  Camera, Copy, QrCode, ExternalLink, ArrowRightLeft, RotateCcw
+  Camera, Copy, QrCode, ExternalLink, ArrowRightLeft, RotateCcw, ArrowRight
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import axios from 'axios';
@@ -16,6 +16,16 @@ import SupportAgent from './SupportAgent';
 import MessagingSetup from './MessagingSetup';
 import ConfigSetup from './ConfigSetup';
 import { generateContractHTML, generateVoucherHTML } from './utils/pdf-templates.js';
+
+if (typeof window !== 'undefined') {
+  if (window.location.search.includes('3ds=done')) {
+    window.opener?.postMessage('DYNAMICORE_3DS_DONE', '*');
+    window.close();
+  } else if (window.location.search.includes('3ds=cancel')) {
+    window.opener?.postMessage('DYNAMICORE_3DS_CANCEL', '*');
+    window.close();
+  }
+}
 
 const loadXLSXLib = () => {
   return new Promise((resolve, reject) => {
@@ -1375,8 +1385,16 @@ const ClientsView = ({ clients = [], onEdit, onCreate }) => {
 };
 
 const ClientModal = ({ isOpen, onClose, client, onSave, onGenerateWallet, orgStructure = [] }) => {
+  const fileFrontRef = useRef(null);
+  const fileProofRef = useRef(null);
+  const fileSelfieRef = useRef(null);
   const [generating, setGenerating] = useState(false);
-  const [activeTab, setActiveTab] = useState('edit'); // 'edit' | 'wallet'
+  const [activeTab, setActiveTab] = useState('info'); // 'info' | 'docs' | 'wallet'
+  const [loadingDocs, setLoadingDocs] = useState(false);
+  const [scanSessionId, setScanSessionId] = useState(null);
+  const [scanDeepLink, setScanDeepLink] = useState('');
+  const [copiedLink, setCopiedLink] = useState(false);
+  const [showScanModal, setShowScanModal] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
     first_name: '',
@@ -1390,7 +1408,10 @@ const ClientModal = ({ isOpen, onClose, client, onSave, onGenerateWallet, orgStr
     entity: '',
     agent: '',
     status: 'Signed',
-    signing_date: ''
+    signing_date: '',
+    client_id_front: '',
+    client_proof_address: '',
+    client_selfie: ''
   });
   const [saving, setSaving] = useState(false);
 
@@ -1430,6 +1451,58 @@ const ClientModal = ({ isOpen, onClose, client, onSave, onGenerateWallet, orgStr
 
   const agentOptions = getSubordinateAgents();
 
+  const handleFileChange = async (field, e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    try {
+      const compressedBase64 = await compressImageFile(file, 1280, 1280, 0.75);
+      setFormData(prev => ({ ...prev, [field]: compressedBase64 }));
+    } catch (err) {
+      console.error('Compress error:', err);
+    }
+  };
+
+  const handleStartScanSession = async (mode = 'docs') => {
+    try {
+      const clientName = `${formData.first_name} ${formData.last_name}`.trim() || 'Cliente';
+      const res = await axios.post(`${API}/backoffice/scan-session/create`, { clientName });
+      if (res.data.success) {
+        const sid = res.data.sessionId;
+        setScanSessionId(sid);
+        const link = `${window.location.origin}${window.location.pathname}?scanSession=${sid}&scanMode=${mode}`;
+        setScanDeepLink(link);
+        setShowScanModal(true);
+      }
+    } catch (err) {
+      alert('Error al generar la sesión de escaneo móvil');
+    }
+  };
+
+  useEffect(() => {
+    let interval;
+    if (showScanModal && scanSessionId) {
+      interval = setInterval(async () => {
+        try {
+          const res = await axios.get(`${API}/backoffice/scan-session/${scanSessionId}`);
+          if (res.data.success && res.data.session) {
+            const sess = res.data.session;
+            setFormData(prev => ({
+              ...prev,
+              ...(sess.idFront ? { client_id_front: sess.idFront } : {}),
+              ...(sess.proofAddress ? { client_proof_address: sess.proofAddress } : {}),
+              ...(sess.selfie ? { client_selfie: sess.selfie } : {})
+            }));
+          }
+        } catch (err) {
+          // ignore polling errors
+        }
+      }, 2500);
+    }
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [showScanModal, scanSessionId, formData.client_id_front, formData.client_proof_address]);
+
   useEffect(() => {
     if (client) {
       setFormData({
@@ -1445,9 +1518,35 @@ const ClientModal = ({ isOpen, onClose, client, onSave, onGenerateWallet, orgStr
         entity: client.entity || '',
         agent: client.agent || '',
         status: client.status || 'Signed',
-        signing_date: client.signing_date ? new Date(client.signing_date).toISOString().substring(0, 10) : ''
+        signing_date: client.signing_date ? new Date(client.signing_date).toISOString().substring(0, 10) : '',
+        client_id_front: '',
+        client_proof_address: '',
+        client_selfie: ''
       });
-      setActiveTab('edit');
+      setActiveTab('info');
+      
+      const fetchDocs = async () => {
+        if (!client.id && !client.upya_id) return;
+        setLoadingDocs(true);
+        try {
+          const tenantId = localStorage.getItem('tenantId') || (window.session || {}).tenantId || 'c-romel';
+          const token = localStorage.getItem('token') || (window.session || {}).token;
+          const res = await axios.get(`${API}/backoffice/clients/${client.id || client.upya_id}/documents?tenantId=${tenantId}`, {
+            headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+          });
+          setFormData(prev => ({
+            ...prev,
+            client_id_front: res.data.client_id_front || '',
+            client_proof_address: res.data.client_proof_address || '',
+            client_selfie: res.data.client_selfie || ''
+          }));
+        } catch (e) {
+          console.error('Error fetching docs', e);
+        } finally {
+          setLoadingDocs(false);
+        }
+      };
+      fetchDocs();
     } else {
       setFormData({
         name: '',
@@ -1462,9 +1561,12 @@ const ClientModal = ({ isOpen, onClose, client, onSave, onGenerateWallet, orgStr
         entity: '',
         agent: '',
         status: 'Signed',
-        signing_date: new Date().toISOString().substring(0, 10)
+        signing_date: new Date().toISOString().substring(0, 10),
+        client_id_front: '',
+        client_proof_address: '',
+        client_selfie: ''
       });
-      setActiveTab('edit');
+      setActiveTab('info');
     }
   }, [client, isOpen]);
 
@@ -1515,28 +1617,28 @@ const ClientModal = ({ isOpen, onClose, client, onSave, onGenerateWallet, orgStr
           <button onClick={onClose} className="p-3 hover:bg-white rounded-2xl transition-all text-slate-400"><X size={20} /></button>
         </div>
 
-        {/* Tab Selection if Editing */}
-        {client && (
-          <div className="flex border-b border-slate-100 bg-slate-50/30 px-8 shrink-0">
-            <button 
-              onClick={() => setActiveTab('edit')} 
-              className={`py-3.5 px-5 font-black text-xs uppercase tracking-widest border-b-2 transition-all ${activeTab === 'edit' ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-400 hover:text-slate-600'}`}
-            >
-              Editar Información
-            </button>
-            <button 
-              onClick={() => setActiveTab('wallet')} 
-              className={`py-3.5 px-5 font-black text-xs uppercase tracking-widest border-b-2 transition-all ${activeTab === 'wallet' ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-400 hover:text-slate-600'}`}
-            >
-              Wallet STP & Contratos
-            </button>
-          </div>
-        )}
+        {/* Tab Selection */}
+        <div className="flex border-b border-slate-100 bg-slate-50/30 px-8 shrink-0">
+          <button 
+            onClick={() => setActiveTab('info')} 
+            className={`py-3.5 px-5 font-black text-xs uppercase tracking-widest border-b-2 transition-all ${activeTab === 'info' ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-400 hover:text-slate-600'}`}
+          >
+            Datos Personales
+          </button>
+          <button 
+            onClick={() => setActiveTab('docs')} 
+            className={`py-3.5 px-5 font-black text-xs uppercase tracking-widest border-b-2 transition-all flex items-center gap-2 ${activeTab === 'docs' ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-400 hover:text-slate-600'}`}
+          >
+            Documentos
+            {loadingDocs && <span className="w-3 h-3 border-2 border-slate-300 border-t-slate-500 rounded-full animate-spin"></span>}
+          </button>
+        </div>
 
         {/* Content Body */}
         <div className="p-6 md:p-8 overflow-y-auto space-y-6 flex-1">
-          {(!client || activeTab === 'edit') ? (
             <form onSubmit={handleSubmit} className="space-y-5">
+              
+              <div className={activeTab === 'info' ? 'space-y-5' : 'hidden'}>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-black uppercase text-slate-500 tracking-wider mb-2">Nombres *</label>
@@ -1671,6 +1773,119 @@ const ClientModal = ({ isOpen, onClose, client, onSave, onGenerateWallet, orgStr
                   />
                 </div>
               </div>
+              </div>
+
+              <div className={activeTab === 'docs' ? 'space-y-5' : 'hidden'}>
+                <input type="file" ref={fileFrontRef} accept="image/*" capture="environment" className="hidden" onChange={e => handleFileChange('client_id_front', e)} />
+                <input type="file" ref={fileProofRef} accept="image/*" capture="environment" className="hidden" onChange={e => handleFileChange('client_proof_address', e)} />
+                <input type="file" ref={fileSelfieRef} accept="image/*" capture="user" className="hidden" onChange={e => handleFileChange('client_selfie', e)} />
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-3">Tipo de Identificación</label>
+                    <select className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl p-3.5 font-bold text-slate-800 outline-none focus:border-blue-600 transition-all text-sm">
+                      <option>INE / IFE</option><option>Pasaporte</option><option>Cédula Profesional</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-3">Número de Documento</label>
+                    <input type="text" className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl p-3.5 font-bold text-slate-800 outline-none focus:border-blue-600 transition-all text-sm" placeholder="Ej. 0000111122223" value={formData.external_id} onChange={e => setFormData({...formData, external_id: e.target.value})} />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-3 flex items-center justify-between">
+                      <span>Captura Identificación (Frente)</span>
+                      {formData.client_id_front && <span className="text-emerald-600 font-black text-xs">✓ Capturado</span>}
+                    </label>
+                    {formData.client_id_front ? (
+                      <div className="relative w-full h-36 rounded-2xl overflow-hidden border-2 border-emerald-500 bg-black group">
+                        <img src={formData.client_id_front} alt="Identificación frente" className="w-full h-full object-cover" />
+                        <div className="absolute inset-0 bg-slate-900/60 opacity-0 group-hover:opacity-100 flex items-center justify-center gap-2 transition-all">
+                          <button type="button" onClick={() => fileFrontRef.current?.click()} className="px-3 py-1.5 bg-blue-600 text-white rounded-xl font-bold text-xs">Cambiar</button>
+                          <button type="button" onClick={() => setFormData({ ...formData, client_id_front: '' })} className="p-2 bg-rose-600 text-white rounded-xl font-bold text-xs"><Trash2 size={16} /></button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div 
+                        onClick={() => fileFrontRef.current?.click()} 
+                        className="w-full h-36 rounded-2xl border-2 border-dashed border-slate-300 hover:border-blue-500 bg-slate-50/50 hover:bg-blue-50/50 flex flex-col items-center justify-center cursor-pointer transition-all group"
+                      >
+                        <Camera size={32} className="text-slate-400 group-hover:text-blue-500 mb-2 transition-colors" />
+                        <span className="text-xs font-bold text-slate-500 group-hover:text-blue-600 transition-colors">Tomar Foto / Subir ID</span>
+                      </div>
+                    )}
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-3 flex items-center justify-between">
+                      <span>Captura Comprobante Domicilio</span>
+                      {formData.client_proof_address && <span className="text-emerald-600 font-black text-xs">✓ Capturado</span>}
+                    </label>
+                    {formData.client_proof_address ? (
+                      <div className="relative w-full h-36 rounded-2xl overflow-hidden border-2 border-emerald-500 bg-black group">
+                        <img src={formData.client_proof_address} alt="Comprobante" className="w-full h-full object-cover" />
+                        <div className="absolute inset-0 bg-slate-900/60 opacity-0 group-hover:opacity-100 flex items-center justify-center gap-2 transition-all">
+                          <button type="button" onClick={() => fileProofRef.current?.click()} className="px-3 py-1.5 bg-blue-600 text-white rounded-xl font-bold text-xs">Cambiar</button>
+                          <button type="button" onClick={() => setFormData({ ...formData, client_proof_address: '' })} className="p-2 bg-rose-600 text-white rounded-xl font-bold text-xs"><Trash2 size={16} /></button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div 
+                        onClick={() => fileProofRef.current?.click()} 
+                        className="w-full h-36 rounded-2xl border-2 border-dashed border-slate-300 hover:border-blue-500 bg-slate-50/50 hover:bg-blue-50/50 flex flex-col items-center justify-center cursor-pointer transition-all group"
+                      >
+                        <FileText size={32} className="text-slate-400 group-hover:text-blue-500 mb-2 transition-colors" />
+                        <span className="text-xs font-bold text-slate-500 group-hover:text-blue-600 transition-colors">Tomar Foto / Subir Comprobante</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-3 flex items-center justify-between">
+                    <span>Captura Selfie</span>
+                    {formData.client_selfie && <span className="text-emerald-600 font-black text-xs">✓ Capturado</span>}
+                  </label>
+                  {formData.client_selfie ? (
+                    <div className="relative w-full h-40 rounded-2xl overflow-hidden border-2 border-emerald-500 bg-black group mx-auto md:w-2/3">
+                      <img src={formData.client_selfie} alt="Selfie" className="w-full h-full object-cover" />
+                      <div className="absolute inset-0 bg-slate-900/60 opacity-0 group-hover:opacity-100 flex items-center justify-center gap-2 transition-all">
+                        <button type="button" onClick={() => fileSelfieRef.current?.click()} className="px-3 py-1.5 bg-blue-600 text-white rounded-xl font-bold text-xs">Cambiar</button>
+                        <button type="button" onClick={() => setFormData({ ...formData, client_selfie: '' })} className="p-2 bg-rose-600 text-white rounded-xl font-bold text-xs"><Trash2 size={16} /></button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div 
+                      onClick={() => fileSelfieRef.current?.click()} 
+                      className="w-full h-40 rounded-2xl border-2 border-dashed border-slate-300 hover:border-blue-500 bg-slate-50/50 hover:bg-blue-50/50 flex flex-col items-center justify-center cursor-pointer transition-all group mx-auto md:w-2/3"
+                    >
+                      <Camera size={32} className="text-slate-400 group-hover:text-blue-500 mb-2 transition-colors" />
+                      <span className="text-xs font-bold text-slate-500 group-hover:text-blue-600 transition-colors">Tomar Foto / Subir Selfie</span>
+                    </div>
+                  )}
+                </div>
+
+                <div className="bg-indigo-50/50 p-6 rounded-3xl border border-indigo-100 flex flex-col md:flex-row md:items-center justify-between gap-5 col-span-1 md:col-span-2 mt-4">
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 bg-indigo-600 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-indigo-600/30 shrink-0">
+                      <Smartphone size={24} />
+                    </div>
+                    <div>
+                      <h4 className="font-black text-indigo-950 text-base">Escanear desde Teléfono Celular (DeepLink)</h4>
+                      <p className="text-xs font-bold text-indigo-700/80">Genera un enlace o código QR para tomar las fotos directamente con la cámara de tu celular y sincronizarlas en vivo.</p>
+                    </div>
+                  </div>
+                  <button 
+                    type="button"
+                    onClick={() => handleStartScanSession('docs')}
+                    className="shrink-0 bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3.5 rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl shadow-indigo-600/20 transition-all active:scale-95 flex items-center gap-2 justify-center"
+                  >
+                    <QrCode size={18} /> Generar QR
+                  </button>
+                </div>
+              </div>
 
               <div className="pt-4 border-t border-slate-100 flex justify-end gap-3">
                 <button type="button" onClick={onClose} className="px-6 py-3 font-black text-xs uppercase tracking-widest text-slate-400 hover:text-slate-600">Cancelar</button>
@@ -1683,71 +1898,73 @@ const ClientModal = ({ isOpen, onClose, client, onSave, onGenerateWallet, orgStr
                 </button>
               </div>
             </form>
-          ) : (
-            <div className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-5 p-4 bg-slate-50 rounded-2xl">
-                <div className="space-y-1">
-                  <p className="text-[11px] font-black text-slate-400 uppercase tracking-widest">ID de Sistema</p>
-                  <p className="font-mono text-blue-600 font-bold">{client.upya_id}</p>
-                </div>
-                <div className="space-y-1">
-                  <p className="text-[11px] font-black text-slate-400 uppercase tracking-widest">Email</p>
-                  <p className="text-slate-700 font-bold">{client.email || '—'}</p>
-                </div>
-              </div>
-
-              <div className="bg-slate-50 rounded-3xl p-5 md:p-8 border border-slate-100 space-y-6">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-emerald-100 rounded-xl flex items-center justify-center text-emerald-600"><CreditCard size={20} /></div>
-                    <p className="font-black text-slate-800 tracking-tight">Wallet STP DynamiCore</p>
-                  </div>
-                  <Badge status={client.clabe ? 'Active' : 'Unassigned'} />
-                </div>
-
-                {client.clabe ? (
-                  <div className="space-y-4">
-                    <div className="bg-white border border-emerald-100 rounded-2xl p-5 text-center">
-                      <p className="text-[10px] font-black text-emerald-500 uppercase tracking-[0.2em] mb-2">CLABE Interbancaria</p>
-                      <p className="text-2xl font-mono font-black text-emerald-700 tracking-[0.1em]">{client.clabe}</p>
-                    </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="bg-white/50 border border-slate-100 rounded-xl p-3">
-                        <p className="text-[9px] font-black text-slate-400 uppercase">Wallet ID</p>
-                        <p className="text-[11px] font-mono font-bold text-slate-600">{client.wallet_account_id}</p>
-                      </div>
-                      <div className="bg-white/50 border border-slate-100 rounded-xl p-3">
-                        <p className="text-[9px] font-black text-slate-400 uppercase">Client DC ID</p>
-                        <p className="text-[11px] font-mono font-bold text-slate-600">{client.wallet_client_id}</p>
-                      </div>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="text-center space-y-6 py-4">
-                    <p className="text-slate-500 text-sm font-medium leading-relaxed">Este cliente aún no tiene una cuenta wallet asignada. Al generarla, se le asignará una CLABE única para recibir pagos vía STP.</p>
-                    <button 
-                      onClick={handleGenerate}
-                      disabled={generating}
-                      className={`w-full bg-blue-600 hover:bg-blue-700 text-white py-4 rounded-2xl font-black uppercase tracking-widest text-[12px] shadow-xl shadow-blue-600/20 transition-all flex items-center justify-center gap-3 ${generating ? 'opacity-50 cursor-not-allowed' : ''}`}
-                    >
-                      {generating ? (
-                        <>
-                          <RefreshCw size={18} className="animate-spin" />
-                          Generando Wallet...
-                        </>
-                      ) : (
-                        <>
-                          <Plus size={18} />
-                          Generar Wallet STP
-                        </>
-                      )}
-                    </button>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
         </div>
+
+        {showScanModal && (
+          <div className="absolute inset-0 bg-slate-900/70 backdrop-blur-sm z-50 flex items-center justify-center p-4 rounded-[40px]">
+            <div className="bg-white w-full max-w-lg rounded-[36px] shadow-2xl p-8 border border-slate-100 relative text-center space-y-6">
+              <button type="button" onClick={() => setShowScanModal(false)} className="absolute top-6 right-6 p-2 text-slate-400 hover:text-slate-600">
+                <X size={20} />
+              </button>
+
+              <div className="w-14 h-14 bg-indigo-600 rounded-2xl flex items-center justify-center text-white mx-auto shadow-lg shadow-indigo-600/30">
+                <Smartphone size={28} />
+              </div>
+
+              <div>
+                <h3 className="text-xl font-black text-slate-900">Escanear Documentos desde Móvil</h3>
+                <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">Escanea el QR o copia el enlace DeepLink</p>
+              </div>
+
+              <div className="bg-slate-50 p-6 rounded-3xl border border-slate-100 space-y-4">
+                <img 
+                  src={`https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(scanDeepLink)}`} 
+                  alt="QR DeepLink" 
+                  className="w-48 h-48 rounded-2xl border-4 border-white shadow-md mx-auto" 
+                />
+                <div className="flex items-center justify-center gap-2 text-xs font-bold text-slate-500">
+                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                  <span>Sincronización en vivo activa...</span>
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <div className="flex items-center gap-2 bg-slate-100 p-2.5 rounded-2xl border border-slate-200">
+                  <input 
+                    type="text" 
+                    readOnly 
+                    value={scanDeepLink} 
+                    className="w-full bg-transparent text-xs font-mono font-bold text-slate-700 px-2 outline-none truncate" 
+                  />
+                  <button 
+                    type="button"
+                    onClick={() => {
+                      navigator.clipboard.writeText(scanDeepLink);
+                      setCopiedLink(true);
+                      setTimeout(() => setCopiedLink(false), 2500);
+                    }}
+                    className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-black text-[11px] uppercase tracking-widest shrink-0 transition-all flex items-center gap-1.5"
+                  >
+                    {copiedLink ? <Check size={14} /> : <Copy size={14} />}
+                    <span>{copiedLink ? '¡Copiado!' : 'Copiar'}</span>
+                  </button>
+                </div>
+
+                <p className="text-[11px] text-slate-400 font-bold">
+                  Abre la cámara de tu celular, apunta al código QR o pega el enlace en el navegador de tu teléfono.
+                </p>
+              </div>
+
+              <button 
+                type="button" 
+                onClick={() => setShowScanModal(false)}
+                className="w-full bg-slate-900 hover:bg-slate-800 text-white py-3.5 rounded-2xl font-black text-xs uppercase tracking-widest transition-all"
+              >
+                Entendido / Listo
+              </button>
+            </div>
+          </div>
+        )}
 
         <div className="p-5 md:p-8 bg-slate-50/50 border-t border-slate-100 flex justify-end shrink-0">
           <button onClick={onClose} className="px-8 py-3 font-black text-[12px] uppercase tracking-widest text-slate-400 hover:text-slate-600">Cerrar</button>
@@ -1819,14 +2036,6 @@ const ContractsView = ({ contracts = [], onNew, onEdit, onSign, onSettle, sessio
       <PageHeader 
         title="Contratos" 
         subtitle={`${filtered.length} deals registrados`} 
-        action={
-          <button 
-            onClick={onNew}
-            className="flex items-center gap-3 bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl shadow-blue-600/20 transition-all active:scale-95"
-          >
-            <Plus size={16} /> Nuevo Contrato
-          </button>
-        }
       />
 
       {/* Quick Filter Tabs */}
@@ -2051,11 +2260,14 @@ const ContractsView = ({ contracts = [], onNew, onEdit, onSign, onSettle, sessio
   );
 };
 
-const ContractModal = ({ isOpen, onClose, onSave, contract, clients = [], products = [], inventory = [], paymentPlans = [], tenantId, onOpenPayment }) => {
+const ContractModal = ({ isOpen, onClose, onSave, contract, clients = [], products = [], inventory = [], paymentPlans = [], tenantId, onOpenPayment, payments = [] }) => {
   const [activeMode, setActiveMode] = useState('form'); // 'form' or 'import'
   const [formData, setFormData] = useState({
     status: '', product_name: '', total_value: 0, paid_value: 0, client_id: '', deal_name: ''
   });
+  
+  const contractPayments = payments?.filter(p => contract && (p.contract_id === contract.contract_number || p.contract_id === contract.upya_id || String(p.contract_id) === String(contract.id))) || [];
+
   const [selectedFile, setSelectedFile] = useState(null);
   const [signature, setSignature] = useState(null);
   const canvasManualRef = useRef(null);
@@ -2158,7 +2370,8 @@ const ContractModal = ({ isOpen, onClose, onSave, contract, clients = [], produc
         const signatureData = signaturePadManualRef.current.toDataURL('image/png');
         const client = clients.find(c => c.upya_id === formData.client_id);
         const dataToSave = {
-          contractData: { ...formData, client_name: client?.name || '' },
+          ...formData,
+          client_name: client?.name || '',
           signatureData
         };
         onSave(dataToSave, 'generate');
@@ -2420,6 +2633,48 @@ const ContractModal = ({ isOpen, onClose, onSave, contract, clients = [], produc
               </motion.div>
             )}
           </AnimatePresence>
+          
+          {contract && contractPayments.length > 0 && (
+            <div className="mt-8 pt-8 border-t border-slate-100">
+              <h3 className="text-[12px] font-black text-blue-600 uppercase tracking-[0.2em] mb-4 flex items-center gap-2"><CreditCard size={14} /> Historial de Pagos</h3>
+              <div className="bg-slate-50 border border-slate-100 rounded-3xl overflow-hidden">
+                <table className="w-full text-left text-sm">
+                  <thead className="bg-slate-100/50 text-[10px] uppercase font-black tracking-widest text-slate-400">
+                    <tr>
+                      <th className="p-4">Fecha</th>
+                      <th className="p-4">Monto</th>
+                      <th className="p-4">Método</th>
+                      <th className="p-4">Estado</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {contractPayments.map((payment, i) => (
+                      <tr key={payment.id || i} className="hover:bg-white transition-colors">
+                        <td className="p-4 font-bold text-slate-600">
+                          {new Date(payment.payment_date || payment.created_at).toLocaleDateString()}
+                        </td>
+                        <td className="p-4 font-black text-slate-800">
+                          ${parseFloat(payment.amount).toLocaleString('en-US', {minimumFractionDigits: 2})}
+                        </td>
+                        <td className="p-4 text-xs font-bold text-slate-500">
+                          {payment.method || 'N/A'}
+                        </td>
+                        <td className="p-4">
+                          <span className={`px-2 py-1 rounded-md text-[10px] font-black uppercase tracking-wider ${
+                            payment.status === 'Paid' ? 'bg-emerald-100 text-emerald-700' : 
+                            payment.status === 'Failed' ? 'bg-red-100 text-red-700' : 
+                            'bg-amber-100 text-amber-700'
+                          }`}>
+                            {payment.status === 'Paid' ? 'Aprobado' : payment.status === 'Failed' ? 'Fallido' : 'Pendiente'}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="p-5 md:p-8 border-t border-slate-50 bg-slate-50/50 flex justify-end gap-4">
@@ -2704,9 +2959,16 @@ const PaymentsView = ({ payments = [], onEdit, onCreate, session }) => {
             </td>
             <td className="px-8 py-5 font-black text-slate-900">${Number(p.amount || 0).toLocaleString()}</td>
             <td className="px-8 py-5">
-              <div className="flex items-center gap-1.5 bg-slate-50 px-2.5 py-1 rounded-lg">
-                <CreditCard size={14} className="text-slate-400" />
-                <span className="text-slate-600 text-xs font-bold">{normalizeMethod(p.payment_method || p.method)}</span>
+              <div className="flex flex-col gap-1">
+                <div className="flex items-center gap-1.5 bg-slate-50 px-2.5 py-1 rounded-lg w-max">
+                  <CreditCard size={14} className="text-slate-400" />
+                  <span className="text-slate-600 text-xs font-bold">{normalizeMethod(p.payment_method || p.method)}</span>
+                </div>
+                {(p.is_recurring == 1 || normalizeMethod(p.payment_method || p.method) === 'Tarjeta Automática') && (
+                  <div className="flex items-center gap-1 bg-purple-50 text-purple-600 px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-widest w-max mt-0.5 border border-purple-100">
+                    <RefreshCw size={10} /> Automático
+                  </div>
+                )}
               </div>
             </td>
             <td className="px-8 py-5 font-bold text-slate-700 text-xs">{p.creator_name || '—'}</td>
@@ -2745,9 +3007,16 @@ const PaymentsView = ({ payments = [], onEdit, onCreate, session }) => {
                 <span className="text-slate-400 font-bold">Cliente:</span>
                 <span className="font-black text-slate-800 text-right">{p.client_name || '—'}<br/><span className="text-blue-600 text-[10px] uppercase">{p.client_number || 'S/N'}</span></span>
               </div>
-              <div className="flex justify-between text-sm">
+              <div className="flex justify-between text-sm items-center">
                 <span className="text-slate-400 font-bold">Método:</span>
-                <div className="flex items-center gap-1.5 text-slate-600 font-medium"><CreditCard size={14} /> {p.method || '—'}</div>
+                <div className="flex flex-col items-end gap-1">
+                  <div className="flex items-center gap-1.5 text-slate-600 font-medium"><CreditCard size={14} /> {p.method || '—'}</div>
+                  {(p.is_recurring == 1 || normalizeMethod(p.payment_method || p.method) === 'Tarjeta Automática') && (
+                    <div className="flex items-center gap-1 bg-purple-50 text-purple-600 px-1.5 py-0.5 rounded text-[10px] font-black uppercase tracking-widest">
+                      <RefreshCw size={10} /> Automático
+                    </div>
+                  )}
+                </div>
               </div>
               <div className="flex justify-end gap-2 pt-2">
                 <button onClick={() => window.open(`/datacenter-api/backoffice/payments/${p.id}/pdf?tenantId=${session?.tenantId}`, '_blank')} className="p-2.5 bg-slate-50 text-blue-600 rounded-xl"><Printer size={16} /></button>
@@ -2774,11 +3043,18 @@ const SettlementModal = ({ isOpen, onClose, contract, session, onSettled }) => {
 
   useEffect(() => {
     if (isOpen && contract) {
+      setDynamicoreSuccess(false);
+      setIframeError(null);
+      setIframeLoading(false);
+      setMethod('Transferencia SPEI');
       fetchQuote();
     } else {
       setQuote(null);
       setDiscountAmount(0);
       setNotes('');
+      setDynamicoreSuccess(false);
+      setIframeError(null);
+      setIframeLoading(false);
     }
   }, [isOpen, contract]);
 
@@ -2912,9 +3188,14 @@ const SettlementModal = ({ isOpen, onClose, contract, session, onSettled }) => {
                     <DynamicoreIframeContainer 
                       iframeId="dynamicore-action-iframe"
                       amount={finalAmount} 
-                      clientId={quote.client_id || contract.client_id} 
+                      clientId={quote?.client_id || contract?.client_id}
+                      initialClientData={{
+                        name: quote?.client_name || contract?.client_name,
+                        client_id: quote?.client_id || contract?.client_id
+                      }}
                       isRecurring={false}
                       recurringDates={[]} 
+                      recurringFrequency="mensual"
                       onSuccess={(token) => {
                         setDynamicoreSuccess(true);
                         handleSettle(null, token);
@@ -2990,9 +3271,62 @@ const SettlementModal = ({ isOpen, onClose, contract, session, onSettled }) => {
   );
 };
 
-const DynamicoreIframeContainer = ({ amount, clientId, isRecurring, recurringDates, onSuccess, onError, onLoading, iframeId = 'dynamicore-iframe' }) => {
+const DynamicoreIframeContainer = ({ amount, clientId, isRecurring, recurringDates, recurringFrequency, onSuccess, onError, onLoading, iframeId = 'dynamicore-iframe', initialClientData = null, onBeforeTransaction }) => {
   const dynamicorePublicKey = import.meta.env.VITE_DYNAMICORE_PUBLIC_KEY || 'REEMPLAZAR_PUBLIC_KEY';
   const dynamicoreKeyId = import.meta.env.VITE_DYNAMICORE_KEY_ID || 'REEMPLAZAR_KEY_ID';
+
+  const [customerCreated, setCustomerCreated] = useState(false);
+  const [dynamicoreCustomerId, setDynamicoreCustomerId] = useState(null);
+  const [customerForm, setCustomerForm] = useState({
+    first_name: '', last_name: '', email: '', phone: '',
+    address_one: '', city: '', state: '', zipcode: '',
+    country: 'México', date_of_birth: '', last4ssn: '', username: ''
+  });
+
+  useEffect(() => {
+    if (initialClientData && !customerCreated) {
+      const parts = (initialClientData.name || '').trim().split(' ');
+      setCustomerForm(prev => ({
+        ...prev,
+        first_name: initialClientData.first_name || parts[0] || '',
+        last_name: initialClientData.last_name || (parts.length > 1 ? parts.slice(1).join(' ') : ''),
+        email: initialClientData.email || '',
+        phone: initialClientData.phone || '',
+        address_one: initialClientData.address || '',
+        username: initialClientData.username || initialClientData.email || initialClientData.client_id || clientId || '',
+      }));
+    }
+  }, [initialClientData, customerCreated, clientId]);
+
+  const handleCreateCustomer = async (e) => {
+    e.preventDefault();
+    onLoading(true);
+    onError(null);
+    try {
+      const payload = {
+        ...customerForm,
+        is_recurrent: isRecurring
+      };
+      
+      console.info(`[DYNAMICORE - Paso 1] Creando cliente (recurrent: ${isRecurring})...`, payload);
+      
+      const res = await axios.post(`${API}/webview/card-payments/create-customer`, payload);
+      
+      console.info(`[DYNAMICORE - Paso 1] Respuesta cliente creado:`, res.data);
+
+      if (res.data.success && res.data.customer_id) {
+        setDynamicoreCustomerId(res.data.customer_id);
+        setCustomerCreated(true);
+      } else {
+        onError(res.data.message || 'Error al registrar cliente');
+      }
+    } catch (err) {
+      console.error(err);
+      onError(err.response?.data?.message || err.response?.data?.error || 'Error al registrar cliente en Dynamicore');
+    } finally {
+      onLoading(false);
+    }
+  };
 
   useEffect(() => {
     const handleMessage = async (event) => {
@@ -3004,51 +3338,92 @@ const DynamicoreIframeContainer = ({ amount, clientId, isRecurring, recurringDat
         const match = event.data.match(/TOKEN:\s*([a-zA-Z0-9-]+)/);
         if (match) tokenId = match[1];
       }
-      if (tokenId) processPayment(tokenId);
+      if (tokenId) {
+        console.info(`[DYNAMICORE - Paso 2] Token recibido desde Iframe: ${tokenId}`);
+        processPayment(tokenId);
+      }
     };
 
     window.addEventListener('message', handleMessage);
-    return () => window.removeEventListener('message', handleMessage);
-  }, [amount, clientId, isRecurring, recurringDates, onSuccess, onError, onLoading]);
+  }, [amount, clientId, isRecurring, recurringDates, recurringFrequency, onSuccess, onError, onLoading, dynamicoreCustomerId, customerCreated, onBeforeTransaction]);
 
   const processPayment = async (tokenId) => {
+    if (!customerCreated) return;
+    const activeCustomerId = dynamicoreCustomerId || clientId;
     onLoading(true);
     try {
-      const baseURL = API.replace('/api', '');
-
       // Paso 3: Asignar tarjeta al cliente → obtener payment_method_id real (message.id)
-      const res1 = await axios.post(`${baseURL}/card-payments/assign-card`, {
-        customer_id: clientId,
-        token_id: tokenId
-      });
+      const assignPayload = {
+        customer_id: activeCustomerId,
+        token_id: tokenId,
+        is_recurrent: isRecurring
+      };
+      console.info(`[DYNAMICORE - Paso 3] Asignando token al cliente (is_recurrent: ${isRecurring})...`, assignPayload);
+      
+      const res1 = await axios.post(`${API}/webview/card-payments/assign-card`, assignPayload);
       const paymentMethodId = res1.data.payment_method_id || tokenId;
+      
+      console.info(`[DYNAMICORE - Paso 3] Asignación completada. Payment Method ID: ${paymentMethodId}`);
+
+      // Paso 3.5: Generar contrato antes de enviar la tx (si aplica)
+      let finalContractId = null;
+      if (onBeforeTransaction) {
+        try {
+          finalContractId = await onBeforeTransaction(paymentMethodId);
+        } catch (err) {
+          console.error("Error en onBeforeTransaction:", err);
+          throw new Error("No se pudo generar el contrato previo a la transacción.");
+        }
+      }
 
       // Paso 4: Ejecutar cargo directo con el payment_method correcto
-      const res2 = await axios.post(`${baseURL}/card-payments/transactions`, {
-        customer_id: clientId,
+      const txPayload = {
+        customer_id: activeCustomerId,
         payment_method: paymentMethodId,
-        amount: parseFloat(amount)
-      });
+        amount: parseFloat(amount),
+        is_recurrent: isRecurring,
+        recurring_frequency: recurringFrequency,
+        contract_id: finalContractId
+      };
+      console.info(`[DYNAMICORE - Paso 4] Ejecutando transacción (is_recurrent: ${isRecurring})...`, txPayload);
+      
+      const res2 = await axios.post(`${API}/webview/card-payments/transactions`, txPayload);
+      
+      console.info(`[DYNAMICORE - Paso 4] Respuesta de transacción:`, res2.data);
 
-      // Domiciliación: crear suscripción si aplica
-      if (isRecurring) {
-        const parsedDates = Array.isArray(recurringDates)
-          ? recurringDates
-          : (recurringDates||'').split(',').map(s => parseInt(s?.trim())).filter(d => !isNaN(d) && d > 0 && d <= 31);
-        await axios.post(`${baseURL}/card-payments/subscriptions`, {
-          customer_id: clientId,
-          payment_method: paymentMethodId,
-          recurring_dates: parsedDates.length > 0 ? parsedDates : [new Date().getDate()]
-        });
-      }
+
 
       // 3-D Secure: redirigir al challenge del banco emisor si existe redirection_url
       if (res2.data.redirection_url) {
-        window.location.href = res2.data.redirection_url;
+        const width = 600;
+        const height = 700;
+        const left = (window.innerWidth / 2) - (width / 2);
+        const top = (window.innerHeight / 2) - (height / 2);
+        const popup = window.open(res2.data.redirection_url, '3DS', `width=${width},height=${height},top=${top},left=${left}`);
+        
+        const handle3DSMessage = (e) => {
+          if (e.data === 'DYNAMICORE_3DS_DONE') {
+            window.removeEventListener('message', handle3DSMessage);
+            onSuccess(paymentMethodId, res2.data.external_id);
+          } else if (e.data === 'DYNAMICORE_3DS_CANCEL') {
+            window.removeEventListener('message', handle3DSMessage);
+            onError('El proceso de autenticación 3D Secure fue cancelado.');
+          }
+        };
+        window.addEventListener('message', handle3DSMessage);
+        
+        // Fallback: revisar si cerraron el popup sin terminar
+        const checkClosed = setInterval(() => {
+          if (popup && popup.closed) {
+            clearInterval(checkClosed);
+            window.removeEventListener('message', handle3DSMessage);
+            // Optionally we could trigger onError, but it might have succeeded if postMessage fired
+          }
+        }, 1000);
         return;
       }
 
-      onSuccess(paymentMethodId);
+      onSuccess(paymentMethodId, res2.data.external_id);
     } catch (err) {
       console.error('Error procesando pago:', err);
       onError('Hubo un error al procesar tu pago. Verifica los fondos o intenta con otra tarjeta.');
@@ -3058,17 +3433,61 @@ const DynamicoreIframeContainer = ({ amount, clientId, isRecurring, recurringDat
   };
 
   return (
-    <div className="border border-slate-200 rounded-2xl bg-white shadow-sm relative w-full" style={{ overflow: 'hidden', height: '430px' }}>
-      <iframe 
-        id={iframeId} 
-        src={`${import.meta.env.BASE_URL}dynamicore-v2.html?keyId=${encodeURIComponent(dynamicoreKeyId)}&publicKey=${encodeURIComponent(dynamicorePublicKey)}`}
-        title="Pago Seguro Dynamicore"
-        style={{ width: '800px', height: '500px', border: 'none', position: 'absolute', left: '50%', top: '-70px', transform: 'translateX(-50%)' }}
-      ></iframe>
-      <div className="flex justify-center items-center space-x-2 text-xs text-slate-400 mt-2">
-        <Lock size={12} />
-        <span>Tus datos están encriptados y protegidos por Dynamicore</span>
-      </div>
+    <div className={`${!customerCreated ? 'border border-slate-200 rounded-2xl bg-white shadow-sm' : ''} relative w-full flex flex-col`} style={{ minHeight: '430px' }}>
+      {!customerCreated ? (
+        <form onSubmit={handleCreateCustomer} className="p-6 space-y-4 bg-slate-50 flex-1">
+          <div className="flex items-center gap-2 mb-4">
+            <Lock className="text-emerald-600" size={20} />
+            <h4 className="text-sm font-black text-slate-800 uppercase tracking-wider">Datos del Titular de la Tarjeta</h4>
+          </div>
+          <p className="text-xs text-slate-500 font-medium mb-4 leading-relaxed">
+            Por favor confirma o actualiza los datos de la persona a la que pertenece la tarjeta. Esta información es requerida por Dynamicore para procesar el pago de forma segura.
+          </p>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-1">
+              <label className="text-[10px] font-black uppercase text-slate-500">Nombre</label>
+              <input required type="text" value={customerForm.first_name} onChange={e => setCustomerForm({...customerForm, first_name: e.target.value})} className="w-full text-xs p-2.5 border rounded-lg" />
+            </div>
+            <div className="space-y-1">
+              <label className="text-[10px] font-black uppercase text-slate-500">Apellidos</label>
+              <input required type="text" value={customerForm.last_name} onChange={e => setCustomerForm({...customerForm, last_name: e.target.value})} className="w-full text-xs p-2.5 border rounded-lg" />
+            </div>
+            <div className="space-y-1 col-span-2 md:col-span-1">
+              <label className="text-[10px] font-black uppercase text-slate-500">Correo Electrónico</label>
+              <input required disabled={!!initialClientData?.email} type="email" value={customerForm.email} onChange={e => setCustomerForm({...customerForm, email: e.target.value})} className="w-full text-xs p-2.5 border rounded-lg disabled:bg-slate-100 disabled:text-slate-400" />
+            </div>
+            <div className="space-y-1 col-span-2 md:col-span-1">
+              <label className="text-[10px] font-black uppercase text-slate-500">Teléfono (10 dígitos)</label>
+              <input required type="tel" pattern="\d{10}" value={customerForm.phone} onChange={e => setCustomerForm({...customerForm, phone: e.target.value})} className="w-full text-xs p-2.5 border rounded-lg" placeholder="1234567890" />
+            </div>
+            <div className="space-y-1 col-span-2">
+              <label className="text-[10px] font-black uppercase text-slate-500">Dirección</label>
+              <input type="text" value={customerForm.address_one} onChange={e => setCustomerForm({...customerForm, address_one: e.target.value})} className="w-full text-xs p-2.5 border rounded-lg" />
+            </div>
+          </div>
+          <div className="pt-4 mt-4 border-t flex justify-end">
+            <button type="submit" className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-black uppercase tracking-wider flex items-center gap-2">
+              Continuar a Pago Seguro
+              <ArrowRight size={14} />
+            </button>
+          </div>
+        </form>
+      ) : (
+        <>
+          <div className="flex-1 w-full" style={{ minHeight: '550px', paddingTop: '1rem' }}>
+            <iframe 
+              id={iframeId} 
+              src={`${import.meta.env.BASE_URL}dynamicore-v2.html?keyId=${encodeURIComponent(dynamicoreKeyId)}&publicKey=${encodeURIComponent(dynamicorePublicKey)}`}
+              title="Pago Seguro Dynamicore"
+              style={{ width: '100%', height: '550px', border: 'none' }}
+            ></iframe>
+          </div>
+          <div className="flex justify-center items-center space-x-2 text-xs text-slate-400 p-3">
+            <Lock size={12} />
+            <span>Tus datos están encriptados y protegidos por Dynamicore</span>
+          </div>
+        </>
+      )}
     </div>
   );
 };
@@ -3077,7 +3496,7 @@ export const PaymentFormContent = ({
   formData, setFormData, isReadOnly, contracts, clients, selectedDeal, deals,
   onOpenClientModal, iframeError, setIframeError, dynamicoreSuccess, setDynamicoreSuccess,
   iframeLoading, setIframeLoading, showSchedule, setShowSchedule, iframeId = 'dynamicore-iframe',
-  isWizardMode = false
+  isWizardMode = false, wizardFormData = null, onBeforeTransaction
 }) => {
   return (
     <>
@@ -3088,7 +3507,7 @@ export const PaymentFormContent = ({
               {!isWizardMode && (
                 <>
                   <div className="col-span-2 space-y-1.5">
-                    <label className="text-[11px] font-black uppercase tracking-widest text-slate-400 ml-1">ID Contrato / Upya</label>
+                    <label className="text-[11px] font-black uppercase tracking-widest text-slate-400 ml-1">ID Contrato</label>
                     <select disabled={isReadOnly} className="w-full bg-slate-50 border-2 border-slate-100 rounded-xl py-3.5 px-5 font-bold text-slate-800 focus:border-blue-600 outline-none transition-all text-base appearance-none" value={formData.contract_id || ''} onChange={e => {
                       const c = contracts?.find(x => x.contract_number === e.target.value || x.upya_id === e.target.value);
                       let matchedClientId = c?.client_id;
@@ -3162,13 +3581,7 @@ export const PaymentFormContent = ({
  
               <div className="col-span-2 space-y-1.5">
                 <label className="text-[11px] font-black uppercase tracking-widest text-slate-400 ml-1">Fecha de Pago</label>
-                {isWizardMode && (formData.status?.toUpperCase() === 'PAID' || formData.status?.toUpperCase() === 'PAGADO') ? (
-                  <div className="w-full bg-slate-100/50 border-2 border-slate-100 rounded-xl py-3.5 px-5 font-bold text-slate-500 text-base">
-                    {new Date(formData.payment_date || new Date()).toLocaleDateString('es-MX', { day: '2-digit', month: '2-digit', year: 'numeric' })}
-                  </div>
-                ) : (
-                  <input disabled={isReadOnly || (isWizardMode && (formData.status?.toUpperCase() === 'PAID' || formData.status?.toUpperCase() === 'PAGADO'))} type="date" className="w-full bg-slate-50 border-2 border-slate-100 rounded-xl py-3.5 px-5 font-bold text-slate-800 focus:border-blue-600 outline-none transition-all text-base disabled:bg-slate-100/50 disabled:text-slate-500" value={formData.payment_date ? (formData.payment_date.includes('T') ? formData.payment_date.split('T')[0] : formData.payment_date) : ''} onChange={e => setFormData({...formData, payment_date: e.target.value})} />
-                )}
+                <input disabled={isReadOnly} type="date" className="w-full bg-slate-50 border-2 border-slate-100 rounded-xl py-3.5 px-5 font-bold text-slate-800 focus:border-blue-600 outline-none transition-all text-base disabled:bg-slate-100/50 disabled:text-slate-500" value={formData.payment_date ? (formData.payment_date.includes('T') ? formData.payment_date.split('T')[0] : formData.payment_date) : ''} onChange={e => setFormData({...formData, payment_date: e.target.value})} />
               </div>
             </div>
  
@@ -3282,7 +3695,7 @@ export const PaymentFormContent = ({
           <div className="space-y-6 md:col-span-7">
             <p className="text-[12px] font-black text-emerald-600 uppercase tracking-[0.2em] mb-4">Datos de Cuenta / Tarjeta</p>
             
-            <div className="bg-slate-50 p-5 md:p-8 rounded-[40px] border border-slate-100 relative overflow-hidden">
+            <div className={(formData.method === 'Tarjeta Crédito' || formData.method === 'Tarjeta Débito') ? 'relative w-full' : 'bg-slate-50 p-5 md:p-8 rounded-[40px] border border-slate-100 relative overflow-hidden'}>
               <div className={(formData.method === 'Tarjeta Crédito' || formData.method === 'Tarjeta Débito') ? 'block relative' : 'absolute opacity-0 -left-[9999px] pointer-events-none'}>
                 {iframeError && (
                   <div className="bg-red-50 text-red-600 p-3 rounded-xl flex items-start text-sm border border-red-100 mb-4">
@@ -3290,7 +3703,13 @@ export const PaymentFormContent = ({
                     <span>{iframeError}</span>
                   </div>
                 )}
-                {dynamicoreSuccess ? (
+                {isReadOnly ? (
+                  <div className="flex flex-col items-center justify-center p-6 text-center bg-white rounded-2xl border border-slate-100 shadow-sm">
+                    <div className="w-16 h-16 bg-blue-50 rounded-full flex items-center justify-center mb-4 text-blue-600"><Lock size={32} /></div>
+                    <h3 className="text-xl font-bold text-slate-800">Transacción con Tarjeta</h3>
+                    <p className="text-slate-500 mt-2">Los datos del cliente no se muestran por seguridad. El pago es gestionado por Dynamicore.</p>
+                  </div>
+                ) : dynamicoreSuccess ? (
                   <div className="flex flex-col items-center justify-center p-6 text-center animate-in fade-in zoom-in">
                     <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mb-4 text-emerald-600"><CheckSquare size={32} /></div>
                     <h3 className="text-xl font-bold text-slate-800">¡Pago Validado!</h3>
@@ -3301,15 +3720,24 @@ export const PaymentFormContent = ({
                     <DynamicoreIframeContainer 
                       iframeId={iframeId}
                       amount={formData.amount} 
-                      clientId={formData.client_id} 
+                      clientId={formData.client_id}
+                      initialClientData={isWizardMode && wizardFormData ? {
+                        first_name: wizardFormData.firstName || wizardFormData.idName,
+                        last_name: wizardFormData.lastName || wizardFormData.idLastName,
+                        email: wizardFormData.email || '',
+                        phone: wizardFormData.phoneMain,
+                        address: wizardFormData.address
+                      } : clients?.find(c => String(c.client_id) === String(formData.client_id))}
                       isRecurring={formData.is_recurring} 
                       recurringDates={formData.recurring_dates} 
-                      onSuccess={(token) => {
+                      recurringFrequency={formData.repayment_frequency || "mensual"}
+                      onSuccess={(token, externalId) => {
                         setDynamicoreSuccess(true);
-                        setFormData({...formData, account_number: 'TOKEN:'+token.substring(0,6)+'...', status: 'Paid'});
+                        setFormData({...formData, account_number: 'TOKEN:'+token.substring(0,6)+'...', status: 'Paid', transaction_id: externalId ? 'TX-'+externalId : formData.transaction_id});
                       }} 
                       onError={setIframeError} 
                       onLoading={setIframeLoading} 
+                      onBeforeTransaction={onBeforeTransaction}
                     />
                     {iframeLoading && (
                       <div className="absolute inset-0 bg-white/50 flex items-center justify-center backdrop-blur-sm z-10 rounded-[40px]">
@@ -3366,18 +3794,39 @@ const PaymentModal = ({ isOpen, onClose, payment, onSave, clients, contracts, se
 
   useEffect(() => {
     setShowSchedule(false);
+    setDynamicoreSuccess(false);
+    setIframeError(null);
+    setIframeLoading(false);
     if (payment) {
-      const mappedMethod = normalizeMethod(payment.method || payment.payment_method);
-
-      setFormData({
-        ...payment,
-        method: mappedMethod,
-        is_recurring: !!payment.is_recurring,
-        payment_date: payment.payment_date ? new Date(payment.payment_date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
-        recurring_dates: payment.recurring_dates ? (typeof payment.recurring_dates === 'string' ? JSON.parse(payment.recurring_dates) : payment.recurring_dates) : [],
-        repayment_frequency: payment.repayment_frequency ?? null,
-        repayment_amount: payment.repayment_amount ?? null
-      });
+      if (payment._isFiniquito) {
+        setFormData({
+          amount: 0, method: 'Transferencia', status: 'Pending', contract_id: payment.contract_id || '', client_id: payment.client_id || '',
+          payment_date: new Date().toISOString().split('T')[0],
+          account_number: '', card_holder: '', is_recurring: false, recurring_dates: [],
+          repayment_frequency: null, repayment_amount: null,
+          _isFiniquito: true
+        });
+        const fetchQuote = async () => {
+          try {
+            const res = await axios.get(`${API}/backoffice/contracts/${payment.contract_id}/settlement-quote?tenantId=${session?.tenantId}`);
+            setFormData(prev => ({ ...prev, amount: res.data.remaining_balance || 0 }));
+          } catch (e) {
+            console.error('Error fetching quote for finiquito', e);
+          }
+        };
+        fetchQuote();
+      } else {
+        const mappedMethod = normalizeMethod(payment.method || payment.payment_method);
+        setFormData({
+          ...payment,
+          method: mappedMethod,
+          is_recurring: !!payment.is_recurring,
+          payment_date: payment.payment_date ? new Date(payment.payment_date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+          recurring_dates: payment.recurring_dates ? (typeof payment.recurring_dates === 'string' ? JSON.parse(payment.recurring_dates) : payment.recurring_dates) : [],
+          repayment_frequency: payment.repayment_frequency ?? null,
+          repayment_amount: payment.repayment_amount ?? null
+        });
+      }
     } else {
       setFormData({
         amount: 0, method: 'Transferencia', status: 'Pending', contract_id: '', client_id: '',
@@ -3386,7 +3835,7 @@ const PaymentModal = ({ isOpen, onClose, payment, onSave, clients, contracts, se
         repayment_frequency: null, repayment_amount: null
       });
     }
-  }, [payment]);
+  }, [payment, session, isOpen]);
 
   useEffect(() => {
     if (formData.contract_id && contracts && !payment) {
@@ -3405,7 +3854,8 @@ const PaymentModal = ({ isOpen, onClose, payment, onSave, clients, contracts, se
   if (!isOpen) return null;
 
   const originalStatusUpper = (payment?.status || '').toUpperCase();
-  const isReadOnly = payment ? FINAL_STATUSES.includes(originalStatusUpper) : false;
+  const isCardPayment = payment && (payment.method === 'Tarjeta Crédito' || payment.method === 'Tarjeta Débito' || String(payment.method).includes('Tarjeta'));
+  const isReadOnly = (payment && !payment._isFiniquito) ? (FINAL_STATUSES.includes(originalStatusUpper) || isCardPayment) : false;
   const statusUpper = (formData.status || '').toUpperCase();
   const isAccepted = ACCEPTED_STATUSES.includes(statusUpper);
 
@@ -3416,7 +3866,7 @@ const PaymentModal = ({ isOpen, onClose, payment, onSave, clients, contracts, se
           <div className="flex items-center gap-4">
             <div className="w-12 h-12 bg-blue-600 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-blue-600/20"><CreditCard size={24} /></div>
             <div>
-              <h3 className="text-xl font-black text-slate-900 tracking-tighter">{payment ? (isReadOnly ? 'Detalle de Pago' : 'Editar Pago') : 'Nuevo Registro de Pago'}</h3>
+              <h3 className="text-xl font-black text-slate-900 tracking-tighter">{payment && !payment._isFiniquito ? (isReadOnly ? 'Detalle de Pago' : 'Editar Pago') : (payment?._isFiniquito ? 'Finiquitar Crédito Anticipadamente' : 'Nuevo Registro de Pago')}</h3>
               <p className="text-slate-400 text-[12px] font-bold uppercase tracking-widest mt-0.5">Gestión de Cobranza & Conciliación</p>
             </div>
           </div>
@@ -3447,31 +3897,13 @@ const PaymentModal = ({ isOpen, onClose, payment, onSave, clients, contracts, se
           <button onClick={onClose} className="px-10 py-4 rounded-2xl font-black uppercase tracking-widest text-[12px] text-slate-400 hover:text-slate-600 transition-all">Cerrar</button>
           <div className="flex-1" />
           {!isReadOnly && (
-            (formData.method === 'Tarjeta Crédito' || formData.method === 'Tarjeta Débito') && !dynamicoreSuccess ? (
-              <button 
-                disabled={iframeLoading || !formData.client_id || !formData.amount}
-                onClick={() => {
-                  setIframeError(null);
-                  setIframeLoading(true);
-                  const iframe = document.getElementById('dynamicore-modal-iframe');
-                  if (window.DynamicoreHelper && typeof window.DynamicoreHelper.submit === 'function') {
-                    window.DynamicoreHelper.submit();
-                  } else if (iframe && iframe.contentWindow) {
-                    iframe.contentWindow.postMessage({ type: 'SUBMIT_FORM', action: 'tokenize' }, '*');
-                  } else {
-                    setTimeout(() => { setIframeError('No se pudo conectar con el formulario de pagos.'); setIframeLoading(false); }, 1000);
-                  }
-                }} 
-                className="px-14 bg-emerald-600 disabled:opacity-50 text-white py-4 rounded-2xl font-black uppercase tracking-widest text-[12px] shadow-xl shadow-emerald-600/30 hover:scale-[1.02] active:scale-95 transition-all flex items-center gap-2"
-              >
-                {iframeLoading ? <RefreshCw className="animate-spin" size={16} /> : <Lock size={16} />}
-                Procesar Tarjeta Segura
-              </button>
-            ) : (
-              <button onClick={() => onSave({...formData, selectedProductId, serialNumber, selectedDeal})} className="px-14 bg-blue-600 text-white py-4 rounded-2xl font-black uppercase tracking-widest text-[12px] shadow-xl shadow-blue-600/30 hover:scale-[1.02] active:scale-95 transition-all">
-                {payment ? 'Actualizar Pago' : 'Registrar Solicitud'}
-              </button>
-            )
+            <button 
+              disabled={(formData.method === 'Tarjeta Crédito' || formData.method === 'Tarjeta Débito') && !dynamicoreSuccess}
+              onClick={() => onSave({...formData, selectedProductId, serialNumber, selectedDeal})} 
+              className={`px-14 py-4 rounded-2xl font-black uppercase tracking-widest text-[12px] shadow-xl transition-all ${((formData.method === 'Tarjeta Crédito' || formData.method === 'Tarjeta Débito') && !dynamicoreSuccess) ? 'bg-slate-200 text-slate-400 shadow-none cursor-not-allowed' : 'bg-blue-600 text-white shadow-blue-600/30 hover:scale-[1.02] active:scale-95'}`}
+            >
+              {payment && !payment._isFiniquito ? 'Actualizar Pago' : (payment?._isFiniquito ? 'Registrar Finiquito' : 'Registrar Solicitud')}
+            </button>
           )}
         </div>
       </motion.div>
@@ -4055,7 +4487,29 @@ const SyncView = ({ onSync, loading }) => (
 const AuditView = ({ audit }) => (
   <div className="space-y-8">
     <PageHeader title="Auditoría" subtitle={`${audit.length} registros de trazabilidad operativa`} />
-    <Table cols={['Fecha', 'Usuario', 'Tipo', 'ID Recurso', 'Estado']} rows={audit} render={r => (<><td className="px-8 py-5 text-slate-400 text-sm">{r.fecha_registro ? new Date(r.fecha_registro).toLocaleString('es-MX') : '—'}</td><td className="px-8 py-5 font-bold">{r.cliente || 'Sistema'}</td><td className="px-8 py-5 font-black text-[12px] uppercase tracking-wider text-blue-600">{r.tipo || 'SYNC'}</td><td className="px-8 py-5 font-mono text-slate-400 text-sm">{r.ref_contrato}</td><td className="px-8 py-5"><Badge status={r.estado} /></td></>)} />
+    <Table cols={['Fecha', 'Usuario', 'Tipo', 'ID Recurso', 'Detalle', 'Estado']} rows={audit} render={r => {
+      let detailText = '—';
+      if (r.detalle) {
+        try {
+          const d = typeof r.detalle === 'string' ? JSON.parse(r.detalle) : r.detalle;
+          if (d && d.errorName) detailText = `${d.resultCode || ''} - ${d.errorName}`;
+          else if (d && d.count !== undefined) detailText = `Count: ${d.count}`;
+          else detailText = typeof r.detalle === 'string' ? r.detalle : JSON.stringify(r.detalle);
+        } catch(e) {
+          detailText = String(r.detalle);
+        }
+      }
+      return (
+        <>
+          <td className="px-8 py-5 text-slate-400 text-sm">{r.fecha_registro ? new Date(r.fecha_registro).toLocaleString('es-MX') : '—'}</td>
+          <td className="px-8 py-5 font-bold">{r.cliente || 'Sistema'}</td>
+          <td className="px-8 py-5 font-black text-[12px] uppercase tracking-wider text-blue-600">{r.tipo || 'SYNC'}</td>
+          <td className="px-8 py-5 font-mono text-slate-400 text-sm">{r.ref_contrato}</td>
+          <td className="px-8 py-5 text-sm text-slate-500 max-w-xs truncate" title={detailText}>{detailText}</td>
+          <td className="px-8 py-5"><Badge status={r.estado} /></td>
+        </>
+      );
+    }} />
   </div>
 );
 
@@ -6023,13 +6477,15 @@ const ActionFormView = ({ actionType, prefillData, onBack, onSaveDraft, deals, p
   const [productSearch, setProductSearch] = useState('');
   const initialStep = prefillData?.status ? (parseInt(prefillData.status.match(/\d+/)?.[0]) || 1) : 1;
   const [currentStep, setCurrentStep] = useState(initialStep);
-  const [firstName, setFirstName] = useState(prefillData?.clientName?.split(' ')[0] || '');
-  const [lastName, setLastName] = useState(prefillData?.clientName?.split(' ').slice(1).join(' ') || '');
+  const [firstName, setFirstName] = useState(prefillData?.firstName || prefillData?.clientName?.split(' ')[0] || '');
+  const [lastName, setLastName] = useState(prefillData?.lastName || prefillData?.clientName?.split(' ').slice(1).join(' ') || '');
   
   const [formData, setFormData] = useState({
     serialNumber: prefillData?.serialNumber || '',
     birthDate: prefillData?.birthDate || '',
     gender: prefillData?.gender || 'Femenino',
+    email: prefillData?.email || '',
+    username: prefillData?.username || '',
     phoneMain: prefillData?.phoneMain || '',
     referenceName: prefillData?.referenceName || '',
     phoneEmergency: prefillData?.phoneEmergency || '',
@@ -6083,6 +6539,26 @@ const ActionFormView = ({ actionType, prefillData, onBack, onSaveDraft, deals, p
       alert('Error al generar la sesión de escaneo móvil');
     }
   };
+
+  useEffect(() => {
+    if (firstName && formData.phoneMain) {
+      const fInitial = firstName.charAt(0).toLowerCase();
+      // Only use the first word of the last name if available
+      const lName = (lastName || '').split(' ')[0].toLowerCase();
+      // Ensure phone is at least 4 digits long
+      const phoneStr = formData.phoneMain.replace(/\D/g, '');
+      const pDigits = phoneStr.length >= 4 ? phoneStr.slice(-4) : phoneStr;
+      
+      const newUsername = `${fInitial}${lName}${pDigits}`;
+      if (formData.username !== newUsername) {
+        setFormData(prev => ({ ...prev, username: newUsername }));
+      }
+    } else if (!firstName || !formData.phoneMain) {
+      if (formData.username !== '') {
+        setFormData(prev => ({ ...prev, username: '' }));
+      }
+    }
+  }, [firstName, lastName, formData.phoneMain]);
 
   useEffect(() => {
     let interval;
@@ -6189,7 +6665,7 @@ const ActionFormView = ({ actionType, prefillData, onBack, onSaveDraft, deals, p
   
   const steps = actionType === 'Detalles del plan' 
     ? ['Selección de Plan', 'Resumen Financiero'] 
-    : ['Dispositivos', 'Información personal', 'Contactos', 'Documentos', 'Contrato', 'Firma', 'Pago', 'Impresión'];
+    : ['Dispositivos', 'Información personal', 'Contactos', 'Documentos', 'Contrato', 'Firma', 'Pago'];
   return (
     <div className="space-y-8 max-w-6xl mx-auto">
       <div className="flex items-center justify-between mb-4">
@@ -6372,7 +6848,9 @@ const ActionFormView = ({ actionType, prefillData, onBack, onSaveDraft, deals, p
                               clientDetails: client,
                               phoneMain: client?.phone || '',
                               referenceName: client?.reference_contact || '',
-                              phoneEmergency: client?.reference_phone || ''
+                              phoneEmergency: client?.reference_phone || '',
+                              email: client?.email || '',
+                              address: client?.address_one || client?.address || ''
                             }));
                             
                             if (client) {
@@ -6398,15 +6876,26 @@ const ActionFormView = ({ actionType, prefillData, onBack, onSaveDraft, deals, p
                       <label className="block text-sm font-black text-slate-400 uppercase tracking-widest mb-3">Apellidos del Titular</label>
                       <input type="text" className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-blue-500/20 font-bold text-slate-800" value={lastName} onChange={e => setLastName(e.target.value)} placeholder="Ej. Lora" />
                     </div>
-                  </>
-                )}
-                {currentStep === 3 && ( /* Contactos */
-                  <>
+                    <div className="col-span-2 md:col-span-1">
+                      <label className="block text-sm font-black text-slate-400 uppercase tracking-widest mb-3">Correo Electrónico</label>
+                      <input type="email" className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-blue-500/20 font-bold text-slate-800" placeholder="correo@ejemplo.com" value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} />
+                    </div>
                     <div className="col-span-2 md:col-span-1">
                       <label className="block text-sm font-black text-slate-400 uppercase tracking-widest mb-3">Teléfono Principal (Móvil)</label>
                       <input type="tel" className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-blue-500/20 font-bold text-slate-800" placeholder="+52 ..." value={formData.phoneMain} onChange={e => setFormData({...formData, phoneMain: e.target.value})} />
                     </div>
-                    <div className="col-span-2 md:col-span-1"></div>
+                    <div className="col-span-2">
+                      <label className="block text-sm font-black text-slate-400 uppercase tracking-widest mb-3">Usuario (Autogenerado)</label>
+                      <input type="text" disabled className="w-full px-5 py-4 bg-slate-100 border border-slate-200 rounded-2xl font-bold text-slate-500 cursor-not-allowed" placeholder="Ej. Jlora1234" value={formData.username} />
+                    </div>
+                    <div className="col-span-2">
+                      <label className="block text-sm font-black text-slate-400 uppercase tracking-widest mb-3">Dirección de Residencia</label>
+                      <textarea className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-blue-500/20 font-bold text-slate-800 min-h-[100px]" placeholder="Calle, Número, Colonia, Ciudad, Estado, C.P." value={formData.address} onChange={e => setFormData({...formData, address: e.target.value})}></textarea>
+                    </div>
+                  </>
+                )}
+                {currentStep === 3 && ( /* Contactos */
+                  <>
                     <div className="col-span-2 md:col-span-1">
                       <label className="block text-sm font-black text-slate-400 uppercase tracking-widest mb-3">Nombre Referencia/Aval</label>
                       <input type="text" className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-blue-500/20 font-bold text-slate-800" placeholder="Nombre completo" value={formData.referenceName} onChange={e => setFormData({...formData, referenceName: e.target.value})} />
@@ -6414,10 +6903,6 @@ const ActionFormView = ({ actionType, prefillData, onBack, onSaveDraft, deals, p
                     <div className="col-span-2 md:col-span-1">
                       <label className="block text-sm font-black text-slate-400 uppercase tracking-widest mb-3">Teléfono Referencia</label>
                       <input type="tel" className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-blue-500/20 font-bold text-slate-800" placeholder="+52 ..." value={formData.phoneEmergency} onChange={e => setFormData({...formData, phoneEmergency: e.target.value})} />
-                    </div>
-                    <div className="col-span-2">
-                      <label className="block text-sm font-black text-slate-400 uppercase tracking-widest mb-3">Dirección de Residencia</label>
-                      <textarea className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-blue-500/20 font-bold text-slate-800 min-h-[100px]" placeholder="Calle, Número, Colonia, Ciudad, Estado, C.P." value={formData.address} onChange={e => setFormData({...formData, address: e.target.value})}></textarea>
                     </div>
                   </>
                 )}
@@ -6724,7 +7209,41 @@ const ActionFormView = ({ actionType, prefillData, onBack, onSaveDraft, deals, p
                       iframeError={iframeError} setIframeError={setIframeError} dynamicoreSuccess={dynamicoreSuccess}
                       setDynamicoreSuccess={setDynamicoreSuccess} iframeLoading={iframeLoading} setIframeLoading={setIframeLoading}
                       showSchedule={showSchedule} setShowSchedule={setShowSchedule} iframeId="dynamicore-inline-iframe"
-                      isWizardMode={true}
+                      isWizardMode={true} wizardFormData={{...formData, firstName, lastName}}
+                      onBeforeTransaction={async () => {
+                        const totalCost = parseFloat(selectedProduct?.base_value) || parseFloat(selectedProduct?.precio) || 0;
+                        const contractPayload = {
+                          idFront: formData.idFront,
+                          proofAddress: formData.proofAddress,
+                          selfie: formData.selfie,
+                          client_name: `${firstName} ${lastName}`.trim(),
+                          email: '', 
+                          client_number: formData.idNumber || Date.now().toString(),
+                          phone: formData.phoneMain,
+                          phone_2: formData.phoneEmergency,
+                          product_id: selectedProductId,
+                          product_name: selectedProduct?.name || '',
+                          deal_id: selectedDeal,
+                          deal_name: deals?.find(d => String(d.name) === String(selectedDeal))?.name || selectedDeal || '',
+                          total_value: totalCost,
+                          paid_value: paymentFormData.amount || 0,
+                          date_created: new Date().toISOString(),
+                          address: formData.address,
+                          signatureData: formData.signature,
+                          signatureName: formData.signatureName,
+                          gender: formData.gender,
+                          birthDate: formData.birthDate,
+                          referenceName: formData.referenceName,
+                          idType: formData.idType,
+                        };
+                        const res = await onSaveContract(contractPayload, 'generate');
+                        const newContractId = res?.id || res?.contract?.upya_id || res?.contract?.contract_number;
+                        if (newContractId) {
+                          setPaymentFormData(prev => ({...prev, contract_id: newContractId}));
+                          return newContractId;
+                        }
+                        return null;
+                      }}
                     />
                     
                     {/* Botones de Vista Previa */}
@@ -6763,6 +7282,7 @@ const ActionFormView = ({ actionType, prefillData, onBack, onSaveDraft, deals, p
 
                       <button 
                         type="button"
+                        disabled={(paymentFormData.method === 'Tarjeta Crédito' || paymentFormData.method === 'Tarjeta Débito') && !dynamicoreSuccess}
                         onClick={() => {
                           const html = generateVoucherHTML({
                             clientName: `${firstName} ${lastName}`.trim(),
@@ -6782,30 +7302,11 @@ const ActionFormView = ({ actionType, prefillData, onBack, onSaveDraft, deals, p
                             setTimeout(() => win.print(), 1000);
                           }
                         }}
-                        className="bg-blue-50 hover:bg-blue-100 border border-blue-200 text-blue-700 px-6 py-3 rounded-2xl font-bold text-[11px] uppercase tracking-widest transition-all flex items-center gap-2"
+                        className={`px-6 py-3 rounded-2xl font-bold text-[11px] uppercase tracking-widest transition-all flex items-center gap-2 ${((paymentFormData.method === 'Tarjeta Crédito' || paymentFormData.method === 'Tarjeta Débito') && !dynamicoreSuccess) ? 'bg-slate-100 text-slate-400 cursor-not-allowed' : 'bg-blue-50 hover:bg-blue-100 border border-blue-200 text-blue-700'}`}
                       >
                         <FileText size={16} /> Vista Previa Voucher
                       </button>
                     </div>
-                  </div>
-                )}
-                {currentStep === 8 && (
-                  <div className="col-span-2 flex flex-col items-center justify-center text-center py-10">
-                     <div className="w-24 h-24 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mb-6 shadow-xl shadow-emerald-600/20">
-                        <CheckSquare size={48} />
-                     </div>
-                     <h2 className="text-4xl font-black text-slate-800 tracking-tight">¡Venta y Pago Registrados!</h2>
-                     <p className="text-lg text-slate-500 font-medium max-w-lg mx-auto">El registro se ha completado exitosamente en Bantos Data Center y los documentos están listos.</p>
-                     
-                     <div className="flex gap-4 mt-8 justify-center">
-                        <button type="button" onClick={() => savedData?.contractId ? window.open(`/datacenter-api/backoffice/contracts/${savedData.contractId}/pdf?tenantId=${session?.tenantId}`, '_blank') : alert('No se registró ningún contrato.')} className={`px-8 py-4 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-2xl transition-all shadow-lg shadow-blue-600/30 flex items-center gap-2 ${!savedData?.contractId ? 'opacity-60' : ''}`}>
-                          <Printer size={20} /> Imprimir Contrato
-                        </button>
-                        <button type="button" onClick={() => savedData?.paymentId ? window.open(`/datacenter-api/backoffice/payments/${savedData.paymentId}/pdf?tenantId=${session?.tenantId}`, '_blank') : alert('No se registró ningún pago en este contrato.')} className={`px-8 py-4 bg-white border-2 border-slate-200 text-slate-700 hover:bg-slate-50 hover:border-blue-200 hover:text-blue-600 font-bold rounded-2xl transition-all flex items-center gap-2 ${!savedData?.paymentId ? 'opacity-60' : ''}`}>
-                          <FileText size={20} /> Imprimir Voucher
-                        </button>
-                     </div>
-                     <button type="button" onClick={onBack} className="mt-8 text-slate-400 hover:text-slate-600 font-bold tracking-widest text-sm transition-colors uppercase">Cerrar Asistente</button>
                   </div>
                 )}
               </div>
@@ -6881,105 +7382,97 @@ const ActionFormView = ({ actionType, prefillData, onBack, onSaveDraft, deals, p
           <div className="pt-8 mt-8 border-t border-slate-100 flex justify-between items-center">
             <button onClick={() => onSaveDraft({ 
               id: prefillData?.id || Date.now().toString(), 
+              firstName,
+              lastName,
               clientName: `${firstName} ${lastName}`.trim(), 
               device: selectedProduct?.name || '', 
               status: `Paso ${currentStep}: ${steps[currentStep-1]}`,
               selectedProductId,
               dealId: selectedDeal,
-              ...formData
+              ...formData,
+              signature: currentStep === 6 && salesSignaturePadRef.current && !salesSignaturePadRef.current.isEmpty() ? salesSignaturePadRef.current.toDataURL('image/png') : formData.signature
             })} className="px-6 py-3 text-slate-400 hover:text-slate-600 font-bold transition-colors">Guardar Borrador y Salir</button>
             <div className="flex gap-4">
               {currentStep > 1 && (
                 <button onClick={() => setCurrentStep(currentStep - 1)} disabled={isSubmitting} className="px-8 py-4 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold rounded-2xl transition-colors disabled:opacity-50">Atrás</button>
               )}
-              {currentStep < steps.length - 1 ? (
-                <button onClick={() => setCurrentStep(currentStep + 1)} disabled={isSubmitting} className="px-8 py-4 bg-blue-600 hover:bg-blue-700 shadow-lg shadow-blue-600/30 text-white font-bold rounded-2xl transition-all disabled:opacity-50">Siguiente</button>
-              ) : currentStep === steps.length - 1 ? (
-                <>
-                  {(paymentFormData.method === 'Tarjeta Crédito' || paymentFormData.method === 'Tarjeta Débito') && !dynamicoreSuccess ? (
-                    <button 
-                      disabled={iframeLoading || isSubmitting}
-                      onClick={() => {
-                        setIframeError(null);
-                        setIframeLoading(true);
-                        const iframe = document.getElementById('dynamicore-inline-iframe');
-                        if (window.DynamicoreHelper && typeof window.DynamicoreHelper.submit === 'function') {
-                          window.DynamicoreHelper.submit();
-                        } else if (iframe && iframe.contentWindow) {
-                          iframe.contentWindow.postMessage({ type: 'SUBMIT_FORM', action: 'tokenize' }, '*');
-                        } else {
-                          setTimeout(() => { setIframeError('No se pudo conectar con el formulario de pagos.'); setIframeLoading(false); }, 1000);
-                        }
-                      }} 
-                      className="px-10 bg-emerald-600 disabled:opacity-50 text-white py-4 rounded-2xl font-black uppercase tracking-widest text-[12px] shadow-xl shadow-emerald-600/30 hover:scale-[1.02] active:scale-95 transition-all flex items-center gap-2"
-                    >
-                      {iframeLoading ? <RefreshCw className="animate-spin" size={16} /> : <Lock size={16} />}
-                      Procesar Tarjeta
-                    </button>
-                  ) : (
-                    <button 
-                      disabled={isSubmitting}
-                      onClick={async () => {
-                        setIsSubmitting(true);
-                        try {
-                          // 1. Guardar Contrato (Venta)
-                          const totalCost = parseFloat(selectedProduct?.base_value) || parseFloat(selectedProduct?.precio) || 0;
-                          
-                          const contractPayload = {
-                            idFront: formData.idFront,
-                            proofAddress: formData.proofAddress,
-                            selfie: formData.selfie,
-                            client_name: `${firstName} ${lastName}`.trim(),
-                            email: '', // Podríamos agregar email si es necesario
-                            client_number: formData.idNumber || Date.now().toString(),
-                            phone: formData.phoneMain,
-                            phone_2: formData.phoneEmergency,
-                            product_id: selectedProductId,
-                            product_name: selectedProduct?.name || '',
-                            deal_id: selectedDeal,
-                            deal_name: deals?.find(d => String(d.name) === String(selectedDeal))?.name || selectedDeal || '',
-                            total_value: totalCost,
-                            paid_value: paymentFormData.amount || 0,
-                            date_created: new Date().toISOString(),
-                            address: formData.address,
-                            signatureData: formData.signature,
-                            signatureName: formData.signatureName,
-                            gender: formData.gender,
-                            birthDate: formData.birthDate,
-                            referenceName: formData.referenceName,
-                            idType: formData.idType,
-                          };
-
-                          const res = await onSaveContract(contractPayload, 'generate');
-                          const newContractId = res?.contract?.upya_id || res?.contract?.contract_number;
-
-                          if (newContractId) {
-                            // 2. Guardar Pago
-                            const savedPayment = await onSavePayment({
-                              ...paymentFormData,
-                              contract_id: newContractId,
-                              selectedDeal
-                            });
-                            setSavedData({ contractId: newContractId, paymentId: savedPayment?.id });
-                            setCurrentStep(8);
-                          } else {
-                            setSavedData({ contractId: newContractId });
-                            setCurrentStep(8);
-                          }
-                        } catch (e) {
-                          alert('Error al guardar la venta y el pago');
-                        } finally {
-                          setIsSubmitting(false);
-                        }
-                      }} 
-                      className="px-8 py-4 bg-emerald-500 hover:bg-emerald-600 shadow-lg shadow-emerald-500/30 text-white font-bold rounded-2xl transition-all flex items-center gap-2 disabled:opacity-50"
-                    >
-                      {isSubmitting ? <RefreshCw size={20} className="animate-spin" /> : <CheckSquare size={20} />} Finalizar Venta y Pago
-                    </button>
-                  )}
-                </>
+              {currentStep < steps.length ? (
+                <button onClick={() => {
+                  if (currentStep === 2) {
+                    if (!firstName || !lastName || !formData.email || !formData.phoneMain || !formData.address) {
+                      alert('Por favor completa todos los campos requeridos en esta sección (Nombre, Apellidos, Correo, Teléfono y Dirección).');
+                      return;
+                    }
+                  }
+                  if (currentStep === 6 && salesSignaturePadRef.current && !salesSignaturePadRef.current.isEmpty()) {
+                    setFormData(prev => ({ ...prev, signature: salesSignaturePadRef.current.toDataURL('image/png') }));
+                  }
+                  setCurrentStep(currentStep + 1);
+                }} disabled={isSubmitting} className="px-8 py-4 bg-blue-600 hover:bg-blue-700 shadow-lg shadow-blue-600/30 text-white font-bold rounded-2xl transition-all disabled:opacity-50">Siguiente</button>
               ) : (
-                <button onClick={onBack} className="px-8 py-4 bg-slate-800 hover:bg-slate-900 shadow-lg shadow-slate-800/30 text-white font-bold rounded-2xl transition-all">Cerrar Asistente</button>
+                <>
+                  <button 
+                    disabled={isSubmitting || ((paymentFormData.method === 'Tarjeta Crédito' || paymentFormData.method === 'Tarjeta Débito') && !dynamicoreSuccess)}
+                    onClick={async () => {
+                      setIsSubmitting(true);
+                      try {
+                        // 1. Guardar Contrato (Venta)
+                        const totalCost = parseFloat(selectedProduct?.base_value) || parseFloat(selectedProduct?.precio) || 0;
+                        
+                        const contractPayload = {
+                          idFront: formData.idFront,
+                          proofAddress: formData.proofAddress,
+                          selfie: formData.selfie,
+                          client_name: `${firstName} ${lastName}`.trim(),
+                          email: '', 
+                          client_number: formData.idNumber || Date.now().toString(),
+                          phone: formData.phoneMain,
+                          phone_2: formData.phoneEmergency,
+                          product_id: selectedProductId,
+                          product_name: selectedProduct?.name || '',
+                          deal_id: selectedDeal,
+                          deal_name: deals?.find(d => String(d.name) === String(selectedDeal))?.name || selectedDeal || '',
+                          total_value: totalCost,
+                          paid_value: paymentFormData.amount || 0,
+                          date_created: new Date().toISOString(),
+                          address: formData.address,
+                          signatureData: formData.signature,
+                          signatureName: formData.signatureName,
+                          gender: formData.gender,
+                          birthDate: formData.birthDate,
+                          referenceName: formData.referenceName,
+                          idType: formData.idType,
+                        };
+
+                        const res = await onSaveContract(contractPayload, 'generate');
+                        const newContractId = res?.id || res?.contract?.upya_id || res?.contract?.contract_number;
+
+                        if (newContractId) {
+                          // 2. Guardar Pago
+                          const savedPayment = await onSavePayment({
+                            ...paymentFormData,
+                            contract_id: newContractId,
+                            client_id: res?.client_id || paymentFormData.client_id,
+                            selectedDeal
+                          });
+                          
+                          alert('¡Venta y Pago registrados con éxito!');
+                          onBack(); // Cierra el asistente
+                        } else {
+                          alert('Contrato guardado con éxito (sin ID explícito).');
+                          onBack(); // Cierra el asistente
+                        }
+                      } catch (e) {
+                        alert('Error al guardar la venta y el pago');
+                      } finally {
+                        setIsSubmitting(false);
+                      }
+                    }} 
+                    className="px-8 py-4 bg-emerald-500 hover:bg-emerald-600 shadow-lg shadow-emerald-500/30 text-white font-bold rounded-2xl transition-all flex items-center gap-2 disabled:opacity-50"
+                  >
+                    {isSubmitting ? <RefreshCw size={20} className="animate-spin" /> : <CheckSquare size={20} />} Finalizar Venta y Pago
+                  </button>
+                </>
               )}
             </div>
           </div>
@@ -7077,7 +7570,7 @@ const PlaceholderView = ({ title, subtitle }) => (
   </div>
 );
 
-const TransferenciasView = ({ stores, inventory, session, refreshData, users }) => {
+const TransferenciasView = ({ stores, inventory, session, refreshData, users, products }) => {
   const [transfers, setTransfers] = useState([]);
   const [loading, setLoading] = useState(false);
   const [filterOrigin, setFilterOrigin] = useState('');
@@ -7292,9 +7785,29 @@ const TransferenciasView = ({ stores, inventory, session, refreshData, users }) 
                       onChange={e => setModelFilter(e.target.value)}
                     >
                       <option value="">Todos los modelos</option>
-                      {Array.from(new Set(originInventory.map(i => i.model))).map(m => (
-                        <option key={m} value={m}>{m}</option>
-                      ))}
+                      {Array.from(new Set(originInventory.map(i => `${i.model}|||${i.variant || ''}`))).map(mStr => {
+                        const [m, v] = mStr.split('|||');
+                        const prod = products?.find(p => {
+                          const nameMatch = p.name?.toLowerCase() === m?.toLowerCase() || p.name?.toLowerCase().includes(m?.toLowerCase()) || m?.toLowerCase().includes(p.name?.toLowerCase());
+                          const itemVar = (v || '').trim().toLowerCase();
+                          const prodVar = (p.variant || '').trim().toLowerCase();
+                          if (itemVar && prodVar) {
+                            return nameMatch && (itemVar === prodVar || itemVar.includes(prodVar) || prodVar.includes(itemVar));
+                          }
+                          return nameMatch;
+                        });
+                        const brand = prod?.manufacturer || prod?.brand || prod?.marca || '';
+                        const parts = [];
+                        const baseName = prod?.name || m;
+                        if (brand && !baseName?.toLowerCase().includes(brand.toLowerCase())) parts.push(brand);
+                        parts.push(baseName);
+                        const variant = prod?.variant || v;
+                        if (variant && variant.trim() !== '' && variant.trim().toLowerCase() !== 'null') parts.push(variant);
+                        const detailedModel = parts.join(' - ');
+                        return (
+                          <option key={mStr} value={mStr}>{detailedModel}</option>
+                        );
+                      })}
                     </select>
                     <span className="text-xs font-bold text-slate-500 uppercase tracking-widest bg-white px-3 py-1 rounded-full border border-slate-200 flex-shrink-0">{selectedItems.length} seleccionados</span>
                   </div>
@@ -7303,7 +7816,7 @@ const TransferenciasView = ({ stores, inventory, session, refreshData, users }) 
                       <thead className="bg-white sticky top-0 border-b border-slate-100 shadow-sm z-10">
                         <tr>
                           <th className="px-4 py-3"><input type="checkbox" onChange={e => {
-                            const filteredIds = (modelFilter ? originInventory.filter(i => i.model === modelFilter) : originInventory).map(i=>i.id);
+                            const filteredIds = (modelFilter ? originInventory.filter(i => `${i.model}|||${i.variant || ''}` === modelFilter) : originInventory).map(i=>i.id);
                             if (e.target.checked) {
                               const newSelected = [...new Set([...selectedItems, ...filteredIds])];
                               setSelectedItems(newSelected);
@@ -7312,27 +7825,44 @@ const TransferenciasView = ({ stores, inventory, session, refreshData, users }) 
                             }
                           }} checked={
                             (()=>{
-                              const filteredIds = (modelFilter ? originInventory.filter(i => i.model === modelFilter) : originInventory).map(i=>i.id);
+                              const filteredIds = (modelFilter ? originInventory.filter(i => `${i.model}|||${i.variant || ''}` === modelFilter) : originInventory).map(i=>i.id);
                               return filteredIds.length > 0 && filteredIds.every(id => selectedItems.includes(id));
                             })()
                           } className="rounded text-blue-600 focus:ring-blue-500 w-4 h-4" /></th>
                           <th className="px-4 py-3 text-xs font-black text-slate-400 uppercase tracking-widest">Modelo</th>
                           <th className="px-4 py-3 text-xs font-black text-slate-400 uppercase tracking-widest">IMEI</th>
-                          <th className="px-4 py-3 text-xs font-black text-slate-400 uppercase tracking-widest">Estado</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-50">
-                        {(modelFilter ? originInventory.filter(i => i.model === modelFilter) : originInventory).map(item => (
-                          <tr key={item.id} className="hover:bg-blue-50/50 cursor-pointer transition-colors" onClick={() => toggleItem(item.id)}>
-                            <td className="px-4 py-3"><input type="checkbox" checked={selectedItems.includes(item.id)} readOnly className="rounded text-blue-600 focus:ring-blue-500 w-4 h-4 pointer-events-none" /></td>
-                            <td className="px-4 py-3 text-sm font-bold text-slate-800">{item.model}</td>
-                            <td className="px-4 py-3 text-sm font-mono text-slate-600">{item.serial_number}</td>
-                            <td className="px-4 py-3 text-sm font-medium text-slate-500">{item.status}</td>
-                          </tr>
-                        ))}
-                        {(modelFilter ? originInventory.filter(i => i.model === modelFilter) : originInventory).length === 0 && (
+                        {(modelFilter ? originInventory.filter(i => `${i.model}|||${i.variant || ''}` === modelFilter) : originInventory).map(item => {
+                          const prod = products?.find(p => {
+                            const nameMatch = p.name?.toLowerCase() === item.model?.toLowerCase() || p.name?.toLowerCase().includes(item.model?.toLowerCase()) || item.model?.toLowerCase().includes(p.name?.toLowerCase());
+                            const itemVar = (item.variant || '').trim().toLowerCase();
+                            const prodVar = (p.variant || '').trim().toLowerCase();
+                            if (itemVar && prodVar) {
+                              return nameMatch && (itemVar === prodVar || itemVar.includes(prodVar) || prodVar.includes(itemVar));
+                            }
+                            return nameMatch;
+                          });
+                          const brand = prod?.manufacturer || prod?.brand || prod?.marca || '';
+                          const parts = [];
+                          const baseName = prod?.name || item.model;
+                          if (brand && !baseName?.toLowerCase().includes(brand.toLowerCase())) parts.push(brand);
+                          parts.push(baseName);
+                          const variant = prod?.variant || item.variant;
+                          if (variant && variant.trim() !== '' && variant.trim().toLowerCase() !== 'null') parts.push(variant);
+                          const detailedModel = parts.join(' - ');
+                          return (
+                            <tr key={item.id} className="hover:bg-blue-50/50 cursor-pointer transition-colors" onClick={() => toggleItem(item.id)}>
+                              <td className="px-4 py-3"><input type="checkbox" checked={selectedItems.includes(item.id)} readOnly className="rounded text-blue-600 focus:ring-blue-500 w-4 h-4 pointer-events-none" /></td>
+                              <td className="px-4 py-3 text-sm font-bold text-slate-800">{detailedModel}</td>
+                              <td className="px-4 py-3 text-sm font-mono text-slate-600">{item.serial_number}</td>
+                            </tr>
+                          );
+                        })}
+                        {(modelFilter ? originInventory.filter(i => `${i.model}|||${i.variant || ''}` === modelFilter) : originInventory).length === 0 && (
                           <tr>
-                            <td colSpan="4" className="px-6 py-8 text-center text-slate-400 font-medium">No hay inventario disponible.</td>
+                            <td colSpan="3" className="px-6 py-8 text-center text-slate-400 font-medium">No hay inventario disponible.</td>
                           </tr>
                         )}
                       </tbody>
@@ -7410,7 +7940,14 @@ const App = () => {
   const [syncingTrustonicLogs, setSyncingTrustonicLogs] = useState(false);
   const [modalState, setModalState] = useState({ type: null, open: false, item: null });
   const [actionFormState, setActionFormState] = useState({ open: false, actionType: null, prefillData: null });
-  const [incompleteActions, setIncompleteActions] = useState([]);
+  const [incompleteActions, setIncompleteActions] = useState(() => {
+    try {
+      const saved = localStorage.getItem('bantos_drafts');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
   const [isRegistering, setIsRegistering] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [whitelabel, setWhitelabel] = useState(null);
@@ -7435,6 +7972,10 @@ const App = () => {
       setGlobalSettings(null);
     }
   }, []);
+
+  useEffect(() => {
+    localStorage.setItem('bantos_drafts', JSON.stringify(incompleteActions));
+  }, [incompleteActions]);
 
   useEffect(() => {
     const handleWhitelabelUpdate = () => {
@@ -7653,15 +8194,23 @@ const App = () => {
 
       const payload = { ...paymentData, contract_id: finalContractId, tenantId: session.tenantId, userId: session.id, orgId: session.scope?.orgId };
       let savedItem = paymentData;
-      
       const paymentIdToUpdate = modalState.item?.upya_id || modalState.item?.id;
       
-      if (paymentIdToUpdate) {
-        await axios.put(`${API}/backoffice/payments/${paymentIdToUpdate}`, payload);
+      if (paymentData._isFiniquito) {
+        const settlePayload = {
+          tenantId: session.tenantId, userId: session.id, orgId: session.scope?.orgId,
+          amount: paymentData.amount, method: paymentData.method, notes: 'Finiquito procesado'
+        };
+        const res = await axios.post(`${API}/backoffice/contracts/${finalContractId}/settle`, settlePayload);
+        savedItem = { ...paymentData, id: res.data.payment_id, status: 'COMPLETED' };
       } else {
-        const res = await axios.post(`${API}/backoffice/payments`, payload);
-        if (res.data && res.data.id) {
-          savedItem = { ...paymentData, id: res.data.id };
+        if (paymentIdToUpdate) {
+          await axios.put(`${API}/backoffice/payments/${paymentIdToUpdate}`, payload);
+        } else {
+          const res = await axios.post(`${API}/backoffice/payments`, payload);
+          if (res.data && res.data.id) {
+            savedItem = { ...paymentData, id: res.data.id };
+          }
         }
       }
       
@@ -8123,15 +8672,22 @@ const App = () => {
               value={activeScope?.userId ? `user_${activeScope.userId}` : activeScope?.orgId ? `org_${activeScope.orgId}` : ''}
               onChange={(e) => {
                 const val = e.target.value;
-                if (!val) setActiveScope(session.role === 'admin' ? null : session.scope);
+                let newScope = null;
+                if (!val) newScope = session.role === 'admin' ? null : session.scope;
                 else if (val.startsWith('org_')) {
                   const id = val.replace('org_', '');
                   const org = data.orgStructure.find(o => o.id == id);
-                  setActiveScope({ orgId: org.id, orgName: org.name, orgType: org.type, role: 'MANAGER' });
+                  newScope = { orgId: org.id, orgName: org.name, orgType: org.type, role: 'MANAGER' };
                 } else if (val.startsWith('user_')) {
                   const id = val.replace('user_', '');
                   const user = data.users.find(u => u.id == id);
-                  setActiveScope({ userId: user.id, username: user.username, orgType: 'Agente', role: 'STAFF' });
+                  newScope = { userId: user.id, username: user.username, orgType: 'Agente', role: 'STAFF' };
+                }
+                setActiveScope(newScope);
+                if (session) {
+                  const updatedSession = { ...session, scope: newScope };
+                  localStorage.setItem('bantos_session', JSON.stringify(updatedSession));
+                  setSession(updatedSession);
                 }
               }}
             >
@@ -8222,7 +8778,7 @@ const App = () => {
                 onNew={handleNewContract}
                 onEdit={(c) => setModalState({ type: 'contract', open: true, item: c })} 
                 onSign={(c) => setModalState({ type: 'signature', open: true, item: c })}
-                onSettle={(c) => setModalState({ type: 'settlement', open: true, item: c })}
+                onSettle={(c) => setModalState({ type: 'payment', open: true, item: { _isFiniquito: true, contract_id: c.contract_number || c.upya_id, client_id: c.client_id } })}
                 session={session}
               />
             )}
@@ -8267,7 +8823,7 @@ const App = () => {
             {view === 'setup-terms' && <TermsView deals={data.paymentPlans} onEdit={(d) => setModalState({ type: 'term', open: true, item: d })} onCreate={() => setModalState({ type: 'term', open: true, item: null })} onDelete={handleDeleteTerm} />}
             {view === 'setup-org' && <OrganizationView structure={data.orgStructure} session={session} refreshData={refreshData} />}
             {view === 'setup-users' && <UsersView users={data.users} structure={data.orgStructure} session={session} refreshData={refreshData} />}
-            {view === 'setup-transfers' && <TransferenciasView stores={data.orgStructure?.filter(o => o.type === 'Manager' || o.type === 'BRANCH')} inventory={data.inventory} session={session} refreshData={refreshData} users={data.users} />}
+            {view === 'setup-transfers' && <TransferenciasView stores={data.orgStructure?.filter(o => o.type === 'Manager' || o.type === 'BRANCH')} inventory={data.inventory} session={session} refreshData={refreshData} users={data.users} products={data.products} />}
             
             {/* Navigational state for Actions Form vs List */}
             {view === 'record-actions' && !actionFormState.open && (
@@ -8320,7 +8876,7 @@ const App = () => {
         <DataCollectionModal isOpen={modalState.open && modalState.type === 'collection'} onClose={() => setModalState({ type: null, open: false, item: null })} onSave={handleSaveCollection} collection={modalState.item} />
         <ActionModal isOpen={modalState.open && modalState.type === 'action'} onClose={() => setModalState({ type: null, open: false, item: null })} onSave={handleSaveAction} action={modalState.item} />
         <PaymentModal isOpen={modalState.open && modalState.type === 'payment'} onClose={() => setModalState({ type: null, open: false, item: null })} onSave={handleSavePayment} payment={modalState.item} clients={data.clients} contracts={data.contracts} session={session} products={data.products} inventory={data.inventory} deals={data.paymentPlans} onOpenClientModal={() => setModalState({ type: 'client', open: true, item: null })} onSaveContract={handleSaveContract} globalSettings={globalSettings} />
-        <ContractModal isOpen={modalState.open && modalState.type === 'contract'} onClose={() => setModalState({ type: null, open: false, item: null })} onSave={handleSaveContract} contract={modalState.item} clients={data.clients} products={data.products} inventory={data.inventory} paymentPlans={data.paymentPlans} tenantId={session?.tenantId} onOpenPayment={handleOpenPaymentForContract} />
+        <ContractModal isOpen={modalState.open && modalState.type === 'contract'} onClose={() => setModalState({ type: null, open: false, item: null })} onSave={handleSaveContract} contract={modalState.item} clients={data.clients} products={data.products} inventory={data.inventory} paymentPlans={data.paymentPlans} tenantId={session?.tenantId} onOpenPayment={handleOpenPaymentForContract} payments={data.payments} />
         <SignatureModal isOpen={modalState.open && modalState.type === 'signature'} onClose={() => setModalState({ type: null, open: false, item: null })} onSave={handleSaveSignature} contract={modalState.item} />
         <TrustonicDeviceModal isOpen={modalState.open && modalState.type === 'trustonic-device'} onClose={() => setModalState({ type: null, open: false, item: null })} onSave={handleSaveDevice} device={modalState.item} />
         <ClientModal isOpen={modalState.open && modalState.type === 'client'} onClose={() => setModalState({ type: null, open: false, item: null })} client={modalState.item} onSave={handleSaveClient} onGenerateWallet={handleGenerateWallet} orgStructure={data.orgStructure} />

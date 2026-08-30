@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
-  Building2, Users, ShieldCheck, Plus, Search, LogOut, Check, X, Edit2, AlertCircle, RefreshCw, Trash2, ShieldAlert, Key
+  Building2, Users, ShieldCheck, Plus, Search, LogOut, Check, X, Edit2, AlertCircle, RefreshCw, Trash2, ShieldAlert, Key, Smartphone
 } from 'lucide-react';
 import './App.css';
 
@@ -26,6 +26,23 @@ function App() {
   const [tenants, setTenants] = useState([]);
   const [users, setUsers] = useState([]);
   const [licenses, setLicenses] = useState([]);
+  const [trustonicInventory, setTrustonicInventory] = useState([]);
+  const [trustonicSyncStatus, setTrustonicSyncStatus] = useState({ isSyncing: false, lastSync: null });
+  const [deviceFilterTenant, setDeviceFilterTenant] = useState('');
+  const [deviceFilterService, setDeviceFilterService] = useState('');
+  const [deviceFilterMarca, setDeviceFilterMarca] = useState('');
+  const [deviceFilterModelo, setDeviceFilterModelo] = useState('');
+  const [deviceFilterStatus, setDeviceFilterStatus] = useState('');
+
+  // Auto-update effect
+  const prevSyncingRef = useRef(false);
+  useEffect(() => {
+    if (prevSyncingRef.current && !trustonicSyncStatus.isSyncing) {
+      // It just finished syncing
+      fetchTrustonicInventory();
+    }
+    prevSyncingRef.current = trustonicSyncStatus.isSyncing;
+  }, [trustonicSyncStatus.isSyncing]);
 
   // Modals & CRUD state
   const [showTenantModal, setShowTenantModal] = useState(false);
@@ -44,6 +61,14 @@ function App() {
     quantity: 1,
     unit_cost: 0
   });
+
+  const [showEditLicenseModal, setShowEditLicenseModal] = useState(false);
+  const [editingLicense, setEditingLicense] = useState(null);
+  const [editLicenseForm, setEditLicenseForm] = useState({ device_imei: '', status: 'available', unit_cost: '' });
+
+  // Filtros de la tabla de Licencias
+  const [licenseFilterTenant, setLicenseFilterTenant] = useState('');
+  const [licenseFilterImei, setLicenseFilterImei] = useState('');
 
   const [showUserModal, setShowUserModal] = useState(false);
   const [editingUser, setEditingUser] = useState(null);
@@ -66,6 +91,40 @@ function App() {
 
   // Search Filters
   const [searchQuery, setSearchQuery] = useState('');
+  
+  // Pagination
+  const [devicePage, setDevicePage] = useState(1);
+  const DEVICES_PER_PAGE = 15;
+
+  const openEditLicenseModal = (l) => {
+    setEditingLicense(l);
+    setEditLicenseForm({ device_imei: l.device_imei || '', status: l.status || 'available', unit_cost: l.unit_cost || '' });
+    setShowEditLicenseModal(true);
+  };
+
+  const handleSaveLicenseEdit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    try {
+      const res = await fetch(`${API}/superadmin/licenses/${editingLicense.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(editLicenseForm)
+      });
+      const data = await res.json();
+      if (data.success) {
+        setShowEditLicenseModal(false);
+        setEditingLicense(null);
+        fetchLicenses();
+      } else {
+        alert(data.error || 'Error al guardar licencia');
+      }
+    } catch (e) {
+      alert('Error de red');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
     if (session) {
@@ -73,12 +132,65 @@ function App() {
     }
   }, [session, activeTab]);
 
+  useEffect(() => {
+    setDevicePage(1);
+  }, [searchQuery, deviceFilterTenant, deviceFilterService, deviceFilterMarca, deviceFilterModelo, deviceFilterStatus]);
+
   const loadData = () => {
     fetchTenants();
     fetchUsers();
     fetchTenantsStats();
     if (activeTab === 'licenses') fetchLicenses();
+    if (activeTab === 'devices' || activeTab === 'dashboard') {
+      fetchTrustonicInventory();
+      if (activeTab === 'devices') fetchTrustonicSyncStatus();
+    }
   };
+
+  const fetchTrustonicInventory = async () => {
+    try {
+      const res = await fetch(`${API}/superadmin/trustonic-inventory`);
+      const data = await res.json();
+      if (Array.isArray(data)) setTrustonicInventory(data);
+    } catch (e) {
+      console.error('Error fetching trustonic inventory:', e);
+    }
+  };
+
+  const fetchTrustonicSyncStatus = async () => {
+    try {
+      const res = await fetch(`${API}/superadmin/trustonic-inventory/sync-status`);
+      const data = await res.json();
+      setTrustonicSyncStatus(data);
+    } catch (e) {
+      console.error('Error fetching trustonic sync status:', e);
+    }
+  };
+
+  const handleSyncTrustonic = async () => {
+    try {
+      setTrustonicSyncStatus(prev => ({ ...prev, isSyncing: true }));
+      const res = await fetch(`${API}/superadmin/trustonic-inventory/sync`, { method: 'POST' });
+      const data = await res.json();
+      if (!data.success) {
+        alert(data.error || 'Error al iniciar sincronización');
+        setTrustonicSyncStatus(prev => ({ ...prev, isSyncing: false }));
+      }
+    } catch (e) {
+      alert('Error de red al iniciar sincronización');
+      setTrustonicSyncStatus(prev => ({ ...prev, isSyncing: false }));
+    }
+  };
+
+  useEffect(() => {
+    let interval;
+    if (activeTab === 'devices' && trustonicSyncStatus.isSyncing) {
+      interval = setInterval(() => {
+        fetchTrustonicSyncStatus();
+      }, 5000);
+    }
+    return () => clearInterval(interval);
+  }, [activeTab, trustonicSyncStatus.isSyncing]);
 
   const fetchTenantsStats = async () => {
     try {
@@ -457,6 +569,19 @@ function App() {
             <Key size={18} />
             <span>Licencias</span>
           </button>
+          <button 
+            className={`nav-item ${activeTab === 'devices' ? 'active' : ''}`}
+            onClick={() => { 
+              setActiveTab('devices'); 
+              setSearchQuery(''); 
+              setDeviceFilterMarca('');
+              setDeviceFilterModelo('');
+              setDeviceFilterStatus('');
+            }}
+          >
+            <Smartphone size={18} />
+            <span>Dispositivos</span>
+          </button>
         </nav>
 
         <div className="sidebar-footer">
@@ -482,10 +607,11 @@ function App() {
               {activeTab === 'tenants' && 'Aprovisionamiento de Tenants'}
               {activeTab === 'users' && 'Gestión de Usuarios y Permisos'}
               {activeTab === 'licenses' && 'Gestión de Licencias'}
+              {activeTab === 'devices' && 'Inventario de Dispositivos'}
             </h2>
             <p>Infraestructura global, control de autenticación y flujos de datos.</p>
           </div>
-          {activeTab !== 'dashboard' && (
+          {activeTab !== 'dashboard' && activeTab !== 'devices' && (
             <button 
               className="btn btn-primary"
               onClick={() => {
@@ -511,11 +637,63 @@ function App() {
               <Search size={18} className="search-icon" />
               <input 
                 type="text" 
-                placeholder={`Buscar en ${activeTab === 'tenants' ? 'tenants' : activeTab === 'users' ? 'usuarios' : 'licencias'}...`}
+                placeholder={`Buscar en ${activeTab === 'tenants' ? 'tenants' : activeTab === 'users' ? 'usuarios' : activeTab === 'licenses' ? 'licencias' : 'dispositivos'}...`}
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
               />
             </div>
+            {activeTab === 'devices' && (
+              <>
+                <select className="filter-select" value={deviceFilterTenant} onChange={e => setDeviceFilterTenant(e.target.value)}>
+                  <option value="">Todos los Tenants</option>
+                  {[...new Set(trustonicInventory.map(d => d.tenant).filter(Boolean))].map(t => (
+                    <option key={t} value={t}>{t}</option>
+                  ))}
+                </select>
+                <select className="filter-select" value={deviceFilterService} onChange={e => setDeviceFilterService(e.target.value)}>
+                  <option value="">Todos los Servicios</option>
+                  {[...new Set(trustonicInventory.map(d => d.service).filter(Boolean))].map(s => (
+                    <option key={s} value={s}>{s}</option>
+                  ))}
+                </select>
+                <select className="filter-select" value={deviceFilterMarca} onChange={e => setDeviceFilterMarca(e.target.value)}>
+                  <option value="">Todas las Marcas</option>
+                  {[...new Set(trustonicInventory.map(d => d.brand).filter(Boolean))].map(b => (
+                    <option key={b} value={b}>{b}</option>
+                  ))}
+                </select>
+                <select className="filter-select" value={deviceFilterModelo} onChange={e => setDeviceFilterModelo(e.target.value)}>
+                  <option value="">Todos los Modelos</option>
+                  {[...new Set(trustonicInventory.filter(d => !deviceFilterMarca || d.brand === deviceFilterMarca).map(d => d.model).filter(Boolean))].map(m => (
+                    <option key={m} value={m}>{m}</option>
+                  ))}
+                </select>
+                <select className="filter-select" value={deviceFilterStatus} onChange={e => setDeviceFilterStatus(e.target.value)}>
+                  <option value="">Todos los Status</option>
+                  {[...new Set(trustonicInventory.map(d => d.status).filter(Boolean))].map(s => (
+                    <option key={s} value={s}>{s}</option>
+                  ))}
+                </select>
+
+                <div className="flex flex-col items-end gap-1 ml-auto">
+                  <button 
+                    className="btn btn-primary"
+                    onClick={handleSyncTrustonic}
+                    disabled={trustonicSyncStatus.isSyncing}
+                  >
+                    <RefreshCw size={16} className={trustonicSyncStatus.isSyncing ? "animate-spin" : ""} />
+                    {trustonicSyncStatus.isSyncing ? 'Conciliando...' : 'Conciliar con Trustonic'}
+                  </button>
+                  <span className="text-xs text-slate-500 font-medium mt-1">
+                    {trustonicSyncStatus.isSyncing 
+                      ? 'Sincronización con Trustonic en curso...' 
+                      : trustonicSyncStatus.lastSync 
+                        ? `Sincronizado con fecha: ${new Date(trustonicSyncStatus.lastSync).toLocaleString()}` 
+                        : 'No se ha sincronizado'}
+                  </span>
+                </div>
+              </>
+            )}
           </div>
         )}
 
@@ -551,8 +729,11 @@ function App() {
                 <div className="kpi-icon"><RefreshCw size={24} /></div>
                 <div>
                   <h3>Dispositivos Totales</h3>
-                  <p className="kpi-value">{totalVolume.devices}</p>
-                  <span>Monitoreados / Trustonic</span>
+                  <p className="kpi-value">{trustonicInventory.length || totalVolume.devices}</p>
+                  <div style={{ display: 'flex', gap: '15px', fontSize: '13px', marginTop: '4px', color: '#64748b' }}>
+                    <span><strong>PREPAGO:</strong> {trustonicInventory.filter(d => d.service === 'PREPAID').length}</span>
+                    <span><strong>POSTPAGO:</strong> {trustonicInventory.filter(d => d.service === 'POSTPAID').length}</span>
+                  </div>
                 </div>
               </div>
             </div>
@@ -718,59 +899,218 @@ function App() {
 
         {/* 4. LICENSES MANAGEMENT VIEW */}
         {activeTab === 'licenses' && (
-          <div className="card-table">
-            <table>
-              <thead>
-                <tr>
-                  <th>License Key</th>
-                  <th>Tenant</th>
-                  <th>Dispositivo (IMEI)</th>
-                  <th>Costo Unitario</th>
-                  <th>Estado</th>
-                  <th>Expiración</th>
-                  <th>Acciones</th>
-                </tr>
-              </thead>
-              <tbody>
-                {licenses
-                  .filter(l => l.tenant_id.toLowerCase().includes(searchQuery.toLowerCase()) || l.license_key.toLowerCase().includes(searchQuery.toLowerCase()))
-                  .map(l => (
-                    <tr key={l.id}>
-                      <td className="font-mono text-xs">{l.license_key}</td>
-                      <td className="font-bold text-indigo">{l.tenant_id}</td>
-                      <td>{l.device_imei || '—'}</td>
-                      <td>${parseFloat(l.unit_cost).toFixed(2)}</td>
-                      <td>
-                        <span className={`badge badge-${l.status === 'active' ? 'success' : l.status === 'available' ? 'primary' : 'danger'}`}>
-                          {l.status === 'active' ? 'Activa' : l.status === 'available' ? 'Disponible' : 'Suspendida'}
-                        </span>
-                      </td>
-                      <td>{l.expires_at ? new Date(l.expires_at).toLocaleDateString() : 'Sin expiración'}</td>
-                      <td>
-                        <div className="action-buttons">
-                          <button 
-                            className="btn-icon" 
-                            onClick={() => handleToggleLicenseStatus(l.id, l.status)} 
-                            title={l.status === 'suspended' ? 'Activar' : 'Suspender'}
-                          >
-                            {l.status === 'suspended' ? <Check size={16} /> : <AlertCircle size={16} />}
-                          </button>
-                          <button 
-                            className="btn-icon text-danger" 
-                            onClick={() => handleDeleteLicense(l.id)} 
-                            title="Eliminar"
-                            disabled={l.status === 'active'}
-                          >
-                            <Trash2 size={16} />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                ))}
-              </tbody>
-            </table>
+          <div>
+            {/* KPI Licencias */}
+            <div className="kpi-grid" style={{ marginBottom: '24px' }}>
+              <div className="kpi-card">
+                <div className="kpi-icon text-indigo"><Key size={24} /></div>
+                <div>
+                  <h3>Disponibles</h3>
+                  <p className="kpi-value">{licenses.filter(l => l.status === 'available').length}</p>
+                  <span>Licencias sin usar</span>
+                </div>
+              </div>
+              <div className="kpi-card">
+                <div className="kpi-icon text-emerald"><Check size={24} /></div>
+                <div>
+                  <h3>Activas</h3>
+                  <p className="kpi-value">{licenses.filter(l => l.status === 'active').length}</p>
+                  <span>Asignadas a dispositivos</span>
+                </div>
+              </div>
+              <div className="kpi-card">
+                <div className="kpi-icon text-danger"><AlertCircle size={24} /></div>
+                <div>
+                  <h3>Suspendidas</h3>
+                  <p className="kpi-value">{licenses.filter(l => l.status === 'suspended').length}</p>
+                  <span>Uso bloqueado</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Barra de filtros dedicada */}
+            <div className="license-filters">
+              <div className="filter-group">
+                <label>Filtrar por Tenant</label>
+                <select
+                  value={licenseFilterTenant}
+                  onChange={e => setLicenseFilterTenant(e.target.value)}
+                >
+                  <option value="">Todos los tenants</option>
+                  {[...new Set(licenses.map(l => l.tenant_id))].map(tid => (
+                    <option key={tid} value={tid}>{tid}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="filter-group">
+                <label>Filtrar por IMEI</label>
+                <input
+                  type="text"
+                  placeholder="Ej. 356938035643809"
+                  value={licenseFilterImei}
+                  onChange={e => setLicenseFilterImei(e.target.value)}
+                />
+              </div>
+            </div>
+
+            <div className="card-table">
+              <table>
+                <thead>
+                  <tr>
+                    <th>License Key</th>
+                    <th>Tenant</th>
+                    <th>Dispositivo (IMEI)</th>
+                    <th>Costo Unitario</th>
+                    <th>Estado</th>
+                    <th>Expiración</th>
+                    <th>Acciones</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {licenses
+                    .filter(l => {
+                      const matchTenant = !licenseFilterTenant || l.tenant_id === licenseFilterTenant;
+                      const matchImei = !licenseFilterImei || (l.device_imei && l.device_imei.toLowerCase().includes(licenseFilterImei.toLowerCase()));
+                      return matchTenant && matchImei;
+                    })
+                    .map(l => (
+                      <tr key={l.id}>
+                        <td className="font-mono text-xs">{l.license_key}</td>
+                        <td className="font-bold text-indigo">{l.tenant_id}</td>
+                        <td>{l.device_imei || '—'}</td>
+                        <td>${parseFloat(l.unit_cost).toFixed(2)}</td>
+                        <td>
+                          <span className={`badge badge-${l.status === 'active' ? 'success' : l.status === 'available' ? 'primary' : 'danger'}`}>
+                            {l.status === 'active' ? 'Activa' : l.status === 'available' ? 'Disponible' : 'Suspendida'}
+                          </span>
+                        </td>
+                        <td>{l.expires_at ? new Date(l.expires_at).toLocaleDateString() : 'Sin expiración'}</td>
+                        <td>
+                          <div className="action-buttons">
+                            <button
+                              className="btn-icon text-indigo"
+                              onClick={() => openEditLicenseModal(l)}
+                              title="Editar"
+                            >
+                              <Edit2 size={16} />
+                            </button>
+                            <button
+                              className={`btn-icon ${l.status === 'suspended' ? 'text-success' : 'text-warning'}`}
+                              onClick={() => handleToggleLicenseStatus(l.id, l.status)}
+                              title={l.status === 'suspended' ? 'Activar' : 'Suspender'}
+                            >
+                              {l.status === 'suspended' ? <Check size={16} /> : <AlertCircle size={16} />}
+                            </button>
+                            <button
+                              className="btn-icon text-danger"
+                              onClick={() => handleDeleteLicense(l.id)}
+                              title="Eliminar"
+                              disabled={l.status === 'active'}
+                            >
+                              <Trash2 size={16} />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         )}
+        {activeTab === 'devices' && (() => {
+          const filteredDevices = trustonicInventory.filter(device => {
+            const matchesSearch = device.imei.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                                (device.brand || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+                                (device.model || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+                                (device.tenant || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+                                (device.service || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+                                (device.status || '').toLowerCase().includes(searchQuery.toLowerCase());
+            const matchesTenant = deviceFilterTenant === '' || device.tenant === deviceFilterTenant;
+            const matchesService = deviceFilterService === '' || device.service === deviceFilterService;
+            const matchesMarca = deviceFilterMarca === '' || device.brand === deviceFilterMarca;
+            const matchesModelo = deviceFilterModelo === '' || device.model === deviceFilterModelo;
+            const matchesStatus = deviceFilterStatus === '' || device.status === deviceFilterStatus;
+            return matchesSearch && matchesTenant && matchesService && matchesMarca && matchesModelo && matchesStatus;
+          });
+
+          const totalPages = Math.ceil(filteredDevices.length / DEVICES_PER_PAGE);
+          const startIndex = (devicePage - 1) * DEVICES_PER_PAGE;
+          const paginatedDevices = filteredDevices.slice(startIndex, startIndex + DEVICES_PER_PAGE);
+
+          return (
+            <div className="table-container">
+              <table className="card-table">
+                <thead>
+                  <tr>
+                    <th>TENANT</th>
+                    <th>SERVICIO</th>
+                    <th>TAC</th>
+                    <th>MARCA</th>
+                    <th>MODELO</th>
+                    <th>IMEI</th>
+                    <th>STATUS</th>
+                    <th>FECHA EXPIRACIÓN</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {paginatedDevices.map(device => (
+                    <tr key={device.imei}>
+                      <td>{device.tenant || '-'}</td>
+                      <td>{device.service || '-'}</td>
+                      <td>{device.tac || '-'}</td>
+                      <td>{device.brand || '-'}</td>
+                      <td>{device.model || '-'}</td>
+                      <td className="font-mono text-sm">{device.imei}</td>
+                      <td>
+                        <span className={`status-badge ${device.status?.toLowerCase().includes('bloque') || device.status?.toLowerCase().includes('lock') ? 'inactive' : 'active'}`}>
+                          {device.status || '-'}
+                        </span>
+                      </td>
+                        <td>{device.expiration_date || '-'}</td>
+                    </tr>
+                  ))}
+                  {trustonicInventory.length === 0 && (
+                    <tr>
+                      <td colSpan="8" style={{ textAlign: 'center', padding: '32px', color: '#64748b' }}>
+                        No hay dispositivos sincronizados. Haz clic en "Conciliar con Trustonic" para obtener el inventario.
+                      </td>
+                    </tr>
+                  )}
+                  {trustonicInventory.length > 0 && filteredDevices.length === 0 && (
+                    <tr>
+                      <td colSpan="8" style={{ textAlign: 'center', padding: '32px', color: '#64748b' }}>
+                        No se encontraron dispositivos que coincidan con los filtros.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+
+              {totalPages > 1 && (
+                <div className="pagination" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '15px', padding: '20px' }}>
+                  <button 
+                    className="btn btn-light" 
+                    disabled={devicePage === 1}
+                    onClick={() => setDevicePage(prev => Math.max(prev - 1, 1))}
+                  >
+                    Anterior
+                  </button>
+                  <span style={{ fontSize: '14px', color: '#64748b', fontWeight: '500' }}>
+                    Página {devicePage} de {totalPages} ({filteredDevices.length} registros)
+                  </span>
+                  <button 
+                    className="btn btn-light" 
+                    disabled={devicePage === totalPages || totalPages === 0}
+                    onClick={() => setDevicePage(prev => Math.min(prev + 1, totalPages))}
+                  >
+                    Siguiente
+                  </button>
+                </div>
+              )}
+            </div>
+          );
+        })()}
       </main>
 
       {/* TENANT MODAL (Create / Edit) */}
@@ -1007,6 +1347,52 @@ function App() {
               <div className="modal-footer">
                 <button type="button" className="btn btn-light" onClick={() => setShowLicenseModal(false)}>Cancelar</button>
                 <button type="submit" disabled={loading} className="btn btn-primary">Generar</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+      {showEditLicenseModal && editingLicense && (
+        <div className="modal-backdrop">
+          <div className="modal">
+            <div className="modal-header">
+              <h3>Editar Licencia</h3>
+              <button className="btn-icon" onClick={() => setShowEditLicenseModal(false)}><X size={18} /></button>
+            </div>
+            <form onSubmit={handleSaveLicenseEdit}>
+              <div className="form-group">
+                <label>Dispositivo (IMEI)</label>
+                <input 
+                  type="text" 
+                  value={editLicenseForm.device_imei}
+                  onChange={e => setEditLicenseForm({ ...editLicenseForm, device_imei: e.target.value })}
+                  placeholder="Ej. 123456789012345"
+                />
+              </div>
+              <div className="form-group">
+                <label>Estado</label>
+                <select 
+                  value={editLicenseForm.status}
+                  onChange={e => setEditLicenseForm({ ...editLicenseForm, status: e.target.value })}
+                >
+                  <option value="available">DISPONIBLE</option>
+                  <option value="active">ACTIVA</option>
+                  <option value="suspended">SUSPENDIDA</option>
+                </select>
+              </div>
+              <div className="form-group">
+                <label>Costo Unitario</label>
+                <input 
+                  type="number" 
+                  step="0.01"
+                  min="0"
+                  value={editLicenseForm.unit_cost}
+                  onChange={e => setEditLicenseForm({ ...editLicenseForm, unit_cost: e.target.value })}
+                />
+              </div>
+              <div className="modal-footer">
+                <button type="button" className="btn btn-light" onClick={() => setShowEditLicenseModal(false)}>Cancelar</button>
+                <button type="submit" disabled={loading} className="btn btn-primary">Guardar</button>
               </div>
             </form>
           </div>

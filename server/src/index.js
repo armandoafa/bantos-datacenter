@@ -8,6 +8,7 @@ import pool from './config/db.js';
 import { scrapeTrustonic } from './services/trustonic.js';
 import * as trustonicApi from './services/trustonicApi.js';
 import dynamicore from './services/dynamicore.js';
+import { getResponseCodeName } from './utils/responseCodes.js';
 import { createRequire } from 'module';
 import path from 'path';
 import fs from 'fs';
@@ -2365,21 +2366,44 @@ app.post('/api/backoffice/payments', async (req, res) => {
       account_number, card_holder, is_recurring, recurring_dates, client_id, tenantId, userId, orgId
     } = req.body;
     
-    const payId = upya_id || `PAY-${Date.now()}`;
-    const [result] = await pool.query(
-      `INSERT INTO payments (
-        upya_id, transaction_id, tenant_id, contract_id, amount, method, status, payment_date,
-        account_number, card_holder, is_recurring, recurring_dates, client_id, created_by_user_id, org_id
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [
-        payId, transaction_id || null, tenantId, contract_id || null, 
-        amount || 0, method || 'Other', status || 'Pending', payment_date || new Date(),
-        account_number || null, card_holder || null, is_recurring || false, 
-        recurring_dates ? JSON.stringify(recurring_dates) : null, client_id || null,
-        userId || null, orgId || null
-      ]
-    );
-    res.json({ success: true, id: result.insertId });
+    let payId = upya_id || `PAY-${Date.now()}`;
+    let insertId = null;
+
+    if (transaction_id) {
+      const [updateRes] = await pool.query(
+        `UPDATE payments SET 
+          contract_id = ?, amount = ?, method = ?, status = ?, payment_date = ?, 
+          account_number = ?, card_holder = ?, is_recurring = ?, recurring_dates = ?, client_id = ?, org_id = ?
+         WHERE transaction_id = ? AND tenant_id = ?`,
+        [
+          contract_id || null, amount || 0, method || 'Other', status || 'Pending', payment_date || new Date(),
+          account_number || null, card_holder || null, is_recurring || false, 
+          recurring_dates ? JSON.stringify(recurring_dates) : null, client_id || null, orgId || null,
+          transaction_id, tenantId
+        ]
+      );
+      if (updateRes.affectedRows > 0) {
+        payId = transaction_id.replace('TX-', '');
+      }
+    }
+
+    if (!transaction_id || (transaction_id && !payId.includes(transaction_id.replace('TX-', '')))) {
+      const [result] = await pool.query(
+        `INSERT INTO payments (
+          upya_id, transaction_id, tenant_id, contract_id, amount, method, status, payment_date,
+          account_number, card_holder, is_recurring, recurring_dates, client_id, created_by_user_id, org_id
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
+          payId, transaction_id || null, tenantId, contract_id || null, 
+          amount || 0, method || 'Other', status || 'Pending', payment_date || new Date(),
+          account_number || null, card_holder || null, is_recurring || false, 
+          recurring_dates ? JSON.stringify(recurring_dates) : null, client_id || null,
+          userId || null, orgId || null
+        ]
+      );
+      insertId = result.insertId;
+    }
+    res.json({ success: true, id: insertId || payId });
 
     // Log creation
     try {
@@ -2635,7 +2659,7 @@ app.post('/api/backoffice/contracts/generate-and-sign', async (req, res) => {
       [upya_id, tenantId, contractData.contract_number || outputFilename, clientId, clientNumber, contractData.product_name || null, contractData.deal_name || null, contractData.total_value || 0, contractData.paid_value || 0, 'FIRMADO', signatureData, userId, orgId]
     );
 
-    res.json({ success: true, id: upya_id, filename: outputFilename });
+    res.json({ success: true, id: upya_id, filename: outputFilename, client_id: clientId });
   } catch (error) {
     console.error('Error generando contrato:', error);
     res.status(500).json({ error: error.message });
@@ -2965,7 +2989,7 @@ app.get('/api/backoffice/audit', async (req, res) => {
   try {
     const scope = await getScopeFilter(tenantId, userId, role, scopeOrgId, scopeRole, 'u');
     const [rows] = await pool.query(
-      `SELECT ol.process_id AS ref_contrato, u.username AS cliente, u.email AS email, ol.status AS estado, ol.created_at AS fecha_registro, ol.process_type AS tipo 
+      `SELECT ol.process_id AS ref_contrato, u.username AS cliente, u.email AS email, ol.status AS estado, ol.created_at AS fecha_registro, ol.process_type AS tipo, ol.detail AS detalle 
        FROM operation_logs ol 
        LEFT JOIN users u ON (ol.user_id = u.id AND ol.tenant_id = u.tenant_id)
        WHERE ol.tenant_id = ? AND (${scope.filter})
@@ -3201,7 +3225,7 @@ app.post('/api/webview/validate-device', async (req, res) => {
 app.post('/api/webview/card-payments/create-customer', async (req, res) => {
   const {
     first_name, last_name, address_one, city, state,
-    zipcode, email, country, date_of_birth, last4ssn, phone, username
+    zipcode, email, country, date_of_birth, last4ssn, phone, username, is_recurrent
   } = req.body;
 
   console.log('\n═══════════════════════════════════════════════════');
@@ -3209,7 +3233,7 @@ app.post('/api/webview/card-payments/create-customer', async (req, res) => {
   console.log('  ➡️  REQ body:', JSON.stringify({
     first_name, last_name, email, phone, username,
     address_one, city, state, zipcode, country, date_of_birth,
-    last4ssn: last4ssn ? '****' : undefined
+    last4ssn: last4ssn ? '****' : undefined, is_recurrent
   }, null, 2));
 
   if (!first_name || !last_name || !email || !phone || !username) {
@@ -3239,7 +3263,7 @@ app.post('/api/webview/card-payments/create-customer', async (req, res) => {
     const result = await dynamicore.createCardPayCustomer({
       first_name, last_name, address_one, city, state,
       zipcode, email, country, date_of_birth, last4ssn, phone, username
-    });
+    }, is_recurrent);
     console.log('  ⬅️  Dynamicore RAW response:', JSON.stringify(result, null, 2));
 
     const customerId = result?.message?.id;
@@ -3278,14 +3302,14 @@ app.post('/api/webview/card-payments/create-customer', async (req, res) => {
 });
 
 app.post('/api/webview/card-payments/assign-card', async (req, res) => {
-  const { customer_id, token_id } = req.body;
+  const { customer_id, token_id, is_recurrent } = req.body;
 
   console.log('\n═══════════════════════════════════════════════════');
   console.log('🟩 [WEBVIEW PASO 3] POST /card-payments/assign-card');
-  console.log('  ➡️  REQ body:', JSON.stringify({ customer_id, token_id }, null, 2));
+  console.log('  ➡️  REQ body:', JSON.stringify({ customer_id, token_id, is_recurrent }, null, 2));
 
   try {
-    const result = await dynamicore.assignCardToCustomer(customer_id, token_id);
+    const result = await dynamicore.assignCardToCustomer(customer_id, token_id, is_recurrent);
     console.log('  ⬅️  Dynamicore RAW response:', JSON.stringify(result, null, 2));
 
     if (result.status === 'error' || result?.data?.status === 'error') {
@@ -3310,7 +3334,7 @@ app.post('/api/webview/card-payments/assign-card', async (req, res) => {
 });
 
 app.post('/api/webview/card-payments/transactions', async (req, res) => {
-  const { customer_id, payment_method, amount } = req.body;
+  const { customer_id, payment_method, amount, is_recurrent, recurring_frequency } = req.body;
 
   console.log('\n═══════════════════════════════════════════════════');
   console.log('🟨 [WEBVIEW PASO 4] POST /card-payments/transactions');
@@ -3319,30 +3343,70 @@ app.post('/api/webview/card-payments/transactions', async (req, res) => {
     customer_id,
     amount: parseFloat(amount),
     sc: 0,
-    accept_url: 'https://payment.bantos.cloud',
-    cancel_url: 'https://payment.bantos.cloud'
+    accept_url: 'https://bantos.cloud/datacenter/?3ds=done',
+    cancel_url: 'https://bantos.cloud/datacenter/?3ds=cancel'
   };
+
+  if (is_recurrent) {
+    let recType = "mensual";
+    if (recurring_frequency == 15 || recurring_frequency == '15') {
+      recType = "0 6 1,16 * *";
+    } else if (recurring_frequency == 30 || recurring_frequency == '30') {
+      recType = "mensual";
+    } else if (recurring_frequency && typeof recurring_frequency === 'string' && isNaN(recurring_frequency)) {
+      recType = recurring_frequency;
+    }
+    
+    chargePayload.recurrent = true;
+    chargePayload.recurring = { type: recType };
+  }
+
   console.log('  ➡️  REQ body (hacia Dynamicore):', JSON.stringify(chargePayload, null, 2));
 
   try {
-    const chargeResult = await dynamicore.directCharge(chargePayload);
+    const chargeResult = is_recurrent 
+      ? await dynamicore.recurringCharge(chargePayload) 
+      : await dynamicore.directCharge(chargePayload);
+      
     console.log('  ⬅️  Dynamicore RAW response:', JSON.stringify(chargeResult, null, 2));
 
     const externalId     = chargeResult?.message?.external_id;
     const redirectionUrl = chargeResult?.message?.redirection_url;
+    const resultCode     = chargeResult?.message?.result_code;
 
-    // Registrar en BD local (no crítico si falla)
-    try {
-      const payId = externalId || `PAY-CARD-${Date.now()}`;
-      await pool.query(
-        `INSERT INTO payments (
-          upya_id, transaction_id, tenant_id, contract_id, client_id, amount, method, status, payment_date
-        ) VALUES (?, ?, ?, ?, ?, ?, 'Tarjeta (Dynamicore)', 'PENDING_3DS', NOW())`,
-        [payId, `TX-${payId}`, 'c-romel', 'CTR-WEBVIEW-01', customer_id, amount || 0]
-      );
-      console.log(`  💾 Pago registrado en BD local. payId: ${payId}`);
-    } catch (dbErr) {
-      console.warn('  ⚠️  No se pudo registrar en BD local:', dbErr.message);
+    if (is_recurrent) {
+      if (resultCode === '00') {
+        const resBody = { success: true, external_id: externalId, status: 'SUCCESS' };
+        console.log('  ⬅️  RES (RECURRENTE EXITOSO):', JSON.stringify(resBody));
+        console.log('═══════════════════════════════════════════════════\n');
+        return res.json(resBody);
+      } else {
+        const errorName = getResponseCodeName(resultCode);
+        console.error(`  ❌ Error de pago recurrente. result_code: ${resultCode} - ${errorName}`);
+        
+        // Log in operation_logs (Audit)
+        try {
+           let tenantId = null;
+           const [tenantRows] = await pool.query(
+             `SELECT t.tenant_id 
+              FROM webview_customers w 
+              LEFT JOIN client_history c ON (w.email = c.email OR w.phone = c.phone) 
+              LEFT JOIN tenants t ON c.tenant_id = t.id 
+              WHERE w.customer_id = ? AND t.tenant_id IS NOT NULL LIMIT 1`,
+             [customer_id]
+           );
+           if (tenantRows.length > 0) tenantId = tenantRows[0].tenant_id;
+
+           await pool.query(
+             'INSERT INTO operation_logs (tenant_id, process_type, process_id, detail, status) VALUES (?, ?, ?, ?, ?)',
+             [tenantId, 'RECURRING_PAYMENT_ERROR', externalId || `FAILED-${Date.now()}`, JSON.stringify({ customer_id, resultCode, errorName }), 'FAILED']
+           );
+        } catch (logErr) {
+           console.error('Error writing audit log:', logErr.message);
+        }
+        
+        throw new Error(errorName);
+      }
     }
 
     const resBody = { success: true, external_id: externalId, redirection_url: redirectionUrl, status: 'PENDING_3DS' };
@@ -3356,8 +3420,83 @@ app.post('/api/webview/card-payments/transactions', async (req, res) => {
     console.log('═══════════════════════════════════════════════════\n');
     res.status(400).json({
       success: false,
-      error: error.response?.data?.message || 'Error al procesar el cargo de la tarjeta'
+      error: error.response?.data?.message || error.message || 'Error al procesar el cargo de la tarjeta'
     });
+  }
+});
+
+
+// --- API WEBHOOKS (Dynamicore) ---
+app.post('/api/webhooks/dynamicore', async (req, res) => {
+  console.log('\n🔔 [WEBHOOK] Recepción de Dynamicore');
+  // Dynamicore recomienda responder 200 de inmediato
+  res.status(200).send('OK');
+
+  const { data } = req.body?.message || {};
+  if (!data || !Array.isArray(data)) {
+    return console.log('  ⚠️ Webhook payload sin transacciones.');
+  }
+
+  for (const tx of data) {
+    const dynamicore_tx_id = tx.id; // e.g. trs_...
+    const dynamicore_status = tx.status?.code; // 1 = Approved, 2 = Declined
+    const customer_id = tx.client;
+    const amount = tx.amount;
+    const is_recurrent = tx.operation?.name === 'Cobro recurrente' || tx.extras?.recurring === true;
+    
+    // Obtener tenant_id del customer_id
+    try {
+      const [tenantRows] = await pool.query(
+        `SELECT u.tenant_id, u.id AS user_id, u.username
+         FROM webview_customers w
+         JOIN users u ON w.username = u.username
+         WHERE w.customer_id = ? LIMIT 1`,
+        [customer_id]
+      );
+      
+      let tenant_id = null;
+      let client_bantos_id = null;
+      if (tenantRows.length > 0) {
+        tenant_id = tenantRows[0].tenant_id;
+        
+        // Tratar de encontrar al client_id real en Bantos
+        const [clientRows] = await pool.query(
+          'SELECT id FROM client_history WHERE email = (SELECT email FROM webview_customers WHERE customer_id = ?) OR phone = (SELECT phone FROM webview_customers WHERE customer_id = ?) LIMIT 1',
+          [customer_id, customer_id]
+        );
+        if(clientRows.length > 0) {
+           client_bantos_id = clientRows[0].id;
+        }
+      }
+
+      const bantosStatus = dynamicore_status === 1 ? 'PAID' : (dynamicore_status === 2 ? 'FAILED' : 'PENDING');
+      console.log(`  ➡️ TX ${dynamicore_tx_id} | Status: ${bantosStatus} | Tenant: ${tenant_id}`);
+
+      // Revisar si la transacción ya existe (pago único)
+      const [payRows] = await pool.query('SELECT id FROM payments WHERE upya_id = ?', [dynamicore_tx_id]);
+      
+      if (payRows.length > 0) {
+        // Actualizar existente
+        await pool.query('UPDATE payments SET status = ? WHERE upya_id = ?', [bantosStatus, dynamicore_tx_id]);
+        console.log(`  ✅ Pago actualizado: ${dynamicore_tx_id} -> ${bantosStatus}`);
+      } else if (bantosStatus === 'PAID') {
+        // Si no existe y está pagada (ej. Cobro automático mensual), la insertamos
+        const payId = dynamicore_tx_id;
+        await pool.query(
+          `INSERT INTO payments (
+            upya_id, transaction_id, tenant_id, amount, method, status, payment_date,
+            is_recurring, client_id
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          [
+            payId, `TX-${payId}`, tenant_id, amount, 'Tarjeta Automática', bantosStatus, new Date(),
+            1, client_bantos_id
+          ]
+        );
+        console.log(`  ✅ Nuevo pago recurrente registrado: ${payId} -> ${bantosStatus}`);
+      }
+    } catch (err) {
+      console.error('  ❌ Error procesando webhook tx:', err);
+    }
   }
 });
 
@@ -3638,7 +3777,84 @@ app.delete('/api/superadmin/licenses/:id', async (req, res) => {
   }
 });
 
+// --- SUPERADMIN TRUSTONIC INVENTORY ---
+let trustonicSyncState = { isSyncing: false, lastSync: null };
+
+app.get('/api/superadmin/trustonic-inventory', async (req, res) => {
+  try {
+    const [rows] = await pool.query('SELECT imei, tenant, service, tac, brand, model, status, DATE_FORMAT(expiration_date, "%Y-%m-%d") as expiration_date FROM trustonic_inventory ORDER BY brand, model');
+    res.json(rows);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.get('/api/superadmin/trustonic-inventory/sync-status', (req, res) => {
+  res.json(trustonicSyncState);
+});
+
+// Registrar webhooks de Trustonic
+app.post('/api/superadmin/trustonic-inventory/register-webhooks', async (req, res) => {
+  try {
+    await trustonicApi.registerTrustonicWebhook();
+    res.json({ success: true, message: 'Webhooks registrados en Trustonic' });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// Recibir Webhook de Trustonic
+app.post('/api/webhooks/trustonic', express.json(), async (req, res) => {
+  console.log('\n🔔 [WEBHOOK] Recepción de Trustonic');
+  console.log(JSON.stringify(req.body, null, 2));
+  
+  try {
+    // Responder inmediatamente para no bloquear el webhook de Trustonic
+    res.status(200).send('OK');
+    
+    // Procesar de fondo
+    await trustonicApi.processTrustonicWebhook(req.body);
+  } catch (error) {
+    console.error('Error procesando webhook de Trustonic:', error);
+  }
+});
+
+app.post('/api/superadmin/trustonic-inventory/sync', async (req, res) => {
+  try {
+    trustonicSyncState.isSyncing = false;
+    res.json({ success: true, message: 'La sincronización se realiza automáticamente vía Webhooks.' });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // --- API INSIGHTS Y STATS (insight.bantos.cloud) ---
+app.get('/api/insight/clearing', async (req, res) => {
+  try {
+    const [rows] = await pool.query(`
+      SELECT 
+          p.id, 
+          p.transaction_id, 
+          p.tenant_id, 
+          t.company_name AS tenant_name, 
+          p.payment_date, 
+          p.amount, 
+          p.method, 
+          p.status, 
+          p.is_recurring,
+          ROUND(p.amount * 0.035 + 2.50, 2) AS estimated_fee,
+          ROUND(p.amount - (p.amount * 0.035 + 2.50), 2) AS estimated_net
+      FROM payments p
+      LEFT JOIN tenants t ON p.tenant_id = t.tenant_id
+      ORDER BY p.payment_date DESC
+      LIMIT 1000
+    `);
+    res.json(rows);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 app.get('/api/insight/dashboard', async (req, res) => {
   const { tenantId } = req.query;
   try {
