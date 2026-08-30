@@ -3499,8 +3499,8 @@ app.post('/api/webhooks/dynamicore', async (req, res) => {
           [bantosStatus, contract_id, client_bantos_id, dynamicore_tx_id]
         );
         console.log(`  ✅ Pago actualizado: ${dynamicore_tx_id} -> ${bantosStatus}`);
-      } else if (bantosStatus === 'PAID') {
-        // Si no existe y está pagada (ej. Cobro automático mensual), la insertamos
+      } else {
+        // Si no existe, lo insertamos con su estado correspondiente (PAID, PENDING, FAILED)
         const payId = dynamicore_tx_id;
         await pool.query(
           `INSERT INTO payments (
@@ -3512,7 +3512,7 @@ app.post('/api/webhooks/dynamicore', async (req, res) => {
             1, client_bantos_id
           ]
         );
-        console.log(`  ✅ Nuevo pago recurrente registrado: ${payId} -> ${bantosStatus}`);
+        console.log(`  ✅ Nuevo pago registrado: ${payId} -> ${bantosStatus}`);
       }
 
       // Recalcular paid_value del contrato si el pago fue aprobado/completado
