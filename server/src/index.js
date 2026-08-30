@@ -3429,6 +3429,7 @@ app.post('/api/webview/card-payments/transactions', async (req, res) => {
 // --- API WEBHOOKS (Dynamicore) ---
 app.post('/api/webhooks/dynamicore', async (req, res) => {
   console.log('\n🔔 [WEBHOOK] Recepción de Dynamicore');
+  console.log('  📦 Payload recibido:', JSON.stringify(req.body, null, 2));
   // Dynamicore recomienda responder 200 de inmediato
   res.status(200).send('OK');
 
