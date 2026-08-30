@@ -3433,7 +3433,7 @@ app.post('/api/webhooks/dynamicore', async (req, res) => {
   // Dynamicore recomienda responder 200 de inmediato
   res.status(200).send('OK');
 
-  const { data } = req.body?.message || {};
+  const data = req.body?.data || req.body?.message?.data;
   if (!data || !Array.isArray(data)) {
     return console.log('  ⚠️ Webhook payload sin transacciones.');
   }
