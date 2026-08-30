@@ -3532,15 +3532,6 @@ app.post('/api/webhooks/dynamicore', async (req, res) => {
           [totalPaid, contract_id, contract_id, tenant_id]
         );
         console.log(`  📊 Valor pagado del contrato ${contract_id} actualizado a $${totalPaid}`);
-
-        // Empujar pago en tiempo real a Upya para sincronizarlo con el SaaS externo
-        pushPaymentToUpya({
-          contract_id: contract_id,
-          client_id: client_bantos_id,
-          amount: amount,
-          method: 'Tarjeta Automática',
-          payment_date: new Date()
-        }, tenant_id);
       }
     } catch (err) {
       console.error('  ❌ Error procesando webhook tx:', err);
