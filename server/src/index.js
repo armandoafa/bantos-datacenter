@@ -3460,40 +3460,87 @@ app.post('/api/webhooks/dynamicore', async (req, res) => {
       if (tenantRows.length > 0) {
         tenant_id = tenantRows[0].tenant_id;
         
-        // Tratar de encontrar al client_id real en Bantos
+        // Tratar de encontrar al client_id real (upya_id) en Bantos
         const [clientRows] = await pool.query(
-          'SELECT id FROM client_history WHERE email = (SELECT email FROM webview_customers WHERE customer_id = ?) OR phone = (SELECT phone FROM webview_customers WHERE customer_id = ?) LIMIT 1',
+          'SELECT upya_id FROM client_history WHERE email = (SELECT email FROM webview_customers WHERE customer_id = ?) OR phone = (SELECT phone FROM webview_customers WHERE customer_id = ?) LIMIT 1',
           [customer_id, customer_id]
         );
-        if(clientRows.length > 0) {
-           client_bantos_id = clientRows[0].id;
+        if (clientRows.length > 0) {
+           client_bantos_id = clientRows[0].upya_id;
+        }
+      }
+
+      // Buscar contrato activo asociado al cliente
+      let contract_id = null;
+      if (client_bantos_id) {
+        const [contractRows] = await pool.query(
+          `SELECT upya_id, contract_number FROM contract_history 
+           WHERE client_id = ? AND tenant_id = ? AND status != 'SETTLED' 
+           ORDER BY synced_at DESC LIMIT 1`,
+          [client_bantos_id, tenant_id]
+        );
+        if (contractRows.length > 0) {
+          contract_id = contractRows[0].contract_number || contractRows[0].upya_id;
         }
       }
 
       const bantosStatus = dynamicore_status === 1 ? 'PAID' : (dynamicore_status === 2 ? 'FAILED' : 'PENDING');
-      console.log(`  ➡️ TX ${dynamicore_tx_id} | Status: ${bantosStatus} | Tenant: ${tenant_id}`);
+      console.log(`  ➡️ TX ${dynamicore_tx_id} | Status: ${bantosStatus} | Tenant: ${tenant_id} | Client: ${client_bantos_id} | Contract: ${contract_id}`);
 
       // Revisar si la transacción ya existe (pago único)
       const [payRows] = await pool.query('SELECT id FROM payments WHERE upya_id = ?', [dynamicore_tx_id]);
       
       if (payRows.length > 0) {
         // Actualizar existente
-        await pool.query('UPDATE payments SET status = ? WHERE upya_id = ?', [bantosStatus, dynamicore_tx_id]);
+        await pool.query(
+          `UPDATE payments 
+           SET status = ?, contract_id = COALESCE(contract_id, ?), client_id = COALESCE(client_id, ?) 
+           WHERE upya_id = ?`, 
+          [bantosStatus, contract_id, client_bantos_id, dynamicore_tx_id]
+        );
         console.log(`  ✅ Pago actualizado: ${dynamicore_tx_id} -> ${bantosStatus}`);
       } else if (bantosStatus === 'PAID') {
         // Si no existe y está pagada (ej. Cobro automático mensual), la insertamos
         const payId = dynamicore_tx_id;
         await pool.query(
           `INSERT INTO payments (
-            upya_id, transaction_id, tenant_id, amount, method, status, payment_date,
+            upya_id, transaction_id, tenant_id, contract_id, amount, method, status, payment_date,
             is_recurring, client_id
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
           [
-            payId, `TX-${payId}`, tenant_id, amount, 'Tarjeta Automática', bantosStatus, new Date(),
+            payId, `TX-${payId}`, tenant_id, contract_id, amount, 'Tarjeta Automática', bantosStatus, new Date(),
             1, client_bantos_id
           ]
         );
         console.log(`  ✅ Nuevo pago recurrente registrado: ${payId} -> ${bantosStatus}`);
+      }
+
+      // Recalcular paid_value del contrato si el pago fue aprobado/completado
+      if (contract_id && bantosStatus === 'PAID') {
+        const [paySum] = await pool.query(
+          `SELECT COALESCE(SUM(amount), 0) as total_paid
+           FROM payments
+           WHERE contract_id IN (?, ?) AND tenant_id = ? AND UPPER(status) IN ('PAID', 'VALIDATED', 'COMPLETED', 'SUCCESS', 'SUCCESSFUL')`,
+          [contract_id, contract_id, tenant_id]
+        );
+        const totalPaid = parseFloat(paySum[0]?.total_paid || 0);
+
+        await pool.query(
+          `UPDATE contract_history 
+           SET paid_value = ? 
+           WHERE (upya_id = ? OR contract_number = ?) AND tenant_id = ?`,
+          [totalPaid, contract_id, contract_id, tenant_id]
+        );
+        console.log(`  📊 Valor pagado del contrato ${contract_id} actualizado a $${totalPaid}`);
+
+        // Empujar pago en tiempo real a Upya para sincronizarlo con el SaaS externo
+        pushPaymentToUpya({
+          contract_id: contract_id,
+          client_id: client_bantos_id,
+          amount: amount,
+          method: 'Tarjeta Automática',
+          payment_date: new Date()
+        }, tenant_id);
       }
     } catch (err) {
       console.error('  ❌ Error procesando webhook tx:', err);
