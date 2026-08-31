@@ -145,7 +145,8 @@ export function generateContractHTML(data) {
 
     <div class="section-title">CONDICIONES DE LA VENTA</div>
     <div class="data-grid">
-        <div class="field">Monto total: $${Number(totalcost || 0).toLocaleString()} MXN</div>
+        <div class="field">Monto de pago: $${Number(totalcost || 0).toLocaleString()} MXN</div>
+        <div class="field">Enganche: $${Number(upfrontpayment || 0).toLocaleString()} MXN</div>
         <div class="field">Modalidad de pago: ${terms || '__________________________________'}</div>
         <br>
         <div class="field">Fechas de pago acordadas: ${repayment || '__________________________________'}</div>

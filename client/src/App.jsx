@@ -2204,7 +2204,7 @@ const ContractsView = ({ contracts = [], onNew, onEdit, onSign, onSettle, sessio
               </button>
               {(CONTRACT_STATUSES.SIGNED.includes((c.status || '').toUpperCase()) || c.signature_image || c.signature_data) && (
                 <a 
-                  href={c.contract_number && (c.contract_number.endsWith('.docx') || c.contract_number.endsWith('.pdf')) ? `https://bantos.cloud/signed-contracts/${c.contract_number}` : `/datacenter-api/backoffice/contracts/${c.upya_id}/pdf?tenantId=${session?.tenantId}`} 
+                  href={c.contract_number && c.contract_number.endsWith('.pdf') ? `https://bantos.cloud/signed-contracts/${c.contract_number}` : `/datacenter-api/backoffice/contracts/${c.upya_id}/pdf?tenantId=${session?.tenantId}`} 
                   target="_blank" 
                   rel="noopener noreferrer"
                   className="p-2 rounded-lg hover:bg-emerald-50 text-emerald-500 hover:text-emerald-700 transition-all"
@@ -2251,7 +2251,7 @@ const ContractsView = ({ contracts = [], onNew, onEdit, onSign, onSettle, sessio
               <div className="flex justify-end gap-2 pt-2">
                 <button onClick={() => onEdit(c)} className="p-2.5 rounded-lg bg-slate-50 text-slate-400 hover:text-slate-600"><Settings2 size={16} /></button>
                 {(CONTRACT_STATUSES.SIGNED.includes((c.status || '').toUpperCase()) || c.signature_image || c.signature_data) && (
-                  <a href={c.contract_number && (c.contract_number.endsWith('.docx') || c.contract_number.endsWith('.pdf')) ? `https://bantos.cloud/signed-contracts/${c.contract_number}` : `/datacenter-api/backoffice/contracts/${c.upya_id}/pdf?tenantId=${session?.tenantId}`} target="_blank" rel="noopener noreferrer" className="p-2.5 rounded-lg bg-emerald-50 text-emerald-500 hover:bg-emerald-100 transition-all" title="Ver documento firmado"><FileText size={16} /></a>
+                  <a href={c.contract_number && c.contract_number.endsWith('.pdf') ? `https://bantos.cloud/signed-contracts/${c.contract_number}` : `/datacenter-api/backoffice/contracts/${c.upya_id}/pdf?tenantId=${session?.tenantId}`} target="_blank" rel="noopener noreferrer" className="p-2.5 rounded-lg bg-emerald-50 text-emerald-500 hover:bg-emerald-100 transition-all" title="Ver documento firmado"><FileText size={16} /></a>
                 )}
                 {!CONTRACT_STATUSES.SIGNED.includes((c.status || '').toUpperCase()) && !c.signature_image && !c.signature_data && (
                   <button onClick={() => onSign(c)} className="px-4 py-2 bg-blue-50 text-blue-600 rounded-lg font-black text-[11px] uppercase tracking-widest border border-blue-100">Firmar</button>
