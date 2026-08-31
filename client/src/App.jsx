@@ -808,9 +808,14 @@ const ProductModal = ({ isOpen, onClose, product, onSave, session, inventory = [
 };
 
 // --- MODAL DE TÉRMINOS ---
-const TermModal = ({ isOpen, onClose, term, onSave, globalSettings }) => {
+const TermModal = ({ isOpen, onClose, term, onSave, globalSettings, tenantId }) => {
+  const currentTenantId = tenantId || (window.session || {}).tenantId || (window.session || {}).tenant_id || localStorage.getItem('tenantId');
+  const isCRomel = currentTenantId === 'c-romel';
+  const frequencyOptions = isCRomel ? [15] : [7, 15, 30];
+  const defaultFrequency = isCRomel ? 15 : 7;
+
   const [formData, setFormData] = useState({
-    type: 'Contado', name: '', status: 'Active', description: '', upfront_percentage: '', interest_percentage: '', frequency_days: 7, installments_count: 1, credit_period_months: 12, ...term
+    type: 'Contado', name: '', status: 'Active', description: '', upfront_percentage: '', interest_percentage: '', frequency_days: defaultFrequency, installments_count: 1, credit_period_months: 12, ...term
   });
   
   useEffect(() => {
@@ -818,10 +823,10 @@ const TermModal = ({ isOpen, onClose, term, onSave, globalSettings }) => {
       let tType = term.type;
       if (tType === 'PAYG' || tType === 'Fijo') tType = 'Contado';
       if (tType === 'INSTALMENTS' || tType === 'Abono' || tType === 'CRÉDITO') tType = 'Crédito';
-      setFormData({ ...term, type: tType });
+      setFormData({ ...term, type: tType, frequency_days: isCRomel ? 15 : (term.frequency_days || defaultFrequency) });
     }
-    else setFormData({ type: 'Contado', name: '', status: 'Active', description: '', upfront_percentage: '', interest_percentage: '', frequency_days: 7, installments_count: 1, credit_period_months: 12 });
-  }, [term]);
+    else setFormData({ type: 'Contado', name: '', status: 'Active', description: '', upfront_percentage: '', interest_percentage: '', frequency_days: defaultFrequency, installments_count: 1, credit_period_months: 12 });
+  }, [term, isCRomel, defaultFrequency]);
 
   useEffect(() => {
     if (formData.type === 'Crédito' || formData.type === 'INSTALMENTS' || formData.type === 'Abono') {
@@ -886,8 +891,8 @@ const TermModal = ({ isOpen, onClose, term, onSave, globalSettings }) => {
                 </div>
                 <div className="space-y-1.5">
                   <label className="text-[11px] font-black uppercase tracking-widest text-slate-400 ml-1">Frecuencia (Días)</label>
-                  <select className="w-full bg-slate-50 border-2 border-slate-100 rounded-xl py-3.5 px-5 font-bold text-slate-800 focus:border-blue-600 outline-none transition-all text-base appearance-none" value={formData.frequency_days || 7} onChange={e => setFormData({...formData, frequency_days: parseInt(e.target.value)})}>
-                    {[7, 15, 30].map(t => <option key={t} value={t}>{t} días</option>)}
+                  <select className="w-full bg-slate-50 border-2 border-slate-100 rounded-xl py-3.5 px-5 font-bold text-slate-800 focus:border-blue-600 outline-none transition-all text-base appearance-none" value={formData.frequency_days || defaultFrequency} onChange={e => setFormData({...formData, frequency_days: parseInt(e.target.value)})}>
+                    {frequencyOptions.map(t => <option key={t} value={t}>{t} días</option>)}
                   </select>
                 </div>
                 <div className="space-y-1.5">
@@ -912,7 +917,7 @@ const TermModal = ({ isOpen, onClose, term, onSave, globalSettings }) => {
                 <p className="font-bold text-blue-900 mb-1">Funcionamiento del Plan a Crédito</p>
                 <p className="font-medium text-blue-800/80">
                   Al vender un producto con este plan, la plataforma solicitará automáticamente un enganche inicial de <strong>${formData.upfront_percentage || 0}</strong>. 
-                  El saldo restante será dividido en <strong>{formData.installments_count} pagos iguales</strong> que el cliente deberá cubrir cada <strong>{formData.frequency_days || 7} días</strong>.
+                  El saldo restante será dividido en <strong>{formData.installments_count} pagos iguales</strong> que el cliente deberá cubrir cada <strong>{formData.frequency_days || defaultFrequency} días</strong>.
                 </p>
               </div>
             </div>
@@ -8915,7 +8920,7 @@ const App = () => {
         </div>
 
         <ProductModal isOpen={modalState.open && modalState.type === 'product'} onClose={() => setModalState({ type: null, open: false, item: null })} onSave={handleSaveProduct} product={modalState.item} inventory={data.inventory} products={data.products} users={data.users} structure={data.orgStructure} onAddInventory={handleAddInventory} onEditInventory={handleEditInventory} refreshData={refreshData} session={session} activeScope={activeScope} />
-        <TermModal isOpen={modalState.open && modalState.type === 'term'} onClose={() => setModalState({ type: null, open: false, item: null })} onSave={handleSaveTerm} term={modalState.item} globalSettings={globalSettings} />
+        <TermModal isOpen={modalState.open && modalState.type === 'term'} onClose={() => setModalState({ type: null, open: false, item: null })} onSave={handleSaveTerm} term={modalState.item} globalSettings={globalSettings} tenantId={session?.tenantId || session?.tenant_id} />
         <DataCollectionModal isOpen={modalState.open && modalState.type === 'collection'} onClose={() => setModalState({ type: null, open: false, item: null })} onSave={handleSaveCollection} collection={modalState.item} />
         <ActionModal isOpen={modalState.open && modalState.type === 'action'} onClose={() => setModalState({ type: null, open: false, item: null })} onSave={handleSaveAction} action={modalState.item} />
         <PaymentModal isOpen={modalState.open && modalState.type === 'payment'} onClose={() => setModalState({ type: null, open: false, item: null })} onSave={handleSavePayment} payment={modalState.item} clients={data.clients} contracts={data.contracts} session={session} products={data.products} inventory={data.inventory} deals={data.paymentPlans} onOpenClientModal={() => setModalState({ type: 'client', open: true, item: null })} onSaveContract={handleSaveContract} globalSettings={globalSettings} />
