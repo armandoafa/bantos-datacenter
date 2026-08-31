@@ -20,10 +20,46 @@ function App() {
   const [syncMessage, setSyncMessage] = useState(null);
   const [clearingData, setClearingData] = useState([]);
   const [activeView, setActiveView] = useState('dashboard'); // dashboard, reports, trustonic, clearing
+  const [isLiveConnected, setIsLiveConnected] = useState(false);
 
   useEffect(() => {
     fetchTenants();
   }, []);
+
+  useEffect(() => {
+    let eventSource;
+    try {
+      eventSource = new EventSource(`${API}/insight/stream`);
+      
+      eventSource.onopen = () => {
+        console.log('⚡ Conectado al canal SSE en tiempo real de Bantos Insight');
+        setIsLiveConnected(true);
+      };
+
+      eventSource.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          if (data.type === 'PAYMENT_UPDATED') {
+            console.log('⚡ Evento PAYMENT_UPDATED recibido vía SSE. Actualizando vistas en tiempo real...', data);
+            fetchClearing();
+            fetchDashboard();
+          }
+        } catch (err) {
+          console.error('Error parsing SSE event data:', err);
+        }
+      };
+
+      eventSource.onerror = () => {
+        setIsLiveConnected(false);
+      };
+    } catch (e) {
+      console.error('Error creando EventSource SSE:', e);
+    }
+
+    return () => {
+      if (eventSource) eventSource.close();
+    };
+  }, [selectedTenant]);
 
   useEffect(() => {
     fetchDashboard();
@@ -138,6 +174,12 @@ function App() {
         </div>
 
         <div className="header-actions">
+          {isLiveConnected && (
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', backgroundColor: '#ecfdf5', color: '#059669', padding: '4px 10px', borderRadius: '20px', fontSize: '12px', fontWeight: 'bold', border: '1px solid #a7f3d0' }}>
+              <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#10b981', display: 'inline-block' }}></span>
+              ⚡ En Vivo
+            </div>
+          )}
           {/* Global Tenant Filter */}
           <div className="filter-group">
             <label>Filtrar por Tenant:</label>

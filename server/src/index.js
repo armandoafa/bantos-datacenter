@@ -3434,6 +3434,7 @@ app.post('/api/webview/card-payments/transactions', async (req, res) => {
           ]
         );
         console.log(`  💾 Pago PENDING insertado en base de datos: ${externalId}`);
+        notifyInsightClients({ type: 'PAYMENT_UPDATED', txId: externalId, status: 'PENDING', amount: parseFloat(amount) });
       } catch (insertErr) {
         console.error('  ❌ Error al insertar pago PENDING en base de datos:', insertErr.message);
       }
@@ -3619,6 +3620,15 @@ app.post('/api/webhooks/dynamicore', async (req, res) => {
           console.log(`  📊 Valor pagado del contrato ${contract_id} actualizado a $${totalPaid}`);
         }
       }
+
+      // Notificar en tiempo real a Bantos Insight (SSE)
+      notifyInsightClients({
+        type: 'PAYMENT_UPDATED',
+        txId: dynamicore_tx_id,
+        status: bantosStatus,
+        tenantId: tenant_id,
+        amount: amount
+      });
     } catch (err) {
       console.error('  ❌ Error procesando webhook tx:', err);
     }
@@ -3951,6 +3961,41 @@ app.post('/api/superadmin/trustonic-inventory/sync', async (req, res) => {
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
+});
+
+// --- SSE Real-time Stream for Bantos Insight ---
+const insightSseClients = new Set();
+
+function notifyInsightClients(data) {
+  for (const clientRes of insightSseClients) {
+    try {
+      clientRes.write(`data: ${JSON.stringify(data)}\n\n`);
+    } catch (e) {
+      console.error('Error writing to SSE client:', e.message);
+    }
+  }
+}
+
+app.get('/api/insight/stream', (req, res) => {
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection', 'keep-alive');
+  res.flushHeaders();
+
+  insightSseClients.add(res);
+
+  const heartbeat = setInterval(() => {
+    try {
+      res.write(': heartbeat\n\n');
+    } catch (e) {
+      clearInterval(heartbeat);
+    }
+  }, 15000);
+
+  req.on('close', () => {
+    clearInterval(heartbeat);
+    insightSseClients.delete(res);
+  });
 });
 
 // --- API INSIGHTS Y STATS (insight.bantos.cloud) ---

@@ -36,6 +36,9 @@ def deploy():
         "cd ../client",
         "npm install",
         "npm run build",
+        "cd ../insight-client",
+        "npm install",
+        "npm run build",
         "exit"
     ]
     
