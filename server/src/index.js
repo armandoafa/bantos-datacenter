@@ -2326,6 +2326,21 @@ app.get('/api/backoffice/payments', async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+app.get('/api/backoffice/payments/:id/status', async (req, res) => {
+  const { id } = req.params;
+  const { tenantId } = req.query;
+  try {
+    const [rows] = await pool.query(
+      'SELECT status FROM payments WHERE upya_id = ? AND tenant_id = ? LIMIT 1',
+      [id, tenantId]
+    );
+    if (rows.length === 0) {
+      return res.status(404).json({ error: 'Pago no encontrado' });
+    }
+    res.json({ success: true, status: rows[0].status });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 // Helper para pushear pagos en tiempo real a Upya
 async function pushPaymentToUpya(paymentData, tenantId) {
   try {
@@ -3334,7 +3349,7 @@ app.post('/api/webview/card-payments/assign-card', async (req, res) => {
 });
 
 app.post('/api/webview/card-payments/transactions', async (req, res) => {
-  const { customer_id, payment_method, amount, is_recurrent, recurring_frequency } = req.body;
+  const { customer_id, payment_method, amount, is_recurrent, recurring_frequency, is_settlement, discount_amount, contract_id } = req.body;
 
   console.log('\n═══════════════════════════════════════════════════');
   console.log('🟨 [WEBVIEW PASO 4] POST /card-payments/transactions');
@@ -3373,6 +3388,56 @@ app.post('/api/webview/card-payments/transactions', async (req, res) => {
     const externalId     = chargeResult?.message?.external_id;
     const redirectionUrl = chargeResult?.message?.redirection_url;
     const resultCode     = chargeResult?.message?.result_code;
+
+    // Registrar cobro pendiente en la BD local de Bantos
+    if (externalId) {
+      try {
+        let tenant_id = null;
+        let client_bantos_id = null;
+        const [tenantRows] = await pool.query(
+          `SELECT u.tenant_id
+           FROM webview_customers w
+           JOIN users u ON w.username = u.username
+           WHERE w.customer_id = ? LIMIT 1`,
+          [customer_id]
+        );
+        if (tenantRows.length > 0) tenant_id = tenantRows[0].tenant_id;
+
+        const [clientRows] = await pool.query(
+          'SELECT upya_id FROM client_history WHERE email = (SELECT email FROM webview_customers WHERE customer_id = ?) OR phone = (SELECT phone FROM webview_customers WHERE customer_id = ?) LIMIT 1',
+          [customer_id, customer_id]
+        );
+        if (clientRows.length > 0) client_bantos_id = clientRows[0].upya_id;
+
+        let finalContractId = contract_id || null;
+        if (!finalContractId && client_bantos_id) {
+          const [contractRows] = await pool.query(
+            `SELECT upya_id, contract_number FROM contract_history 
+             WHERE client_id = ? AND tenant_id = ? AND status != 'SETTLED' 
+             ORDER BY synced_at DESC LIMIT 1`,
+            [client_bantos_id, tenant_id]
+          );
+          if (contractRows.length > 0) {
+            finalContractId = contractRows[0].contract_number || contractRows[0].upya_id;
+          }
+        }
+
+        await pool.query(
+          `INSERT INTO payments (
+            upya_id, transaction_id, tenant_id, contract_id, amount, method, status, payment_date,
+            is_recurring, client_id, is_settlement, discount_amount
+          ) VALUES (?, ?, ?, ?, ?, ?, 'PENDING', NOW(), ?, ?, ?, ?)`,
+          [
+            externalId, `TX-${externalId}`, tenant_id, finalContractId, parseFloat(amount),
+            is_recurrent ? 'Tarjeta Recurrente' : 'Tarjeta de Débito/Crédito',
+            is_recurrent ? 1 : 0, client_bantos_id, is_settlement ? 1 : 0, parseFloat(discount_amount || 0)
+          ]
+        );
+        console.log(`  💾 Pago PENDING insertado en base de datos: ${externalId}`);
+      } catch (insertErr) {
+        console.error('  ❌ Error al insertar pago PENDING en base de datos:', insertErr.message);
+      }
+    }
 
     if (is_recurrent) {
       if (resultCode === '00') {
@@ -3525,13 +3590,34 @@ app.post('/api/webhooks/dynamicore', async (req, res) => {
         );
         const totalPaid = parseFloat(paySum[0]?.total_paid || 0);
 
-        await pool.query(
-          `UPDATE contract_history 
-           SET paid_value = ? 
-           WHERE (upya_id = ? OR contract_number = ?) AND tenant_id = ?`,
-          [totalPaid, contract_id, contract_id, tenant_id]
+        // Obtener la información de finiquito y descuento del pago
+        const [payInfo] = await pool.query(
+          `SELECT is_settlement, discount_amount FROM payments WHERE upya_id = ? AND tenant_id = ? LIMIT 1`,
+          [dynamicore_tx_id, tenant_id]
         );
-        console.log(`  📊 Valor pagado del contrato ${contract_id} actualizado a $${totalPaid}`);
+        const isSettle = payInfo.length > 0 ? payInfo[0].is_settlement : 0;
+        const discountVal = payInfo.length > 0 ? parseFloat(payInfo[0].discount_amount || 0) : 0;
+
+        if (isSettle) {
+          // Si es finiquito, sumamos el descuento al valor pagado acumulado y marcamos como SETTLED
+          const finalPaidValue = totalPaid + discountVal;
+          await pool.query(
+            `UPDATE contract_history 
+             SET status = 'SETTLED', paid_value = ? 
+             WHERE (upya_id = ? OR contract_number = ?) AND tenant_id = ?`,
+            [finalPaidValue, contract_id, contract_id, tenant_id]
+          );
+          console.log(`  🎓 Contrato ${contract_id} FINIQUITADO (SETTLED) vía Webhook. Nuevo paid_value: $${finalPaidValue} (incluye descuento de $${discountVal})`);
+        } else {
+          // Si es abono normal, solo actualizamos el valor pagado
+          await pool.query(
+            `UPDATE contract_history 
+             SET paid_value = ? 
+             WHERE (upya_id = ? OR contract_number = ?) AND tenant_id = ?`,
+            [totalPaid, contract_id, contract_id, tenant_id]
+          );
+          console.log(`  📊 Valor pagado del contrato ${contract_id} actualizado a $${totalPaid}`);
+        }
       }
     } catch (err) {
       console.error('  ❌ Error procesando webhook tx:', err);

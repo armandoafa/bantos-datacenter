@@ -3196,9 +3196,15 @@ const SettlementModal = ({ isOpen, onClose, contract, session, onSettled }) => {
                       isRecurring={false}
                       recurringDates={[]} 
                       recurringFrequency="mensual"
+                      isSettlement={true}
+                      discountAmount={parseFloat(discountAmount || 0)}
+                      tenantId={session?.tenantId}
                       onSuccess={(token) => {
                         setDynamicoreSuccess(true);
-                        handleSettle(null, token);
+                        setTimeout(() => {
+                          if (onSettled) onSettled();
+                          onClose();
+                        }, 2000);
                       }} 
                       onError={setIframeError} 
                       onLoading={setIframeLoading} 
@@ -3271,7 +3277,7 @@ const SettlementModal = ({ isOpen, onClose, contract, session, onSettled }) => {
   );
 };
 
-const DynamicoreIframeContainer = ({ amount, clientId, isRecurring, recurringDates, recurringFrequency, onSuccess, onError, onLoading, iframeId = 'dynamicore-iframe', initialClientData = null, onBeforeTransaction }) => {
+const DynamicoreIframeContainer = ({ amount, clientId, isRecurring, recurringDates, recurringFrequency, onSuccess, onError, onLoading, iframeId = 'dynamicore-iframe', initialClientData = null, onBeforeTransaction, isSettlement = false, discountAmount = 0, tenantId = 'c-romel' }) => {
   const dynamicorePublicKey = import.meta.env.VITE_DYNAMICORE_PUBLIC_KEY || 'REEMPLAZAR_PUBLIC_KEY';
   const dynamicoreKeyId = import.meta.env.VITE_DYNAMICORE_KEY_ID || 'REEMPLAZAR_KEY_ID';
 
@@ -3345,7 +3351,41 @@ const DynamicoreIframeContainer = ({ amount, clientId, isRecurring, recurringDat
     };
 
     window.addEventListener('message', handleMessage);
-  }, [amount, clientId, isRecurring, recurringDates, recurringFrequency, onSuccess, onError, onLoading, dynamicoreCustomerId, customerCreated, onBeforeTransaction]);
+  }, [amount, clientId, isRecurring, recurringDates, recurringFrequency, onSuccess, onError, onLoading, dynamicoreCustomerId, customerCreated, onBeforeTransaction, isSettlement, discountAmount, tenantId]);
+
+  const pollPaymentStatus = (transactionId, paymentMethodId) => {
+    let attempts = 0;
+    const maxAttempts = 23; // ~46 segundos (23 * 2s)
+    onLoading(true);
+    
+    const interval = setInterval(async () => {
+      attempts++;
+      try {
+        console.log(`[Webhook Polling] Consultando estatus de transacción: ${transactionId} (Intento ${attempts})`);
+        const resStatus = await axios.get(`${API}/backoffice/payments/${transactionId}/status?tenantId=${tenantId}`);
+        const currentStatus = resStatus.data.status?.toUpperCase();
+        console.log(`[Webhook Polling] Estatus obtenido: ${currentStatus}`);
+        
+        if (currentStatus === 'PAID') {
+          clearInterval(interval);
+          onLoading(false);
+          onSuccess(paymentMethodId, transactionId);
+        } else if (currentStatus === 'FAILED') {
+          clearInterval(interval);
+          onLoading(false);
+          onError('El pago fue declinado por el emisor o fondos insuficientes.');
+        }
+      } catch (e) {
+        console.error('[Webhook Polling] Error consultando estatus:', e.message);
+      }
+      
+      if (attempts >= maxAttempts) {
+        clearInterval(interval);
+        onLoading(false);
+        onError('Excedido el tiempo de espera para confirmar el pago. Por favor verifica si el cargo se aplicó en tus logs.');
+      }
+    }, 2000);
+  };
 
   const processPayment = async (tokenId) => {
     if (!customerCreated) return;
@@ -3383,15 +3423,15 @@ const DynamicoreIframeContainer = ({ amount, clientId, isRecurring, recurringDat
         amount: parseFloat(amount),
         is_recurrent: isRecurring,
         recurring_frequency: recurringFrequency,
-        contract_id: finalContractId
+        contract_id: finalContractId,
+        is_settlement: isSettlement,
+        discount_amount: parseFloat(discountAmount || 0)
       };
       console.info(`[DYNAMICORE - Paso 4] Ejecutando transacción (is_recurrent: ${isRecurring})...`, txPayload);
       
       const res2 = await axios.post(`${API}/webview/card-payments/transactions`, txPayload);
       
       console.info(`[DYNAMICORE - Paso 4] Respuesta de transacción:`, res2.data);
-
-
 
       // 3-D Secure: redirigir al challenge del banco emisor si existe redirection_url
       if (res2.data.redirection_url) {
@@ -3404,9 +3444,10 @@ const DynamicoreIframeContainer = ({ amount, clientId, isRecurring, recurringDat
         const handle3DSMessage = (e) => {
           if (e.data === 'DYNAMICORE_3DS_DONE') {
             window.removeEventListener('message', handle3DSMessage);
-            onSuccess(paymentMethodId, res2.data.external_id);
+            pollPaymentStatus(res2.data.external_id, paymentMethodId);
           } else if (e.data === 'DYNAMICORE_3DS_CANCEL') {
             window.removeEventListener('message', handle3DSMessage);
+            onLoading(false);
             onError('El proceso de autenticación 3D Secure fue cancelado.');
           }
         };
@@ -3417,17 +3458,16 @@ const DynamicoreIframeContainer = ({ amount, clientId, isRecurring, recurringDat
           if (popup && popup.closed) {
             clearInterval(checkClosed);
             window.removeEventListener('message', handle3DSMessage);
-            // Optionally we could trigger onError, but it might have succeeded if postMessage fired
+            pollPaymentStatus(res2.data.external_id, paymentMethodId);
           }
         }, 1000);
         return;
       }
 
-      onSuccess(paymentMethodId, res2.data.external_id);
+      pollPaymentStatus(res2.data.external_id, paymentMethodId);
     } catch (err) {
       console.error('Error procesando pago:', err);
       onError('Hubo un error al procesar tu pago. Verifica los fondos o intenta con otra tarjeta.');
-    } finally {
       onLoading(false);
     }
   };
@@ -3496,7 +3536,7 @@ export const PaymentFormContent = ({
   formData, setFormData, isReadOnly, contracts, clients, selectedDeal, deals,
   onOpenClientModal, iframeError, setIframeError, dynamicoreSuccess, setDynamicoreSuccess,
   iframeLoading, setIframeLoading, showSchedule, setShowSchedule, iframeId = 'dynamicore-iframe',
-  isWizardMode = false, wizardFormData = null, onBeforeTransaction
+  isWizardMode = false, wizardFormData = null, onBeforeTransaction, tenantId = 'c-romel'
 }) => {
   return (
     <>
@@ -3731,6 +3771,7 @@ export const PaymentFormContent = ({
                       isRecurring={formData.is_recurring} 
                       recurringDates={formData.recurring_dates} 
                       recurringFrequency={formData.repayment_frequency || "mensual"}
+                      tenantId={tenantId}
                       onSuccess={(token, externalId) => {
                         setDynamicoreSuccess(true);
                         setFormData({...formData, account_number: 'TOKEN:'+token.substring(0,6)+'...', status: 'Paid', transaction_id: externalId ? 'TX-'+externalId : formData.transaction_id});
@@ -3890,6 +3931,7 @@ const PaymentModal = ({ isOpen, onClose, payment, onSave, clients, contracts, se
             iframeError={iframeError} setIframeError={setIframeError} dynamicoreSuccess={dynamicoreSuccess}
             setDynamicoreSuccess={setDynamicoreSuccess} iframeLoading={iframeLoading} setIframeLoading={setIframeLoading}
             showSchedule={showSchedule} setShowSchedule={setShowSchedule} iframeId="dynamicore-modal-iframe"
+            tenantId={session?.tenantId}
           />
         </div>
 
@@ -7210,6 +7252,7 @@ const ActionFormView = ({ actionType, prefillData, onBack, onSaveDraft, deals, p
                       setDynamicoreSuccess={setDynamicoreSuccess} iframeLoading={iframeLoading} setIframeLoading={setIframeLoading}
                       showSchedule={showSchedule} setShowSchedule={setShowSchedule} iframeId="dynamicore-inline-iframe"
                       isWizardMode={true} wizardFormData={{...formData, firstName, lastName}}
+                      tenantId={session?.tenantId}
                       onBeforeTransaction={async () => {
                         const totalCost = parseFloat(selectedProduct?.base_value) || parseFloat(selectedProduct?.precio) || 0;
                         const contractPayload = {
