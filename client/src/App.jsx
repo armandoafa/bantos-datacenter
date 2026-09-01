@@ -6003,7 +6003,7 @@ const OrganizationView = ({ structure, session, refreshData }) => {
   );
 };
 
-const ActionsView = ({ onNavigate, incompleteActions = [] }) => {
+const ActionsView = ({ onNavigate, incompleteActions = [], session }) => {
   const [filters, setFilters] = useState({
     search: '',
     status: 'all'
@@ -6122,6 +6122,7 @@ const ActionsView = ({ onNavigate, incompleteActions = [] }) => {
                 <th className="px-8 py-5 text-[12px] font-black text-slate-400 uppercase tracking-widest">Fecha</th>
                 <th className="px-8 py-5 text-[12px] font-black text-slate-400 uppercase tracking-widest">Nombre de Cliente</th>
                 <th className="px-8 py-5 text-[12px] font-black text-slate-400 uppercase tracking-widest">Dispositivo</th>
+                <th className="px-8 py-5 text-[12px] font-black text-slate-400 uppercase tracking-widest">Creado por</th>
                 <th className="px-8 py-5 text-[12px] font-black text-slate-400 uppercase tracking-widest">Estatus</th>
                 <th className="px-8 py-5 text-right"></th>
               </tr>
@@ -6137,6 +6138,7 @@ const ActionsView = ({ onNavigate, incompleteActions = [] }) => {
                       {item.status}
                     </span>
                   </td>
+                  <td className="px-8 py-5 text-base font-medium text-slate-600">{item.created_by || session?.contact_name || session?.username || '—'}</td>
                   <td className="px-8 py-5">
                     <div className="flex items-center justify-end gap-3">
                       <button onClick={() => onNavigate('Nuevo Cliente', item)} className="flex items-center gap-2 bg-slate-100 hover:bg-blue-600 hover:text-white hover:shadow-md text-blue-600 font-bold px-5 py-2.5 rounded-xl transition-all text-sm">
@@ -8875,7 +8877,7 @@ const App = () => {
             
             {/* Navigational state for Actions Form vs List */}
             {view === 'record-actions' && !actionFormState.open && (
-              <ActionsView incompleteActions={incompleteActions} onNavigate={(actionType, prefillData = null) => setActionFormState({ open: true, actionType, prefillData })} />
+              <ActionsView incompleteActions={incompleteActions} session={session} onNavigate={(actionType, prefillData = null) => setActionFormState({ open: true, actionType, prefillData })} />
             )}
               {view === 'record-actions' && actionFormState.open && (
                 <ActionFormView 
