@@ -1034,8 +1034,20 @@ const DashboardView = ({ summary, session, data, setView, onNewSale, onNewPaymen
   
   const todaySales = myContractsToday.reduce((sum, c) => sum + Number(c.total_value || 0), 0);
   
+  // Filter for manager if needed
+  const managerStoreId = session?.store_id || session?.org_id || session?.scope?.orgId;
+  const dashboardClients = (isManager && !isDirector && managerStoreId) 
+    ? data?.clients?.filter(c => String(c.store_id || c.org_id) === String(managerStoreId) || !c.store_id) 
+    : data?.clients;
+  const dashboardContracts = (isManager && !isDirector && managerStoreId) 
+    ? data?.contracts?.filter(c => String(c.store_id) === String(managerStoreId)) 
+    : data?.contracts;
+  const dashboardInventory = (isManager && !isDirector && managerStoreId) 
+    ? data?.inventory?.filter(c => String(c.store_id) === String(managerStoreId)) 
+    : data?.inventory;
+
   // Para Manager: Inventario bloqueado o bajo, etc.
-  const inventoryAvailable = data?.inventory?.filter(i => (i.status || '').toLowerCase() === 'available').length || 0;
+  const inventoryAvailable = (dashboardInventory || data?.inventory)?.filter(i => (i.status || '').toLowerCase() === 'available').length || 0;
   
   if (isSeller) {
     return (
@@ -1111,7 +1123,7 @@ const DashboardView = ({ summary, session, data, setView, onNewSale, onNewPaymen
             <Users size={28} className="text-blue-500 opacity-50" />
             <div>
               <p className="text-[12px] font-black uppercase tracking-widest mb-1 text-slate-400">Clientes Totales</p>
-              <p className="text-3xl font-black tracking-tighter text-slate-800">{data?.clients?.length || 0}</p>
+              <p className="text-3xl font-black tracking-tighter text-slate-800">{dashboardClients?.length || 0}</p>
             </div>
           </div>
 
@@ -1119,7 +1131,7 @@ const DashboardView = ({ summary, session, data, setView, onNewSale, onNewPaymen
             <FileText size={28} className="text-emerald-500 opacity-50" />
             <div>
               <p className="text-[12px] font-black uppercase tracking-widest mb-1 text-slate-400">Contratos Activos</p>
-              <p className="text-3xl font-black tracking-tighter text-slate-800">{data?.contracts?.length || 0}</p>
+              <p className="text-3xl font-black tracking-tighter text-slate-800">{dashboardContracts?.length || 0}</p>
             </div>
           </div>
           
@@ -8091,7 +8103,7 @@ const App = () => {
           userId: activeScope?.userId || session?.id,
           username: activeScope?.username || session?.username,
           role: session?.role,
-          storeId: session?.storeId,
+          storeId: session?.store_id || session?.storeId,
           orgId: (activeScope?.orgName === 'Tienda Central' || !activeScope?.orgId) ? undefined : activeScope?.orgId,
           scopeRole: activeScope?.role || undefined
         } 
@@ -8134,11 +8146,11 @@ const App = () => {
     const reqInterceptor = axios.interceptors.request.use(config => {
       if (session && config.method !== 'get') {
         if (config.data && typeof config.data === 'object' && !(config.data instanceof FormData)) {
-          config.data.storeId = session.storeId;
+          config.data.storeId = session.store_id || session.storeId;
           config.data.role = session.role;
           config.data.username = session.username;
         } else if (config.data instanceof FormData) {
-          if (!config.data.has('storeId')) config.data.append('storeId', session.storeId || '');
+          if (!config.data.has('storeId')) config.data.append('storeId', session.store_id || session.storeId || '');
           if (!config.data.has('role')) config.data.append('role', session.role || '');
           if (!config.data.has('username')) config.data.append('username', session.username || '');
         }
@@ -8769,14 +8781,14 @@ const App = () => {
             >
               {session.role === 'admin' && <option value="">Global / Central</option>}
               <optgroup label="Tiendas y Organizaciones">
-                {data.orgStructure.filter(o => o.type !== 'COUNTRY').map(o => (
+                {data.orgStructure.filter(o => o.type !== 'COUNTRY' && (session.role === 'admin' || String(o.id) === String(session.org_id))).map(o => (
                   <option key={`org_${o.id}`} value={`org_${o.id}`}>
                     {o.type === 'BRANCH' ? '🏢 ' : '🛒 '} {o.name}
                   </option>
                 ))}
               </optgroup>
               {data.users && (() => {
-                const uniqueUsers = [...new Map(data.users.filter(u => u.global_role !== 'admin' && u.global_role !== 'superadmin').map(u => [u.id, u])).values()];
+                const uniqueUsers = [...new Map(data.users.filter(u => u.global_role !== 'admin' && u.global_role !== 'superadmin' && (session.role === 'admin' || String(u.org_id) === String(session.org_id))).map(u => [u.id, u])).values()];
                 if (uniqueUsers.length === 0) return null;
                 return (
                   <optgroup label="Agentes / Usuarios">
