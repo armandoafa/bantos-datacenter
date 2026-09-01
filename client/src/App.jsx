@@ -8682,10 +8682,10 @@ const App = () => {
         { id: 'manage-contracts', label: 'Contratos', icon: FileText },
         { id: 'manage-payments', label: 'Pagos', icon: CreditCard },
       ]},
-      { id: 'trustonic-menu', label: 'Trustonic', icon: Smartphone, children: [
+      ...(isAdmin ? [{ id: 'trustonic-menu', label: 'Trustonic', icon: Smartphone, children: [
         { id: 'manage-trustonic', label: 'Dispositivos', icon: Smartphone },
         { id: 'manage-trustonic-logs', label: 'Movimientos', icon: Activity },
-      ]},
+      ]}] : []),
       { id: 'manage-audit', label: 'Auditoría', icon: Clock },
     ]},
     ...(isAdmin ? [{ section: 'Estructura', items: [ { id: 'setup-messaging', label: 'Mensajería', icon: Mail }, { id: 'setup-config', label: 'Sistema', icon: Settings2 } ]}] : []),
