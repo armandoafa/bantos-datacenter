@@ -809,7 +809,7 @@ async function getScopeFilter(tenantId, userId, role, scopeOrgId, scopeRole, tab
     return { filter: `(${tableAlias}.store_id = ? OR ${tableAlias}.store_id IS NULL)`, params: [storeId] };
   }
   if ((role === 'seller' || role === 'agent') && storeId) {
-    if (role === 'agent' && tableAlias === 'ch') {
+    if (role === 'agent' && (tableAlias === 'ch' || tableAlias === 'p')) {
       return { filter: `${tableAlias}.created_by_user_id = ?`, params: [userId] };
     }
     return { filter: `${tableAlias}.store_id = ?`, params: [storeId] };
