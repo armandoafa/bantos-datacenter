@@ -7406,20 +7406,22 @@ const ActionFormView = ({ actionType, prefillData, onBack, onSaveDraft, deals, p
           )}
 
           <div className="pt-8 mt-8 border-t border-slate-100 flex justify-between items-center">
-            <button onClick={() => onSaveDraft({ 
-              id: prefillData?.id || Date.now().toString(), 
-              firstName,
-              lastName,
-              clientName: `${firstName} ${lastName}`.trim(), 
-              device: selectedProduct?.name || '', 
-              status: `Paso ${currentStep}: ${steps[currentStep-1]}`,
-              selectedProductId,
-              dealId: selectedDeal,
-              ...formData,
-              signature: currentStep === 6 && salesSignaturePadRef.current && !salesSignaturePadRef.current.isEmpty() ? salesSignaturePadRef.current.toDataURL('image/png') : formData.signature
-            })} className="px-6 py-3 text-slate-400 hover:text-slate-600 font-bold transition-colors">Guardar Borrador y Salir</button>
+            {!(currentStep === 7 && dynamicoreSuccess) ? (
+              <button onClick={() => onSaveDraft({ 
+                id: prefillData?.id || Date.now().toString(), 
+                firstName,
+                lastName,
+                clientName: `${firstName} ${lastName}`.trim(), 
+                device: selectedProduct?.name || '', 
+                status: `Paso ${currentStep}: ${steps[currentStep-1]}`,
+                selectedProductId,
+                dealId: selectedDeal,
+                ...formData,
+                signature: currentStep === 6 && salesSignaturePadRef.current && !salesSignaturePadRef.current.isEmpty() ? salesSignaturePadRef.current.toDataURL('image/png') : formData.signature
+              })} className="px-6 py-3 text-slate-400 hover:text-slate-600 font-bold transition-colors">Guardar Borrador y Salir</button>
+            ) : <div />}
             <div className="flex gap-4">
-              {currentStep > 1 && (
+              {currentStep > 1 && !(currentStep === 7 && dynamicoreSuccess) && (
                 <button onClick={() => setCurrentStep(currentStep - 1)} disabled={isSubmitting} className="px-8 py-4 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold rounded-2xl transition-colors disabled:opacity-50">Atrás</button>
               )}
               {currentStep < steps.length ? (
