@@ -8781,14 +8781,14 @@ const App = () => {
             >
               {session.role === 'admin' && <option value="">Global / Central</option>}
               <optgroup label="Tiendas y Organizaciones">
-                {data.orgStructure.filter(o => o.type !== 'COUNTRY' && (session.role === 'admin' || String(o.id) === String(session.org_id))).map(o => (
+                {data.orgStructure.filter(o => o.type !== 'COUNTRY' && (session.role === 'admin' || String(o.id) === String(session.org_id) || String(o.id) === String(session.store_id))).map(o => (
                   <option key={`org_${o.id}`} value={`org_${o.id}`}>
                     {o.type === 'BRANCH' ? '🏢 ' : '🛒 '} {o.name}
                   </option>
                 ))}
               </optgroup>
               {data.users && (() => {
-                const uniqueUsers = [...new Map(data.users.filter(u => u.global_role !== 'admin' && u.global_role !== 'superadmin' && (session.role === 'admin' || String(u.org_id) === String(session.org_id))).map(u => [u.id, u])).values()];
+                const uniqueUsers = [...new Map(data.users.filter(u => u.global_role !== 'admin' && u.global_role !== 'superadmin' && (session.role === 'admin' || (u.org_id && String(u.org_id) === String(session.org_id)) || (u.store_id && String(u.store_id) === String(session.store_id)) || (u.store_id && String(u.store_id) === String(session.org_id)))).map(u => [u.id, u])).values()];
                 if (uniqueUsers.length === 0) return null;
                 return (
                   <optgroup label="Agentes / Usuarios">
