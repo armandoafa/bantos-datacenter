@@ -6142,11 +6142,13 @@ const ActionsView = ({ onNavigate, incompleteActions = [], session }) => {
                   <td className="px-8 py-5">
                     <div className="flex items-center justify-end gap-3">
                       <button onClick={() => onNavigate('Nuevo Cliente', item)} className="flex items-center gap-2 bg-slate-100 hover:bg-blue-600 hover:text-white hover:shadow-md text-blue-600 font-bold px-5 py-2.5 rounded-xl transition-all text-sm">
-                        <ClipboardCheck size={16} /> Completar ahora
+                        {item.contract_id ? <><Eye size={16} /> Ver Detalles</> : <><ClipboardCheck size={16} /> Completar ahora</>}
                       </button>
-                      <button className="p-2.5 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-xl transition-colors">
-                        <Trash2 size={18} />
-                      </button>
+                      {!item.contract_id && (
+                        <button className="p-2.5 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-xl transition-colors">
+                          <Trash2 size={18} />
+                        </button>
+                      )}
                     </div>
                   </td>
                 </tr>
@@ -6514,6 +6516,7 @@ const MobileDocScannerView = ({ sessionId, mode }) => {
 };
 
 const ActionFormView = ({ actionType, prefillData, onBack, onSaveDraft, deals, products, inventory, clients, onOpenClientModal, onSaveContract, onSavePayment, session, globalSettings }) => {
+  const isCompleted = !!prefillData?.contract_id;
   const [selectedDeal, setSelectedDeal] = useState(prefillData?.dealId || '');
   const [selectedProductId, setSelectedProductId] = useState(() => {
     if (prefillData?.selectedProductId) return prefillData.selectedProductId;
@@ -6736,7 +6739,7 @@ const ActionFormView = ({ actionType, prefillData, onBack, onSaveDraft, deals, p
         )}
       </div>
 
-      <div className="flex flex-col md:flex-row gap-3 md:gap-5 md:p-8">
+      <div className={`flex flex-col md:flex-row gap-3 md:gap-5 md:p-8 ${isCompleted ? 'pointer-events-none opacity-80' : ''}`}>
         {/* Sidebar: Progress Stepper */}
         <div className="w-full md:w-64 flex-shrink-0 bg-white rounded-[32px] border border-slate-100 shadow-sm p-6 self-start sticky top-5 md:p-8">
           <h3 className="text-sm font-black text-slate-400 uppercase tracking-widest mb-6">Progreso del Formulario</h3>
@@ -7512,6 +7515,22 @@ const ActionFormView = ({ actionType, prefillData, onBack, onSaveDraft, deals, p
                             client_id: res?.client_id || paymentFormData.client_id,
                             selectedDeal
                           });
+                          
+                          if (prefillData?.id) {
+                            await onSaveDraft({
+                              id: prefillData.id,
+                              firstName,
+                              lastName,
+                              clientName: `${firstName} ${lastName}`.trim(), 
+                              device: selectedProduct?.name || '', 
+                              status: `Paso ${currentStep}: Pago`,
+                              selectedProductId,
+                              dealId: selectedDeal,
+                              ...formData,
+                              signature: formData.signature,
+                              contract_id: newContractId
+                            });
+                          }
                           
                           alert('¡Venta y Pago registrados con éxito!');
                           onBack(); // Cierra el asistente
