@@ -6133,12 +6133,12 @@ const ActionsView = ({ onNavigate, incompleteActions = [], session }) => {
                   <td className="px-8 py-5 text-base font-medium text-slate-500">{item.date}</td>
                   <td className="px-8 py-5 text-base font-bold text-slate-800">{item.clientName}</td>
                   <td className="px-8 py-5 text-base font-medium text-slate-600">{item.device}</td>
+                  <td className="px-8 py-5 text-base font-medium text-slate-600">{item.created_by || session?.contact_name || session?.username || '—'}</td>
                   <td className="px-8 py-5">
                     <span className="text-xs font-mono text-amber-700 bg-amber-50 px-3 py-1.5 rounded-lg border border-amber-100 font-bold">
                       {item.status}
                     </span>
                   </td>
-                  <td className="px-8 py-5 text-base font-medium text-slate-600">{item.created_by || session?.contact_name || session?.username || '—'}</td>
                   <td className="px-8 py-5">
                     <div className="flex items-center justify-end gap-3">
                       <button onClick={() => onNavigate('Nuevo Cliente', item)} className="flex items-center gap-2 bg-slate-100 hover:bg-blue-600 hover:text-white hover:shadow-md text-blue-600 font-bold px-5 py-2.5 rounded-xl transition-all text-sm">
