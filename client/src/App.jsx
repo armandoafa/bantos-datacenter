@@ -6998,31 +6998,7 @@ const ActionFormView = ({ actionType, prefillData, onBack, onSaveDraft, deals, p
                       )}
                     </div>
 
-                    <div className="col-span-2 md:col-span-1">
-                      <label className="block text-sm font-black text-slate-400 uppercase tracking-widest mb-3 flex items-center justify-between">
-                        <span>Captura Comprobante Domicilio</span>
-                        {formData.proofAddress && <span className="text-emerald-600 font-black text-xs">✓ Capturado</span>}
-                      </label>
-                      {formData.proofAddress ? (
-                        <div className="relative w-full h-36 rounded-2xl overflow-hidden border-2 border-emerald-500 bg-black group">
-                          <img src={formData.proofAddress} alt="Comprobante domicilio" className="w-full h-full object-cover" />
-                          <div className="absolute inset-0 bg-slate-900/60 opacity-0 group-hover:opacity-100 flex items-center justify-center gap-2 transition-all">
-                            <button type="button" onClick={() => fileProofRef.current?.click()} className="px-3 py-1.5 bg-blue-600 text-white rounded-xl font-bold text-xs">Cambiar</button>
-                            <button type="button" onClick={() => setFormData({ ...formData, proofAddress: '' })} className="p-2 bg-rose-600 text-white rounded-xl font-bold text-xs"><Trash2 size={16} /></button>
-                          </div>
-                        </div>
-                      ) : (
-                        <div 
-                          onClick={() => fileProofRef.current?.click()} 
-                          className="w-full h-36 border-2 border-dashed border-slate-300 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-500 hover:bg-emerald-50 hover:border-emerald-300 hover:text-emerald-600 transition-colors cursor-pointer"
-                        >
-                          <div className="text-center">
-                            <FileText size={24} className="mx-auto mb-2 text-emerald-600" />
-                            <span className="text-base font-bold">Tomar Foto / Subir Comprobante</span>
-                          </div>
-                        </div>
-                      )}
-                    </div>
+
 
                     <div className="col-span-2 md:col-span-2">
                       <label className="block text-sm font-black text-slate-400 uppercase tracking-widest mb-3 flex items-center justify-between">
@@ -7448,9 +7424,33 @@ const ActionFormView = ({ actionType, prefillData, onBack, onSaveDraft, deals, p
               )}
               {currentStep < steps.length ? (
                 <button onClick={() => {
+                  if (currentStep === 1) {
+                    if (!selectedProductId || !formData.serialNumber) {
+                      alert('Por favor selecciona un dispositivo y proporciona un número de serie.');
+                      return;
+                    }
+                  }
                   if (currentStep === 2) {
                     if (!firstName || !lastName || !formData.email || !formData.phoneMain || !formData.address) {
                       alert('Por favor completa todos los campos requeridos en esta sección (Nombre, Apellidos, Correo, Teléfono y Dirección).');
+                      return;
+                    }
+                  }
+                  if (currentStep === 3) {
+                    if (!formData.referenceName || !formData.phoneEmergency) {
+                      alert('Por favor completa todos los campos requeridos en esta sección (Nombre y Teléfono de Referencia).');
+                      return;
+                    }
+                  }
+                  if (currentStep === 4) {
+                    if (!formData.idType || !formData.idNumber || !formData.idFront || !formData.selfie) {
+                      alert('Por favor completa los datos de identificación y captura la identificación (frente) y la selfie.');
+                      return;
+                    }
+                  }
+                  if (currentStep === 5) {
+                    if (!selectedDeal) {
+                      alert('Por favor selecciona un plan de pago.');
                       return;
                     }
                   }
