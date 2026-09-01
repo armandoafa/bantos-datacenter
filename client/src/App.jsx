@@ -7000,13 +7000,13 @@ const ActionFormView = ({ actionType, prefillData, onBack, onSaveDraft, deals, p
 
 
 
-                    <div className="col-span-2 md:col-span-2">
+                    <div className="col-span-2 md:col-span-1">
                       <label className="block text-sm font-black text-slate-400 uppercase tracking-widest mb-3 flex items-center justify-between">
                         <span>Captura Selfie</span>
                         {formData.selfie && <span className="text-emerald-600 font-black text-xs">✓ Capturado</span>}
                       </label>
                       {formData.selfie ? (
-                        <div className="relative w-full h-44 rounded-2xl overflow-hidden border-2 border-emerald-500 bg-black group">
+                        <div className="relative w-full h-36 rounded-2xl overflow-hidden border-2 border-emerald-500 bg-black group">
                           <img src={formData.selfie} alt="Selfie" className="w-full h-full object-cover" />
                           <div className="absolute inset-0 bg-slate-900/60 opacity-0 group-hover:opacity-100 flex items-center justify-center gap-2 transition-all">
                             <button type="button" onClick={() => fileSelfieRef.current?.click()} className="px-3 py-1.5 bg-blue-600 text-white rounded-xl font-bold text-xs">Cambiar</button>
@@ -7016,7 +7016,7 @@ const ActionFormView = ({ actionType, prefillData, onBack, onSaveDraft, deals, p
                       ) : (
                         <div 
                           onClick={() => fileSelfieRef.current?.click()} 
-                          className="w-full h-44 border-2 border-dashed border-slate-300 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-500 hover:bg-amber-50 hover:border-amber-300 hover:text-amber-600 transition-colors cursor-pointer"
+                          className="w-full h-36 border-2 border-dashed border-slate-300 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-500 hover:bg-amber-50 hover:border-amber-300 hover:text-amber-600 transition-colors cursor-pointer"
                         >
                           <div className="text-center">
                             <Camera size={24} className="mx-auto mb-2 text-amber-600" />
