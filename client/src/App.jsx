@@ -7454,8 +7454,13 @@ const ActionFormView = ({ actionType, prefillData, onBack, onSaveDraft, deals, p
                       return;
                     }
                   }
-                  if (currentStep === 6 && salesSignaturePadRef.current && !salesSignaturePadRef.current.isEmpty()) {
-                    setFormData(prev => ({ ...prev, signature: salesSignaturePadRef.current.toDataURL('image/png') }));
+                  if (currentStep === 6) {
+                    if (salesSignaturePadRef.current && !salesSignaturePadRef.current.isEmpty()) {
+                      setFormData(prev => ({ ...prev, signature: salesSignaturePadRef.current.toDataURL('image/png') }));
+                    } else if (!formData.signature) {
+                      alert('Por favor recaba la firma del cliente antes de continuar.');
+                      return;
+                    }
                   }
                   setCurrentStep(currentStep + 1);
                 }} disabled={isSubmitting} className="px-8 py-4 bg-blue-600 hover:bg-blue-700 shadow-lg shadow-blue-600/30 text-white font-bold rounded-2xl transition-all disabled:opacity-50">Siguiente</button>
