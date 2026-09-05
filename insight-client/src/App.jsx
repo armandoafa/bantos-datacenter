@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { 
-  BarChart3, FileText, Users, DollarSign, Smartphone, Calendar, Search, RefreshCw, Layers, TrendingUp, Info
+  BarChart3, FileText, Users, DollarSign, Smartphone, Calendar, Search, RefreshCw, Layers, TrendingUp, Info, Download
 } from 'lucide-react';
 import './App.css';
 
@@ -124,6 +124,47 @@ function App() {
     }
   };
 
+  const exportClearingToCSV = () => {
+    if (!clearingData || clearingData.length === 0) return;
+    
+    const headers = ['Fecha', 'Tenant', 'Transaccion', 'Metodo', 'Monto Bruto', 'Comision', 'Monto Neto', 'Conciliacion', 'Estado Tx'];
+    
+    const rows = clearingData.map(c => {
+      const date = new Date(c.payment_date).toLocaleString('es-MX').replace(/,/g, '');
+      const tenant = c.tenant_name || c.tenant_id;
+      const txId = c.transaction_id || 'N/A';
+      const method = c.method || 'Tarjeta Automatica';
+      const reconciled = c.is_reconciled ? 'Conciliado' : 'Pendiente';
+      const status = c.status?.toUpperCase() || 'PENDING';
+      
+      return [
+        `"${date}"`,
+        `"${tenant}"`,
+        `"${txId}"`,
+        `"${method}"`,
+        c.amount,
+        c.estimated_fee,
+        c.estimated_net,
+        `"${reconciled}"`,
+        `"${status}"`
+      ];
+    });
+    
+    const csvContent = [
+      headers.join(','),
+      ...rows.map(e => e.join(','))
+    ].join('\n');
+    
+    const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `Conciliacion_Clearing_${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   const handleSyncTrustonic = async () => {
     if (!window.confirm('¿Iniciar sincronización manual con Trustonic? Esto puede demorar unos minutos por el scraping.')) return;
     setSyncing(true);
@@ -142,6 +183,38 @@ function App() {
       setSyncMessage({ type: 'error', text: 'Error de red al intentar sincronizar' });
     } finally {
       setSyncing(false);
+    }
+  };
+
+  const [reconciling, setReconciling] = useState(false);
+  const [reconcileMessage, setReconcileMessage] = useState(null);
+
+  const handleReconcileUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const formData = new FormData();
+    formData.append('statement', file);
+
+    setReconciling(true);
+    setReconcileMessage(null);
+    try {
+      const res = await fetch(`${API}/insight/clearing/reconcile`, {
+        method: 'POST',
+        body: formData,
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setReconcileMessage({ type: 'success', text: `Conciliados: ${data.successCount}. No conciliados: ${data.unReconciledCount}. Total depósitos en estado de cuenta: ${data.totalDepositsFound}` });
+        fetchClearing(); // Refresh the table
+      } else {
+        setReconcileMessage({ type: 'error', text: data.error || 'Error en conciliación' });
+      }
+    } catch (err) {
+      setReconcileMessage({ type: 'error', text: 'Error de red al intentar conciliar' });
+    } finally {
+      setReconciling(false);
+      e.target.value = null; // reset file input
     }
   };
 
@@ -549,16 +622,53 @@ function App() {
               <h2 style={{ margin: 0 }}>Conciliación Financiera (Clearing)</h2>
               <p className="text-muted" style={{ marginTop: '4px' }}>Auditoría global de transacciones Dynamicore y cálculo de comisiones</p>
             </div>
-            <button 
-              className="btn-primary" 
-              onClick={fetchClearing}
-              disabled={loading}
-              style={{display: 'flex', alignItems: 'center', gap: '8px'}}
-            >
-              <RefreshCw size={18} className={loading ? 'animate-spin' : ''} />
-              Refrescar Datos
-            </button>
+            <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+              <div style={{ position: 'relative' }}>
+                <input 
+                  type="file" 
+                  accept=".csv,.pdf" 
+                  id="reconcile-upload" 
+                  style={{ display: 'none' }}
+                  onChange={handleReconcileUpload}
+                  disabled={reconciling}
+                />
+                <label 
+                  htmlFor="reconcile-upload"
+                  className="btn-primary"
+                  style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', background: '#4f46e5' }}
+                >
+                  <FileText size={18} className={reconciling ? 'animate-pulse' : ''} />
+                  {reconciling ? 'Conciliando...' : 'Subir Estado de Cuenta'}
+                </label>
+              </div>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <button 
+                  className="btn-primary" 
+                  onClick={exportClearingToCSV}
+                  disabled={loading || clearingData.length === 0}
+                  style={{display: 'flex', alignItems: 'center', gap: '8px', background: '#10b981', border: '1px solid #10b981'}}
+                >
+                  <Download size={18} />
+                  Exportar a Excel
+                </button>
+                <button 
+                  className="btn-primary" 
+                  onClick={fetchClearing}
+                  disabled={loading}
+                  style={{display: 'flex', alignItems: 'center', gap: '8px'}}
+                >
+                  <RefreshCw size={18} className={loading ? 'animate-spin' : ''} />
+                  Refrescar Datos
+                </button>
+              </div>
+            </div>
           </div>
+          
+          {reconcileMessage && (
+            <div className={`alert alert-${reconcileMessage.type === 'success' ? 'success' : 'danger'}`} style={{ marginTop: '16px', padding: '12px', borderRadius: '8px', backgroundColor: reconcileMessage.type === 'success' ? '#dcfce7' : '#fee2e2', color: reconcileMessage.type === 'success' ? '#166534' : '#991b1b' }}>
+              {reconcileMessage.text}
+            </div>
+          )}
 
           <div className="kpi-grid" style={{marginTop: '20px'}}>
             <div className="kpi-card card-gradient">
@@ -604,7 +714,8 @@ function App() {
                   <th>Monto Bruto</th>
                   <th>Comisión</th>
                   <th>Monto Neto</th>
-                  <th>Estado</th>
+                  <th>Conciliación</th>
+                  <th>Estado Tx</th>
                 </tr>
               </thead>
               <tbody>
@@ -624,6 +735,13 @@ function App() {
                       <td className="text-danger font-medium">-${Number(c.estimated_fee).toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
                       <td className="text-success font-bold">${Number(c.estimated_net).toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
                       <td>
+                        {c.is_reconciled ? (
+                          <span className="badge badge-success" title={c.bank_reference || ''} style={{ background: '#dcfce7', color: '#166534' }}>✓ Conciliado</span>
+                        ) : (
+                          <span className="badge badge-warning" style={{ background: '#fef3c7', color: '#92400e' }}>Pendiente</span>
+                        )}
+                      </td>
+                      <td>
                         <span className={`badge badge-${c.status?.toUpperCase() === 'PAID' || c.status?.toUpperCase() === 'ACCEPTED' ? 'success' : c.status?.toUpperCase() === 'FAILED' ? 'danger' : 'warning'}`}>
                           {c.status?.toUpperCase() || 'PENDING'}
                         </span>
@@ -632,7 +750,7 @@ function App() {
                   ))
                 ) : (
                   <tr>
-                    <td colSpan="8" className="empty-state">No hay transacciones registradas.</td>
+                    <td colSpan="9" className="empty-state">No hay transacciones registradas.</td>
                   </tr>
                 )}
               </tbody>
