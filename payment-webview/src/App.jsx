@@ -26,7 +26,9 @@ function App() {
   if (step === 'construction') {
     return (
       <div className="min-h-screen flex items-center justify-center bg-white">
-        <h1 className="text-xl text-gray-500 font-semibold">Proceso en construcción</h1>
+        <div className="border-4 border-blue-600 rounded-2xl p-10 -rotate-6 bg-blue-50/50 shadow-xl backdrop-blur-sm">
+          <h1 className="text-4xl md:text-5xl text-blue-700 font-extrabold text-center tracking-tight">Proceso en construcción</h1>
+        </div>
       </div>
     );
   }
