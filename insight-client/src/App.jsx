@@ -173,7 +173,7 @@ function App() {
       const seconds = String(d.getSeconds()).padStart(2, '0');
       const dateStr = `${day}/${month}/${year} ${hours}:${minutes}:${seconds}`;
       
-      const tenant = c.tenant_name || c.tenant_id;
+      const tenant = c.tenant_name || c.tenant_id || 'Comercializadora Romel';
       const txId = c.transaction_id || 'N/A';
       const method = c.method || 'Tarjeta Automatica';
       const reconciled = c.is_reconciled ? 'Conciliado' : 'Pendiente';
@@ -782,7 +782,7 @@ function App() {
                   clearingData.map(c => (
                     <tr key={c.id}>
                       <td className="text-muted">{new Date(c.payment_date).toLocaleString('es-MX')}</td>
-                      <td className="font-bold">{c.tenant_name || c.tenant_id}</td>
+                      <td className="font-bold">{c.tenant_name || c.tenant_id || 'Comercializadora Romel'}</td>
                       <td>
                         <div className="detail-preview">
                           <span className="font-bold text-indigo">{c.transaction_id || 'N/A'}</span>
