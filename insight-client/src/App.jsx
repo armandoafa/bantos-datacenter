@@ -21,6 +21,8 @@ function App() {
   const [clearingData, setClearingData] = useState([]);
   const [activeView, setActiveView] = useState('dashboard'); // dashboard, reports, trustonic, clearing
   const [isLiveConnected, setIsLiveConnected] = useState(false);
+  const [exportStartDate, setExportStartDate] = useState('');
+  const [exportEndDate, setExportEndDate] = useState('');
 
   useEffect(() => {
     fetchTenants();
@@ -127,9 +129,33 @@ function App() {
   const exportClearingToCSV = () => {
     if (!clearingData || clearingData.length === 0) return;
     
+    let filteredData = clearingData;
+    
+    if (exportStartDate || exportEndDate) {
+      filteredData = clearingData.filter(c => {
+        const d = new Date(c.payment_date);
+        
+        let valid = true;
+        if (exportStartDate) {
+          const start = new Date(exportStartDate + 'T00:00:00');
+          if (d < start) valid = false;
+        }
+        if (exportEndDate) {
+          const end = new Date(exportEndDate + 'T23:59:59');
+          if (d > end) valid = false;
+        }
+        return valid;
+      });
+    }
+
+    if (!filteredData || filteredData.length === 0) {
+      alert('No hay transacciones en este período para exportar.');
+      return;
+    }
+
     const headers = ['Fecha', 'Tenant', 'Transaccion', 'Metodo', 'Monto Bruto', 'Comision', 'Monto Neto', 'Conciliacion', 'Estado Tx'];
     
-    const rows = clearingData.map(c => {
+    const rows = filteredData.map(c => {
       const date = new Date(c.payment_date).toLocaleString('es-MX').replace(/,/g, '');
       const tenant = c.tenant_name || c.tenant_id;
       const txId = c.transaction_id || 'N/A';
@@ -641,7 +667,24 @@ function App() {
                   {reconciling ? 'Conciliando...' : 'Subir Estado de Cuenta'}
                 </label>
               </div>
-              <div style={{ display: 'flex', gap: '8px' }}>
+              <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                <input 
+                  type="date" 
+                  className="input-field" 
+                  style={{ width: '130px', padding: '8px' }} 
+                  value={exportStartDate}
+                  onChange={e => setExportStartDate(e.target.value)}
+                  title="Fecha Inicio"
+                />
+                <span style={{ color: '#64748b' }}>-</span>
+                <input 
+                  type="date" 
+                  className="input-field" 
+                  style={{ width: '130px', padding: '8px' }} 
+                  value={exportEndDate}
+                  onChange={e => setExportEndDate(e.target.value)}
+                  title="Fecha Final"
+                />
                 <button 
                   className="btn-primary" 
                   onClick={exportClearingToCSV}
