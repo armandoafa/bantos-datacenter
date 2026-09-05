@@ -134,14 +134,16 @@ function App() {
     if (exportStartDate || exportEndDate) {
       filteredData = clearingData.filter(c => {
         const d = new Date(c.payment_date);
-        
         let valid = true;
+        
         if (exportStartDate) {
-          const start = new Date(exportStartDate + 'T00:00:00');
+          const [sYear, sMonth, sDay] = exportStartDate.split('-');
+          const start = new Date(sYear, sMonth - 1, sDay, 0, 0, 0);
           if (d < start) valid = false;
         }
         if (exportEndDate) {
-          const end = new Date(exportEndDate + 'T23:59:59');
+          const [eYear, eMonth, eDay] = exportEndDate.split('-');
+          const end = new Date(eYear, eMonth - 1, eDay, 23, 59, 59, 999);
           if (d > end) valid = false;
         }
         return valid;
@@ -156,7 +158,15 @@ function App() {
     const headers = ['Fecha', 'Tenant', 'Transaccion', 'Metodo', 'Monto Bruto', 'Comision', 'Monto Neto', 'Conciliacion', 'Estado Tx'];
     
     const rows = filteredData.map(c => {
-      const date = new Date(c.payment_date).toLocaleString('es-MX').replace(/,/g, '');
+      const d = new Date(c.payment_date);
+      const day = String(d.getDate()).padStart(2, '0');
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const year = d.getFullYear();
+      const hours = String(d.getHours()).padStart(2, '0');
+      const minutes = String(d.getMinutes()).padStart(2, '0');
+      const seconds = String(d.getSeconds()).padStart(2, '0');
+      const dateStr = `${day}/${month}/${year} ${hours}:${minutes}:${seconds}`;
+      
       const tenant = c.tenant_name || c.tenant_id;
       const txId = c.transaction_id || 'N/A';
       const method = c.method || 'Tarjeta Automatica';
@@ -164,7 +174,7 @@ function App() {
       const status = c.status?.toUpperCase() || 'PENDING';
       
       return [
-        `"${date}"`,
+        `"${dateStr}"`,
         `"${tenant}"`,
         `"${txId}"`,
         `"${method}"`,
