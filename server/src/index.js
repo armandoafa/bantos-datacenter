@@ -3389,6 +3389,25 @@ app.post('/api/webview/card-payments/transactions', async (req, res) => {
     chargePayload.recurring = { type: recType };
   }
 
+  try {
+    const [tRows] = await pool.query(
+      `SELECT u.tenant_id, t.company_name
+       FROM webview_customers w
+       JOIN users u ON w.username = u.username
+       JOIN tenants t ON u.tenant_id = t.tenant_id
+       WHERE w.customer_id = ? LIMIT 1`,
+      [customer_id]
+    );
+    if (tRows.length > 0) {
+      chargePayload.extras = {
+        tenant_id: tRows[0].tenant_id,
+        tenant_name: tRows[0].company_name
+      };
+    }
+  } catch (err) {
+    console.error('Error fetching tenant for extras:', err);
+  }
+
   console.log('  ➡️  REQ body (hacia Dynamicore):', JSON.stringify(chargePayload, null, 2));
 
   try {
@@ -3526,6 +3545,9 @@ app.post('/api/webhooks/dynamicore', async (req, res) => {
     
     // Obtener tenant_id del customer_id
     try {
+      let tenant_id = tx.extras?.tenant_id || null;
+      let client_bantos_id = null;
+
       const [tenantRows] = await pool.query(
         `SELECT u.tenant_id, u.id AS user_id, u.username
          FROM webview_customers w
@@ -3534,10 +3556,10 @@ app.post('/api/webhooks/dynamicore', async (req, res) => {
         [customer_id]
       );
       
-      let tenant_id = null;
-      let client_bantos_id = null;
       if (tenantRows.length > 0) {
-        tenant_id = tenantRows[0].tenant_id;
+        if (!tenant_id) {
+          tenant_id = tenantRows[0].tenant_id;
+        }
         
         // Tratar de encontrar al client_id real (upya_id) en Bantos
         const [clientRows] = await pool.query(
