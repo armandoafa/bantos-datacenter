@@ -11,7 +11,7 @@ function cn(...inputs) {
 }
 
 function App() {
-  const [step, setStep] = useState('auth'); // 'auth' or 'payment'
+  const [step, setStep] = useState('construction'); // 'construction', 'auth' or 'payment'
   const [method, setMethod] = useState('card'); // 'card' or 'oxxo'
   const [amount, setAmount] = useState('0.00');
   const [clientId, setClientId] = useState('');
@@ -22,6 +22,14 @@ function App() {
     setClientId(data.client_id);
     setStep('payment');
   };
+
+  if (step === 'construction') {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-white">
+        <h1 className="text-xl text-gray-500 font-semibold">Proceso en construcción</h1>
+      </div>
+    );
+  }
 
   if (step === 'auth') {
     return (
