@@ -23,8 +23,12 @@ function App() {
   const [clearingData, setClearingData] = useState([]);
   const [activeView, setActiveView] = useState('dashboard'); // dashboard, reports, trustonic, clearing
   const [isLiveConnected, setIsLiveConnected] = useState(false);
-  const [exportStartDate, setExportStartDate] = useState(null);
-  const [exportEndDate, setExportEndDate] = useState(null);
+  const [exportEndDate, setExportEndDate] = useState(new Date());
+  const [exportStartDate, setExportStartDate] = useState(() => {
+    const d = new Date();
+    d.setDate(d.getDate() - 30);
+    return d;
+  });
 
   useEffect(() => {
     fetchTenants();
