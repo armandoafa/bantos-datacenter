@@ -3328,7 +3328,8 @@ const DynamicoreIframeContainer = ({ amount, clientId, isRecurring, recurringDat
     try {
       const payload = {
         ...customerForm,
-        is_recurrent: isRecurring
+        is_recurrent: isRecurring,
+        source: 'datacenter'
       };
       
       console.info(`[DYNAMICORE - Paso 1] Creando cliente (recurrent: ${isRecurring})...`, payload);
@@ -3413,7 +3414,8 @@ const DynamicoreIframeContainer = ({ amount, clientId, isRecurring, recurringDat
       const assignPayload = {
         customer_id: activeCustomerId,
         token_id: tokenId,
-        is_recurrent: isRecurring
+        is_recurrent: isRecurring,
+        source: 'datacenter'
       };
       console.info(`[DYNAMICORE - Paso 3] Asignando token al cliente (is_recurrent: ${isRecurring})...`, assignPayload);
       
@@ -3442,7 +3444,8 @@ const DynamicoreIframeContainer = ({ amount, clientId, isRecurring, recurringDat
         recurring_frequency: recurringFrequency,
         contract_id: finalContractId,
         is_settlement: isSettlement,
-        discount_amount: parseFloat(discountAmount || 0)
+        discount_amount: parseFloat(discountAmount || 0),
+        source: 'datacenter'
       };
       console.info(`[DYNAMICORE - Paso 4] Ejecutando transacción (is_recurrent: ${isRecurring})...`, txPayload);
       

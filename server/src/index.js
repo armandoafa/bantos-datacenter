@@ -3239,10 +3239,12 @@ app.post('/api/webview/validate-device', async (req, res) => {
 // Crea el cliente en Dynamicore y guarda el customer_id (message.id) localmente.
 // Con idempotencia: si el mismo username o email ya fue registrado, devuelve el ID existente.
 app.post('/api/webview/card-payments/create-customer', async (req, res) => {
-  return res.status(400).json({ 
-    success: false, 
-    message: 'El proceso de pago se encuentra en construcción. Por favor, intenta más tarde.' 
-  });
+  if (req.body.source !== 'datacenter') {
+    return res.status(400).json({ 
+      success: false, 
+      message: 'El proceso de pago se encuentra en construcción. Por favor, intenta más tarde.' 
+    });
+  }
   const {
     first_name, last_name, address_one, city, state,
     zipcode, email, country, date_of_birth, last4ssn, phone, username, is_recurrent
@@ -3322,10 +3324,12 @@ app.post('/api/webview/card-payments/create-customer', async (req, res) => {
 });
 
 app.post('/api/webview/card-payments/assign-card', async (req, res) => {
-  return res.status(400).json({ 
-    success: false, 
-    message: 'El proceso de pago se encuentra en construcción. Por favor, intenta más tarde.' 
-  });
+  if (req.body.source !== 'datacenter') {
+    return res.status(400).json({ 
+      success: false, 
+      message: 'El proceso de pago se encuentra en construcción. Por favor, intenta más tarde.' 
+    });
+  }
   const { customer_id, token_id, is_recurrent } = req.body;
 
   console.log('\n═══════════════════════════════════════════════════');
@@ -3358,10 +3362,12 @@ app.post('/api/webview/card-payments/assign-card', async (req, res) => {
 });
 
 app.post('/api/webview/card-payments/transactions', async (req, res) => {
-  return res.status(400).json({ 
-    success: false, 
-    message: 'El proceso de pago se encuentra en construcción. Por favor, intenta más tarde.' 
-  });
+  if (req.body.source !== 'datacenter') {
+    return res.status(400).json({ 
+      success: false, 
+      message: 'El proceso de pago se encuentra en construcción. Por favor, intenta más tarde.' 
+    });
+  }
   const { customer_id, payment_method, amount, is_recurrent, recurring_frequency, is_settlement, discount_amount, contract_id } = req.body;
 
   console.log('\n═══════════════════════════════════════════════════');
