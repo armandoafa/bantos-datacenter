@@ -25,7 +25,8 @@ const ImageModule = require('docxtemplater-image-module-free');
 const sizeOf = require('image-size');
 
 const multer = require('multer');
-
+const { parse: csvParse } = require('csv-parse/sync');
+const pdfParse = require('pdf-parse');
 // Helper: Sanitizar valores para columnas DECIMAL en MySQL
 const safeDecimal = (val) => {
   const n = parseFloat(val);
@@ -3238,6 +3239,10 @@ app.post('/api/webview/validate-device', async (req, res) => {
 // Crea el cliente en Dynamicore y guarda el customer_id (message.id) localmente.
 // Con idempotencia: si el mismo username o email ya fue registrado, devuelve el ID existente.
 app.post('/api/webview/card-payments/create-customer', async (req, res) => {
+  return res.status(400).json({ 
+    success: false, 
+    message: 'El proceso de pago se encuentra en construcción. Por favor, intenta más tarde.' 
+  });
   const {
     first_name, last_name, address_one, city, state,
     zipcode, email, country, date_of_birth, last4ssn, phone, username, is_recurrent
@@ -3317,6 +3322,10 @@ app.post('/api/webview/card-payments/create-customer', async (req, res) => {
 });
 
 app.post('/api/webview/card-payments/assign-card', async (req, res) => {
+  return res.status(400).json({ 
+    success: false, 
+    message: 'El proceso de pago se encuentra en construcción. Por favor, intenta más tarde.' 
+  });
   const { customer_id, token_id, is_recurrent } = req.body;
 
   console.log('\n═══════════════════════════════════════════════════');
@@ -3349,6 +3358,10 @@ app.post('/api/webview/card-payments/assign-card', async (req, res) => {
 });
 
 app.post('/api/webview/card-payments/transactions', async (req, res) => {
+  return res.status(400).json({ 
+    success: false, 
+    message: 'El proceso de pago se encuentra en construcción. Por favor, intenta más tarde.' 
+  });
   const { customer_id, payment_method, amount, is_recurrent, recurring_frequency, is_settlement, discount_amount, contract_id } = req.body;
 
   console.log('\n═══════════════════════════════════════════════════');
@@ -4012,6 +4025,8 @@ app.get('/api/insight/clearing', async (req, res) => {
           p.method, 
           p.status, 
           p.is_recurring,
+          p.is_reconciled,
+          p.bank_reference,
           ROUND(p.amount * 0.035 + 2.50, 2) AS estimated_fee,
           ROUND(p.amount - (p.amount * 0.035 + 2.50), 2) AS estimated_net
       FROM payments p
@@ -4024,6 +4039,149 @@ app.get('/api/insight/clearing', async (req, res) => {
     res.status(500).json({ error: e.message });
   }
 });
+
+// Endpoint for Banorte Bank Reconciliation
+app.post('/api/insight/clearing/reconcile', upload.single('statement'), async (req, res) => {
+  if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
+
+  try {
+    const filePath = req.file.path;
+    const isPDF = req.file.originalname.toLowerCase().endsWith('.pdf');
+    let deposits = [];
+
+    if (isPDF) {
+      const dataBuffer = fs.readFileSync(filePath);
+      const data = await pdfParse(dataBuffer);
+      const lines = data.text.split('\n');
+      
+      const dateRegex = /^(\d{2}-[A-Z]{3}-\d{2})/;
+      let currentTx = null;
+      let currentBalance = null;
+
+      const processTx = (tx) => {
+          if (!tx || tx.amounts.length === 0) return;
+          
+          const newBalance = tx.amounts[tx.amounts.length - 1];
+          
+          if (currentBalance === null) {
+              currentBalance = newBalance;
+              return;
+          }
+          
+          const diff = newBalance - currentBalance;
+          if (diff > 0.01) {
+              // It's a deposit!
+              let depositAmount = tx.amounts[0];
+              if (Math.abs(depositAmount - diff) > 0.05) {
+                  depositAmount = Math.round(diff * 100) / 100;
+              }
+              deposits.push({
+                  date: tx.date,
+                  amount: depositAmount,
+                  description: tx.description
+              });
+          }
+          currentBalance = newBalance;
+      };
+
+      for (let i = 0; i < lines.length; i++) {
+        const line = lines[i].trim();
+        const dateMatch = line.match(dateRegex);
+        
+        if (dateMatch) {
+          // Process previous tx
+          processTx(currentTx);
+          currentTx = { date: dateMatch[1], description: line, amounts: [] };
+        } else if (currentTx) {
+          currentTx.description += ' ' + line;
+        }
+
+        // Extract amounts from current line
+        if (currentTx) {
+            const amountMatches = line.match(/\$[\d,]+\.\d{2}/g);
+            if (amountMatches) {
+                for (const amtStr of amountMatches) {
+                    const val = parseFloat(amtStr.replace(/[$,]/g, ''));
+                    // We allow duplicate amounts now because a transaction amount could be the same as the balance
+                    currentTx.amounts.push(val);
+                }
+            }
+        }
+      }
+      // Process last tx
+      processTx(currentTx);
+    } else {
+      // Parse CSV
+      const fileContent = fs.readFileSync(filePath, 'utf8');
+      const records = csvParse(fileContent, {
+        columns: true,
+        skip_empty_lines: true,
+        trim: true
+      });
+
+      for (const record of records) {
+        const dep = parseFloat(record.Deposito || 0);
+        if (dep > 0) {
+          deposits.push({
+            date: record.Fecha,
+            amount: dep,
+            description: record.Descripcion
+          });
+        }
+      }
+    }
+
+    // Now attempt to match deposits with transactions
+    let successCount = 0;
+    let unReconciledCount = 0;
+    let matchedDetails = [];
+
+    const [payments] = await pool.query(`
+      SELECT p.id, p.transaction_id, p.amount, p.payment_date,
+             ROUND(p.amount - (p.amount * 0.035 + 2.50), 2) AS estimated_net
+      FROM payments p
+      WHERE p.status IN ('PAID', 'SUCCESS') AND (p.is_reconciled = 0 OR p.is_reconciled IS NULL)
+    `);
+
+    for (const deposit of deposits) {
+      let matched = false;
+      for (const payment of payments) {
+        if (!payment.matched && Math.abs(parseFloat(payment.estimated_net) - deposit.amount) < 0.01) {
+          payment.matched = true;
+          matched = true;
+          
+          await pool.query(
+            'UPDATE payments SET is_reconciled = 1, reconciled_at = NOW(), bank_reference = ? WHERE id = ?',
+            [deposit.description.substring(0, 250), payment.id]
+          );
+          
+          successCount++;
+          matchedDetails.push({ payment_id: payment.id, deposit_amount: deposit.amount });
+          break;
+        }
+      }
+      if (!matched) {
+        unReconciledCount++;
+      }
+    }
+
+    fs.unlinkSync(filePath);
+
+    res.json({
+      success: true,
+      message: 'Conciliación completada',
+      successCount,
+      unReconciledCount,
+      totalDepositsFound: deposits.length,
+      matchedDetails
+    });
+
+  } catch (error) {
+    console.error('Reconciliation error:', error);
+    res.status(500).json({ error: 'Error procesando el archivo de conciliación' });
+  }
+});
+
 
 app.get('/api/insight/dashboard', async (req, res) => {
   const { tenantId } = req.query;
