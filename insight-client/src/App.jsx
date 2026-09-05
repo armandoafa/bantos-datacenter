@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { 
   BarChart3, FileText, Users, DollarSign, Smartphone, Calendar, Search, RefreshCw, Layers, TrendingUp, Info, Download
 } from 'lucide-react';
+import DatePicker from 'react-datepicker';
+import 'react-datepicker/dist/react-datepicker.css';
 import './App.css';
 
 const API_BASE = 'https://bantos.cloud/datacenter-api'; // O local en dev: 'http://localhost:4000/api'
@@ -21,8 +23,8 @@ function App() {
   const [clearingData, setClearingData] = useState([]);
   const [activeView, setActiveView] = useState('dashboard'); // dashboard, reports, trustonic, clearing
   const [isLiveConnected, setIsLiveConnected] = useState(false);
-  const [exportStartDate, setExportStartDate] = useState('');
-  const [exportEndDate, setExportEndDate] = useState('');
+  const [exportStartDate, setExportStartDate] = useState(null);
+  const [exportEndDate, setExportEndDate] = useState(null);
 
   useEffect(() => {
     fetchTenants();
@@ -137,13 +139,13 @@ function App() {
         let valid = true;
         
         if (exportStartDate) {
-          const [sYear, sMonth, sDay] = exportStartDate.split('-');
-          const start = new Date(sYear, sMonth - 1, sDay, 0, 0, 0);
+          const start = new Date(exportStartDate);
+          start.setHours(0, 0, 0, 0);
           if (d < start) valid = false;
         }
         if (exportEndDate) {
-          const [eYear, eMonth, eDay] = exportEndDate.split('-');
-          const end = new Date(eYear, eMonth - 1, eDay, 23, 59, 59, 999);
+          const end = new Date(exportEndDate);
+          end.setHours(23, 59, 59, 999);
           if (d > end) valid = false;
         }
         return valid;
@@ -678,22 +680,22 @@ function App() {
                 </label>
               </div>
               <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                <input 
-                  type="date" 
-                  className="input-field" 
-                  style={{ width: '130px', padding: '8px' }} 
-                  value={exportStartDate}
-                  onChange={e => setExportStartDate(e.target.value)}
-                  title="Fecha Inicio"
+                <DatePicker 
+                  selected={exportStartDate}
+                  onChange={date => setExportStartDate(date)}
+                  dateFormat="dd/MM/yyyy"
+                  placeholderText="Fecha Inicio"
+                  className="input-field"
+                  isClearable
                 />
                 <span style={{ color: '#64748b' }}>-</span>
-                <input 
-                  type="date" 
-                  className="input-field" 
-                  style={{ width: '130px', padding: '8px' }} 
-                  value={exportEndDate}
-                  onChange={e => setExportEndDate(e.target.value)}
-                  title="Fecha Final"
+                <DatePicker 
+                  selected={exportEndDate}
+                  onChange={date => setExportEndDate(date)}
+                  dateFormat="dd/MM/yyyy"
+                  placeholderText="Fecha Final"
+                  className="input-field"
+                  isClearable
                 />
                 <button 
                   className="btn-primary" 
