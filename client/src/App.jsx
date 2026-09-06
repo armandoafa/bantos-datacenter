@@ -3369,6 +3369,7 @@ const DynamicoreIframeContainer = ({ amount, clientId, isRecurring, recurringDat
     };
 
     window.addEventListener('message', handleMessage);
+    return () => window.removeEventListener('message', handleMessage);
   }, [amount, clientId, isRecurring, recurringDates, recurringFrequency, onSuccess, onError, onLoading, dynamicoreCustomerId, customerCreated, onBeforeTransaction, isSettlement, discountAmount, tenantId]);
 
   const pollPaymentStatus = (transactionId, paymentMethodId) => {
