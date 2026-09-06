@@ -132,6 +132,25 @@ function App() {
     }
   };
 
+  const pollClearing = async () => {
+    try {
+      const url = `${API}/insight/clearing`;
+      const res = await fetch(url);
+      const data = await res.json();
+      setClearingData(data);
+    } catch (e) {
+      console.error('Error polling clearing data:', e);
+    }
+  };
+
+  useEffect(() => {
+    let interval;
+    if (activeView === 'clearing') {
+      interval = setInterval(pollClearing, 10000);
+    }
+    return () => clearInterval(interval);
+  }, [activeView]);
+
   const exportClearingToCSV = () => {
     if (!clearingData || clearingData.length === 0) return;
     
