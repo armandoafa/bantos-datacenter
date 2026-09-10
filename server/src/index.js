@@ -3393,7 +3393,48 @@ app.post('/api/webview/card-payments/assign-card', async (req, res) => {
   console.log('  ➡️  REQ body:', JSON.stringify({ customer_id, token_id, is_recurrent }, null, 2));
 
   try {
-    const result = await dynamicore.assignCardToCustomer(customer_id, token_id, is_recurrent);
+    let result;
+    try {
+      result = await dynamicore.assignCardToCustomer(customer_id, token_id, is_recurrent);
+    } catch (assignErr) {
+      const assignErrStr = JSON.stringify(assignErr.response?.data || assignErr.message);
+      // Si el cliente no existe en Dynamicore (p. ej. "Customer Not Found" debido a caché local desactualizado o entorno de sandbox limpiado)
+      if (assignErrStr.includes('Customer Not Found')) {
+        console.log(`  ⚠️ Customer Not Found en Dynamicore para ID ${customer_id}. Buscando datos locales para re-crear cliente...`);
+        const [custRows] = await pool.query(
+          'SELECT username, email, first_name, last_name, phone FROM webview_customers WHERE customer_id = ? LIMIT 1',
+          [customer_id]
+        );
+        if (custRows.length > 0) {
+          const cust = custRows[0];
+          console.log(`  🌐 Re-creando cliente en Dynamicore para email: ${cust.email}...`);
+          const newCustRes = await dynamicore.createCardPayCustomer({
+            first_name: cust.first_name,
+            last_name: cust.last_name,
+            email: cust.email,
+            phone: cust.phone,
+            username: cust.username,
+            country: 'Mexico'
+          }, is_recurrent);
+          const newCustomerId = newCustRes?.message?.id;
+          if (newCustomerId) {
+            console.log(`  ✅ Cliente re-creado con nuevo ID: ${newCustomerId}. Actualizando BD local y reintentando assignCard...`);
+            await pool.query(
+              'UPDATE webview_customers SET customer_id = ? WHERE username = ? OR email = ?',
+              [newCustomerId, cust.username, cust.email]
+            );
+            result = await dynamicore.assignCardToCustomer(newCustomerId, token_id, is_recurrent);
+          } else {
+            throw assignErr;
+          }
+        } else {
+          throw assignErr;
+        }
+      } else {
+        throw assignErr;
+      }
+    }
+
     console.log('  ⬅️  Dynamicore RAW response:', JSON.stringify(result, null, 2));
 
     if (result.status === 'error' || result?.data?.status === 'error') {
@@ -3414,8 +3455,8 @@ app.post('/api/webview/card-payments/assign-card', async (req, res) => {
     // Para cobros (recurrentes o no), si la tarjeta ya existe en el cliente ("Payment Method Exists")
     // o falla la asignación pero tenemos token_id válido, usamos el token_id / token como payment_method_id fallback
     const rawErrorStr = JSON.stringify(errDetail);
-    if (token_id && (rawErrorStr.includes('Payment Method Exists') || !is_recurrent)) {
-      console.log(`  ⚠️ Fallback / Tarjeta existente: usando token_id directamente (${token_id})`);
+    if (token_id && (rawErrorStr.includes('Payment Method Exists') || rawErrorStr.includes('Customer Not Found') || !is_recurrent)) {
+      console.log(`  ⚠️ Fallback / Tarjeta o Cliente: usando token_id directamente (${token_id})`);
       return res.json({ success: true, payment_method_id: token_id, fallback: true });
     }
 
