@@ -458,22 +458,25 @@ body {
 
 table {
   width: 100%;
+  min-width: 1400px;
   border-collapse: collapse;
 }
 
 th {
   background-color: #f8fafc;
-  padding: 16px 24px;
+  padding: 16px 20px;
   font-size: 12px;
   font-weight: 700;
   text-transform: uppercase;
   color: var(--text-muted);
   border-bottom: 1px solid #e2e8f0;
+  white-space: nowrap;
 }
 
 td {
-  padding: 16px 24px;
+  padding: 16px 20px;
   border-bottom: 1px solid #e2e8f0;
+  white-space: nowrap;
 }
 
 .font-bold { font-weight: 600; }
