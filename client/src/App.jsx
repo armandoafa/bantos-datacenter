@@ -70,7 +70,7 @@ class ViewErrorBoundary extends React.Component {
   }
 }
 
-const API = import.meta.env.VITE_API_URL || (window.location.hostname === 'localhost' ? 'http://localhost:4000/api' : 'https://bantos.cloud/datacenter-api');
+const API = import.meta.env.VITE_API_URL || (window.location.hostname === 'localhost' ? 'http://localhost:4000/api' : '/datacenter-api');
 
 // --- Componentes Compartidos ---
 const Badge = ({ status }) => {
@@ -1193,7 +1193,7 @@ const DashboardView = ({ summary, session, data, setView, onNewSale, onNewPaymen
   );
 };
 
-const ClientsView = ({ clients = [], onEdit, onCreate }) => {
+const ClientsView = ({ clients = [], contracts = [], payments = [], onEdit, onCreate, session, refreshData }) => {
   const [filters, setFilters] = useState({
     search: '',
     status: '',
@@ -1203,6 +1203,17 @@ const ClientsView = ({ clients = [], onEdit, onCreate }) => {
   const [quickFilter, setQuickFilter] = useState('all');
 
   const safeClients = Array.isArray(clients) ? clients : [];
+
+  const handleDelete = async (c) => {
+    if (!confirm(`¿Estás seguro de que deseas eliminar al cliente "${c.name}"? Esta acción no se puede deshacer.`)) return;
+    const tenantId = session?.tenantId || session?.tenant_id || localStorage.getItem('tenantId');
+    try {
+      await axios.delete(`${API}/backoffice/clients/${c.upya_id || c.id}?tenantId=${tenantId}`);
+      if (refreshData) refreshData();
+    } catch (err) {
+      alert('Error al eliminar cliente: ' + (err.response?.data?.error || err.message));
+    }
+  };
 
   const counts = {
     total: safeClients.length,
@@ -1386,13 +1397,51 @@ const ClientsView = ({ clients = [], onEdit, onCreate }) => {
             </td>
             <td className="px-8 py-5"><Badge status={c.status || 'Active'} /></td>
             <td className="px-8 py-5 text-right">
-              <button 
-                onClick={() => onEdit(c)} 
-                className="p-2 rounded-xl hover:bg-blue-50 text-slate-400 hover:text-blue-600 transition-all flex items-center gap-1 font-bold text-xs"
-                title="Editar cliente y Wallet"
-              >
-                <Settings2 size={18} />
-              </button>
+              {(() => {
+                const clientUpyaId = String(c.upya_id || '');
+                const clientIdStr = String(c.id || '');
+                const clientNum = String(c.client_number || '');
+
+                const hasContracts = (contracts || []).some(ct => 
+                  (ct.client_id && (String(ct.client_id) === clientUpyaId || String(ct.client_id) === clientIdStr)) ||
+                  (clientNum && ct.client_number && String(ct.client_number) === clientNum)
+                );
+
+                const hasPayments = (payments || []).some(p => 
+                  (p.client_id && (String(p.client_id) === clientUpyaId || String(p.client_id) === clientIdStr))
+                );
+
+                const canDelete = !hasContracts && !hasPayments;
+
+                return (
+                  <div className="flex items-center justify-end gap-1">
+                    <button 
+                      onClick={() => onEdit(c)} 
+                      className="p-2 rounded-xl hover:bg-blue-50 text-slate-400 hover:text-blue-600 transition-all font-bold text-xs"
+                      title="Editar cliente y Wallet"
+                    >
+                      <Settings2 size={18} />
+                    </button>
+                    {canDelete ? (
+                      <button 
+                        onClick={() => handleDelete(c)}
+                        className="p-2 rounded-xl hover:bg-rose-50 text-slate-400 hover:text-rose-600 transition-all font-bold text-xs"
+                        title="Eliminar cliente"
+                      >
+                        <Trash2 size={18} />
+                      </button>
+                    ) : (
+                      <button 
+                        disabled
+                        className="p-2 rounded-xl text-slate-200 cursor-not-allowed font-bold text-xs"
+                        title="No se puede eliminar: tiene contratos o pagos registrados"
+                      >
+                        <Trash2 size={18} />
+                      </button>
+                    )}
+                  </div>
+                );
+              })()}
             </td>
           </>
         )} 
@@ -1890,7 +1939,7 @@ const ClientModal = ({ isOpen, onClose, client, onSave, onGenerateWallet, orgStr
                       <Smartphone size={24} />
                     </div>
                     <div>
-                      <h4 className="font-black text-indigo-950 text-base">Escanear desde Teléfono Celular (DeepLink)</h4>
+                      <h4 className="font-black text-indigo-950 text-base">Escanear desde Teléfono Celular</h4>
                       <p className="text-xs font-bold text-indigo-700/80">Genera un enlace o código QR para tomar las fotos directamente con la cámara de tu celular y sincronizarlas en vivo.</p>
                     </div>
                   </div>
@@ -1930,7 +1979,7 @@ const ClientModal = ({ isOpen, onClose, client, onSave, onGenerateWallet, orgStr
 
               <div>
                 <h3 className="text-xl font-black text-slate-900">Escanear Documentos desde Móvil</h3>
-                <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">Escanea el QR o copia el enlace DeepLink</p>
+                <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">Escanea el QR o copia el enlace</p>
               </div>
 
               <div className="bg-slate-50 p-6 rounded-3xl border border-slate-100 space-y-4">
@@ -2170,7 +2219,7 @@ const ContractsView = ({ contracts = [], onNew, onEdit, onSign, onSettle, sessio
           <>
             <td className="px-8 py-5">
               <p className="font-black text-slate-900 tracking-tight">{c.contract_number || c.upya_id}</p>
-              <p className="text-[12px] text-slate-400 font-bold uppercase tracking-widest mt-0.5">Reference ID</p>
+              <p className="text-[12px] text-slate-400 font-bold uppercase tracking-widest mt-0.5">ID: {c.id || c.upya_id || '—'}</p>
             </td>
             <td className="px-8 py-5">
               <p className="font-bold text-slate-800">{c.client_name || '—'}</p>
@@ -3436,7 +3485,11 @@ const DynamicoreIframeContainer = ({ amount, clientId, isRecurring, recurringDat
         }
       }
 
-      // Paso 4: Ejecutar cargo directo con el payment_method correcto
+      // Extraer metadatos de tarjeta de la respuesta de asignación si están disponibles
+      const cardInfo = res1.data?.data || {};
+      const fullName = `${customerForm.first_name || ''} ${customerForm.last_name || ''}`.trim() || initialClientData?.name || initialClientData?.client_name || null;
+
+      // Paso 4: Ejecutar cargo directo con el payment_method correcto y extras poblados
       const txPayload = {
         customer_id: activeCustomerId,
         payment_method: paymentMethodId,
@@ -3446,6 +3499,12 @@ const DynamicoreIframeContainer = ({ amount, clientId, isRecurring, recurringDat
         contract_id: finalContractId,
         is_settlement: isSettlement,
         discount_amount: parseFloat(discountAmount || 0),
+        tenant_id: tenantId,
+        customer_name: fullName,
+        card_last4: cardInfo.last4 || cardInfo.last_four || cardInfo.card?.last4 || null,
+        card_exp_date: cardInfo.exp_date || (cardInfo.exp_month && cardInfo.exp_year ? `${cardInfo.exp_month}/${cardInfo.exp_year}` : null),
+        card_type: cardInfo.type || cardInfo.card_type || cardInfo.brand || null,
+        issuing_bank: cardInfo.bank || cardInfo.issuing_bank || null,
         source: 'datacenter'
       };
       console.info(`[DYNAMICORE - Paso 4] Ejecutando transacción (is_recurrent: ${isRecurring})...`, txPayload);
@@ -3488,7 +3547,8 @@ const DynamicoreIframeContainer = ({ amount, clientId, isRecurring, recurringDat
       pollPaymentStatus(res2.data.external_id, paymentMethodId);
     } catch (err) {
       console.error('Error procesando pago:', err);
-      onError('Hubo un error al procesar tu pago. Verifica los fondos o intenta con otra tarjeta.');
+      const specificErr = err.response?.data?.error || err.response?.data?.message || err.message || 'Hubo un error al procesar tu pago. Verifica los fondos o intenta con otra tarjeta.';
+      onError(typeof specificErr === 'string' ? specificErr : JSON.stringify(specificErr));
       onLoading(false);
     }
   };
@@ -5620,7 +5680,7 @@ const UsersView = ({ users, structure, session, refreshData }) => {
     payload.password = payload.sys_password;
     delete payload.sys_username;
     delete payload.sys_password;
-    payload.tenantId = session.tenantId;
+    payload.tenantId = session?.tenantId || session?.tenant_id || localStorage.getItem('tenantId');
 
     try {
       if (editingUser?.id) {
@@ -5637,8 +5697,9 @@ const UsersView = ({ users, structure, session, refreshData }) => {
 
   const handleDelete = async (id, name) => {
     if(!confirm(`¿Seguro que deseas eliminar al usuario ${name}?`)) return;
+    const tenantId = session?.tenantId || session?.tenant_id || localStorage.getItem('tenantId');
     try {
-      await axios.delete(`${API}/backoffice/users/${id}?tenantId=${session.tenantId}`);
+      await axios.delete(`${API}/backoffice/users/${id}?tenantId=${tenantId}`);
       refreshData();
     } catch (err) {
       alert('Error eliminando usuario: ' + (err.response?.data?.error || err.message));
@@ -6398,43 +6459,6 @@ const MobileDocScannerView = ({ sessionId, mode }) => {
               </label>
             </div>
 
-            <div className="bg-slate-900 p-6 rounded-3xl border border-slate-800 space-y-4">
-              <div className="flex items-center justify-between">
-                <h3 className="text-sm font-black uppercase tracking-widest text-slate-300 flex items-center gap-2">
-                  <FileText size={16} className="text-emerald-400" /> Comprobante Domicilio
-                </h3>
-                {sessionData?.proofAddress && (
-                  <span className="bg-emerald-500/20 text-emerald-400 text-[10px] font-black uppercase px-2.5 py-1 rounded-full border border-emerald-500/30">
-                    ✓ Recibido
-                  </span>
-                )}
-              </div>
-
-              {sessionData?.proofAddress ? (
-                <div className="relative rounded-2xl overflow-hidden border border-slate-700 bg-black">
-                  <img src={sessionData.proofAddress} alt="Comprobante" className="w-full h-44 object-cover" />
-                </div>
-              ) : (
-                <div className="w-full h-36 border-2 border-dashed border-slate-700 rounded-2xl bg-slate-950/50 flex flex-col items-center justify-center text-slate-500 gap-2">
-                  <Camera size={32} className="text-slate-400" />
-                  <span className="text-xs font-bold text-slate-400">Toma una foto del comprobante de domicilio</span>
-                </div>
-              )}
-
-              <label className="block w-full">
-                <input 
-                  type="file" 
-                  accept="image/*" 
-                  capture="environment" 
-                  onChange={(e) => handleFileUpload('proofAddress', e)}
-                  className="hidden" 
-                />
-                <div className="w-full bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white font-black text-xs uppercase tracking-widest py-4 rounded-2xl text-center cursor-pointer transition-all shadow-lg shadow-emerald-600/20 flex items-center justify-center gap-2">
-                  {uploadingField === 'proofAddress' ? <RefreshCw className="animate-spin" size={16} /> : <Camera size={16} />}
-                  <span>{sessionData?.proofAddress ? 'Volver a Tomar Foto' : 'Tomar Foto / Seleccionar'}</span>
-                </div>
-              </label>
-            </div>
 
             <div className="bg-slate-900 p-6 rounded-3xl border border-slate-800 space-y-4">
               <div className="flex items-center justify-between">
@@ -7051,7 +7075,7 @@ const ActionFormView = ({ actionType, prefillData, onBack, onSaveDraft, deals, p
                           <Smartphone size={24} />
                         </div>
                         <div>
-                          <h4 className="font-black text-indigo-950 text-base">Escanear desde Teléfono Celular (DeepLink)</h4>
+                          <h4 className="font-black text-indigo-950 text-base">Escanear desde Teléfono Celular</h4>
                           <p className="text-xs font-bold text-indigo-700/80">Genera un enlace o código QR para tomar las fotos directamente con la cámara de tu celular y sincronizarlas en vivo.</p>
                         </div>
                       </div>
@@ -7196,7 +7220,7 @@ const ActionFormView = ({ actionType, prefillData, onBack, onSaveDraft, deals, p
                           <Smartphone size={24} />
                         </div>
                         <div>
-                          <h4 className="font-black text-indigo-950 text-base">Escanear desde Teléfono Celular (DeepLink)</h4>
+                          <h4 className="font-black text-indigo-950 text-base">Escanear desde Teléfono Celular</h4>
                           <p className="text-xs font-bold text-indigo-700/80">Genera un enlace o código QR para recabar la firma del cliente desde su propio celular.</p>
                         </div>
                       </div>
@@ -7371,7 +7395,7 @@ const ActionFormView = ({ actionType, prefillData, onBack, onSaveDraft, deals, p
 
                 <div>
                   <h3 className="text-xl font-black text-slate-900">Escanear Documentos desde Móvil</h3>
-                  <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">Escanea el QR o copia el enlace DeepLink</p>
+                  <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">Escanea el QR o copia el enlace</p>
                 </div>
 
                 <div className="bg-slate-50 p-6 rounded-3xl border border-slate-100 space-y-4">
@@ -8847,8 +8871,9 @@ const App = () => {
           <div className="bg-blue-50 px-6 py-3 rounded-2xl border border-blue-100 flex items-center gap-3">
             <ShieldCheck size={20} className="text-blue-600" />
             <div>
-              <p className="text-[10px] font-black text-blue-400 uppercase tracking-widest leading-none mb-1">{session?.email || 'Usuario Activo'}</p>
-              <p className="text-sm font-black text-blue-700 leading-none">Tenant: {session?.tenantId || '—'}</p>
+              <p className="text-[10px] font-black text-blue-400 uppercase tracking-widest leading-none mb-1">Usuario Activo</p>
+              <p className="text-xs font-black text-slate-800 leading-tight">{session?.contact_name || session?.username || session?.email || '—'}</p>
+              <p className="text-xs font-black text-blue-700 leading-tight">Tenant: {session?.tenantId || session?.tenant_id || '—'}</p>
             </div>
           </div>
         </header>
@@ -8865,7 +8890,17 @@ const App = () => {
                 onNewPayment={() => { setView('manage-payments'); setModalState({ type: 'payment', open: true, item: null }); }}
               />
             )}
-            {view === 'manage-clients' && <ClientsView clients={data.clients} onEdit={(c) => setModalState({ type: 'client', open: true, item: c })} onCreate={() => setModalState({ type: 'client', open: true, item: null })} />}
+            {view === 'manage-clients' && (
+              <ClientsView 
+                clients={data.clients} 
+                contracts={data.contracts}
+                payments={data.payments}
+                session={session}
+                refreshData={refreshData}
+                onEdit={(c) => setModalState({ type: 'client', open: true, item: c })} 
+                onCreate={() => setModalState({ type: 'client', open: true, item: null })} 
+              />
+            )}
             {view === 'manage-contracts' && (
               <ContractsView 
                 contracts={data.contracts} 

@@ -126,10 +126,20 @@ export default function PaymentCardForm({ amount, clientId }) {
 
       // Usar el payment_method_id real del Paso 3 (no el token_id directamente)
       const paymentMethodId = res1.data.payment_method_id || tokenId;
+      const cardData = res1.data?.data || {};
 
-      // Paso 4: Ejecutar el cargo directo con el payment_method correcto
+      // Paso 4: Ejecutar el cargo directo con el payment_method correcto y extras
       const currentAmount = parseFloat(amountRef.current);
-      const transPayload = { customer_id: currentClientId, payment_method: paymentMethodId, amount: currentAmount };
+      const transPayload = {
+        customer_id: currentClientId,
+        payment_method: paymentMethodId,
+        amount: currentAmount,
+        card_last4: cardData.last4 || cardData.last_four || cardData.card?.last4 || null,
+        card_exp_date: cardData.exp_date || (cardData.exp_month && cardData.exp_year ? `${cardData.exp_month}/${cardData.exp_year}` : null),
+        card_type: cardData.type || cardData.card_type || cardData.brand || null,
+        issuing_bank: cardData.bank || cardData.issuing_bank || null,
+        source: 'datacenter'
+      };
       console.log('\n═══════════════════════════════════════════════════');
       console.log('🟨 [WEBVIEW PASO 4] POST /card-payments/transactions');
       console.log('  ➡️  REQ payload:', JSON.stringify(transPayload, null, 2));

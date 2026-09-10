@@ -3510,26 +3510,39 @@ app.post('/api/webview/card-payments/transactions', async (req, res) => {
   }
 
   try {
+    // 1. Intentar obtener tenant_id, tenant_name y nombre completo del cliente desde la tabla local webview_customers / users / tenants / clients
     const [tRows] = await pool.query(
-      `SELECT u.tenant_id, t.company_name
+      `SELECT w.customer_id, w.first_name, w.last_name, u.tenant_id, t.company_name
        FROM webview_customers w
-       JOIN users u ON w.username = u.username
-       JOIN tenants t ON u.tenant_id = t.tenant_id
+       LEFT JOIN users u ON w.username = u.username
+       LEFT JOIN tenants t ON u.tenant_id = t.tenant_id
        WHERE w.customer_id = ? LIMIT 1`,
       [customer_id]
     );
+
+    let fetchedTenantId = tRows.length > 0 ? tRows[0].tenant_id : null;
+    let fetchedTenantName = tRows.length > 0 ? tRows[0].company_name : null;
+    let fetchedCustomerName = customer_name || (tRows.length > 0 ? `${tRows[0].first_name || ''} ${tRows[0].last_name || ''}`.trim() : null);
+
+    // Fallback: si no hay tenant por username, buscar el tenantId pasado en req.body o req.headers o tomar el tenant por defecto
+    if (!fetchedTenantId && req.body.tenant_id) {
+      fetchedTenantId = req.body.tenant_id;
+      const [tenRows] = await pool.query('SELECT company_name FROM tenants WHERE tenant_id = ? LIMIT 1', [fetchedTenantId]);
+      if (tenRows.length > 0) fetchedTenantName = tenRows[0].company_name;
+    }
+
     chargePayload.extras = {
-      tenant_id: tRows.length > 0 ? tRows[0].tenant_id : null,
-      tenant_name: tRows.length > 0 ? tRows[0].company_name : null,
+      tenant_id: fetchedTenantId || req.body.tenantId || null,
+      tenant_name: fetchedTenantName || null,
       customer_id: customer_id || null,
-      customer_name: customer_name || null,
-      last4: card_last4 || null,
-      exp_date: card_exp_date || null,
-      card_type: card_type || null,
-      bank: issuing_bank || null
+      customer_name: fetchedCustomerName || null,
+      last4: card_last4 || req.body.last4 || null,
+      exp_date: card_exp_date || req.body.exp_date || null,
+      card_type: card_type || req.body.card_type || null,
+      bank: issuing_bank || req.body.bank || null
     };
   } catch (err) {
-    console.error('Error fetching tenant for extras:', err);
+    console.error('Error fetching details for extras:', err);
   }
 
   console.log('  ➡️  REQ body (hacia Dynamicore):', JSON.stringify(chargePayload, null, 2));
