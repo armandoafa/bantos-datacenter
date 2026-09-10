@@ -150,6 +150,7 @@ const authLimiter = rateLimit({
 // Orígenes permitidos - se acepta tanto admin.bantos.cloud como bantos.cloud
 const allowedOrigins = [
   'https://bantos.cloud',
+  'https://lms.bantos.cloud',
   'https://admin.bantos.cloud',
   'https://insight.bantos.cloud',
   'https://payment.bantos.cloud',
@@ -1155,13 +1156,13 @@ app.put('/api/backoffice/users/:id', async (req, res) => {
     if (password) {
       const pwdHash = await bcrypt.hash(password, 10);
       await pool.query(
-        'UPDATE users SET contact_name=?, email=?, password=? WHERE id=? AND tenant_id=?',
-        [contact_name, email, pwdHash, userId, tenantId]
+        'UPDATE users SET contact_name=?, email=?, password=?, tenant_id=COALESCE(tenant_id, ?) WHERE id=? AND (tenant_id=? OR tenant_id IS NULL)',
+        [contact_name, email, pwdHash, tenantId, userId, tenantId]
       );
     } else {
       await pool.query(
-        'UPDATE users SET contact_name=?, email=? WHERE id=? AND tenant_id=?',
-        [contact_name, email, userId, tenantId]
+        'UPDATE users SET contact_name=?, email=?, tenant_id=COALESCE(tenant_id, ?) WHERE id=? AND (tenant_id=? OR tenant_id IS NULL)',
+        [contact_name, email, tenantId, userId, tenantId]
       );
     }
     
@@ -1502,6 +1503,61 @@ app.put('/api/backoffice/clients/:id', async (req, res) => {
     res.json({ success: true });
   } catch (e) {
     console.error('Update Client Error:', e);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.delete('/api/backoffice/clients/:id', async (req, res) => {
+  const { id } = req.params;
+  const { tenantId } = req.query;
+  try {
+    if (!tenantId) return res.status(400).json({ error: 'tenantId es requerido' });
+
+    const numericId = !isNaN(Number(id)) ? Number(id) : 0;
+    
+    // Obtener detalles del cliente para validar todos sus identificadores posibles
+    const [clients] = await pool.query(
+      'SELECT id, upya_id, client_number FROM client_history WHERE (id = ? OR upya_id = ? OR client_number = ?) AND tenant_id = ?',
+      [numericId, id, id, tenantId]
+    );
+
+    if (clients.length === 0) {
+      return res.status(404).json({ error: 'Cliente no encontrado' });
+    }
+
+    const client = clients[0];
+
+    // 1. Verificar si tiene contratos registrados
+    const [contracts] = await pool.query(
+      'SELECT COUNT(*) AS count FROM contract_history WHERE (client_id = ? OR client_id = ? OR (client_number = ? AND client_number IS NOT NULL AND client_number != "")) AND tenant_id = ?',
+      [client.upya_id, String(client.id), client.client_number || '___NONE___', tenantId]
+    );
+
+    if (contracts[0].count > 0) {
+      return res.status(400).json({ error: 'No se puede eliminar el cliente porque tiene contratos registrados.' });
+    }
+
+    // 2. Verificar si tiene pagos registrados (directos o asociados a un contrato del cliente)
+    const [payments] = await pool.query(
+      `SELECT COUNT(*) AS count FROM payments p 
+       LEFT JOIN contract_history ch ON (p.contract_id = ch.contract_number AND p.tenant_id = ch.tenant_id)
+       WHERE (p.client_id = ? OR p.client_id = ? OR ch.client_id = ? OR ch.client_id = ?) AND p.tenant_id = ?`,
+      [client.upya_id, String(client.id), client.upya_id, String(client.id), tenantId]
+    );
+
+    if (payments[0].count > 0) {
+      return res.status(400).json({ error: 'No se puede eliminar el cliente porque tiene pagos registrados.' });
+    }
+
+    // 3. Eliminar el registro del cliente
+    await pool.query(
+      'DELETE FROM client_history WHERE (id = ? OR upya_id = ?) AND tenant_id = ?',
+      [client.id, client.upya_id, tenantId]
+    );
+
+    res.json({ success: true, message: 'Cliente eliminado correctamente' });
+  } catch (e) {
+    console.error('Delete Client Error:', e);
     res.status(500).json({ error: e.message });
   }
 });
@@ -3327,7 +3383,7 @@ app.post('/api/webview/card-payments/assign-card', async (req, res) => {
   if (req.body.source !== 'datacenter') {
     return res.status(400).json({ 
       success: false, 
-      message: 'El proceso de pago se encuentra en construcción. Por favor, intenta más tarde.' 
+      error: 'El proceso de pago se encuentra en construcción. Por favor, intenta más tarde.' 
     });
   }
   const { customer_id, token_id, is_recurrent } = req.body;
@@ -3341,22 +3397,38 @@ app.post('/api/webview/card-payments/assign-card', async (req, res) => {
     console.log('  ⬅️  Dynamicore RAW response:', JSON.stringify(result, null, 2));
 
     if (result.status === 'error' || result?.data?.status === 'error') {
-      const errMsg = result?.message?.message || result?.data?.message?.message || 'Error desconocido de Dynamicore';
-      throw new Error(`Dynamicore API Error: ${errMsg}`);
+      const errMsg = result?.message?.display_message || result?.message?.message?.message || result?.message?.message || result?.data?.message?.message || result?.message || 'Error al asignar tarjeta en Dynamicore';
+      throw new Error(typeof errMsg === 'string' ? errMsg : JSON.stringify(errMsg));
     }
 
-    const paymentMethodId = result?.message?.id;
-    const resBody = { success: true, payment_method_id: paymentMethodId, data: result.message };
+    const paymentMethodId = result?.message?.id || result?.data?.id || result?.id || token_id;
+    const resBody = { success: true, payment_method_id: paymentMethodId, data: result.message || result.data };
     console.log('  ⬅️  RES:', JSON.stringify(resBody));
     console.log('═══════════════════════════════════════════════════\n');
     res.json(resBody);
   } catch (error) {
     const errDetail = error.response?.data || error.message;
-    console.error('  ❌ ERR Dynamicore:', JSON.stringify(errDetail, null, 2));
+    console.error('  ❌ ERR Dynamicore assign-card:', JSON.stringify(errDetail, null, 2));
     console.log('═══════════════════════════════════════════════════\n');
+
+    // Para cobros (recurrentes o no), si la tarjeta ya existe en el cliente ("Payment Method Exists")
+    // o falla la asignación pero tenemos token_id válido, usamos el token_id / token como payment_method_id fallback
+    const rawErrorStr = JSON.stringify(errDetail);
+    if (token_id && (rawErrorStr.includes('Payment Method Exists') || !is_recurrent)) {
+      console.log(`  ⚠️ Fallback / Tarjeta existente: usando token_id directamente (${token_id})`);
+      return res.json({ success: true, payment_method_id: token_id, fallback: true });
+    }
+
+    const errorMsg = error.response?.data?.message?.display_message 
+      || error.response?.data?.message?.message 
+      || error.response?.data?.message 
+      || error.response?.data?.error 
+      || error.message 
+      || 'Error al asignar la tarjeta al cliente';
+
     res.status(400).json({
       success: false,
-      error: error.response?.data?.message || 'Error al asignar la tarjeta al cliente'
+      error: typeof errorMsg === 'string' ? errorMsg : JSON.stringify(errorMsg)
     });
   }
 });
@@ -3368,17 +3440,18 @@ app.post('/api/webview/card-payments/transactions', async (req, res) => {
       message: 'El proceso de pago se encuentra en construcción. Por favor, intenta más tarde.' 
     });
   }
-  const { customer_id, payment_method, amount, is_recurrent, recurring_frequency, is_settlement, discount_amount, contract_id } = req.body;
+  const { customer_id, payment_method, amount, is_recurrent, recurring_frequency, is_settlement, discount_amount, contract_id, customer_name, card_last4, card_exp_date, card_type, issuing_bank } = req.body;
 
   console.log('\n═══════════════════════════════════════════════════');
   console.log('🟨 [WEBVIEW PASO 4] POST /card-payments/transactions');
+  const requestOrigin = req.headers.origin || 'https://lms.bantos.cloud';
   const chargePayload = {
     payment_method,
     customer_id,
     amount: parseFloat(amount),
     sc: 0,
-    accept_url: 'https://bantos.cloud/datacenter/?3ds=done',
-    cancel_url: 'https://bantos.cloud/datacenter/?3ds=cancel'
+    accept_url: `${requestOrigin}/?3ds=done`,
+    cancel_url: `${requestOrigin}/?3ds=cancel`
   };
 
   if (is_recurrent) {
@@ -3404,12 +3477,16 @@ app.post('/api/webview/card-payments/transactions', async (req, res) => {
        WHERE w.customer_id = ? LIMIT 1`,
       [customer_id]
     );
-    if (tRows.length > 0) {
-      chargePayload.extras = {
-        tenant_id: tRows[0].tenant_id,
-        tenant_name: tRows[0].company_name
-      };
-    }
+    chargePayload.extras = {
+      tenant_id: tRows.length > 0 ? tRows[0].tenant_id : null,
+      tenant_name: tRows.length > 0 ? tRows[0].company_name : null,
+      customer_id: customer_id || null,
+      customer_name: customer_name || null,
+      last4: card_last4 || null,
+      exp_date: card_exp_date || null,
+      card_type: card_type || null,
+      bank: issuing_bank || null
+    };
   } catch (err) {
     console.error('Error fetching tenant for extras:', err);
   }
@@ -3463,12 +3540,13 @@ app.post('/api/webview/card-payments/transactions', async (req, res) => {
         await pool.query(
           `INSERT INTO payments (
             upya_id, transaction_id, tenant_id, contract_id, amount, method, status, payment_date,
-            is_recurring, client_id, is_settlement, discount_amount
-          ) VALUES (?, ?, ?, ?, ?, ?, 'PENDING', NOW(), ?, ?, ?, ?)`,
+            is_recurring, client_id, is_settlement, discount_amount, customer_name, card_last4, card_exp_date, card_type, issuing_bank
+          ) VALUES (?, ?, ?, ?, ?, ?, 'PENDING', NOW(), ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
           [
             externalId, `TX-${externalId}`, tenant_id, finalContractId, parseFloat(amount),
             is_recurrent ? 'Tarjeta Recurrente' : 'Tarjeta de Débito/Crédito',
-            is_recurrent ? 1 : 0, client_bantos_id, is_settlement ? 1 : 0, parseFloat(discount_amount || 0)
+            is_recurrent ? 1 : 0, client_bantos_id, is_settlement ? 1 : 0, parseFloat(discount_amount || 0),
+            customer_name || null, card_last4 || null, card_exp_date || null, card_type || null, issuing_bank || null
           ]
         );
         console.log(`  💾 Pago PENDING insertado en base de datos: ${externalId}`);
@@ -3594,6 +3672,13 @@ app.post('/api/webhooks/dynamicore', async (req, res) => {
       const bantosStatus = dynamicore_status === 1 ? 'PAID' : (dynamicore_status === 2 ? 'FAILED' : 'PENDING');
       console.log(`  ➡️ TX ${dynamicore_tx_id} | Status: ${bantosStatus} | Tenant: ${tenant_id} | Client: ${client_bantos_id} | Contract: ${contract_id}`);
 
+      const extObj = tx.status?.extras || tx.extras || {};
+      const card_name = extObj.customer_name || extObj.name || null;
+      const card_last4 = extObj.last4 || extObj.card_last4 || null;
+      const card_exp_date = extObj.exp_date || extObj.expiration || null;
+      const card_type = extObj.card_type || extObj.type || null;
+      const issuing_bank = extObj.bank || extObj.issuing_bank || extObj.issuer || null;
+
       // Revisar si la transacción ya existe (pago único)
       const [payRows] = await pool.query('SELECT id FROM payments WHERE upya_id = ?', [dynamicore_tx_id]);
       
@@ -3601,9 +3686,12 @@ app.post('/api/webhooks/dynamicore', async (req, res) => {
         // Actualizar existente
         await pool.query(
           `UPDATE payments 
-           SET status = ?, contract_id = COALESCE(contract_id, ?), client_id = COALESCE(client_id, ?) 
+           SET status = ?, contract_id = COALESCE(contract_id, ?), client_id = COALESCE(client_id, ?),
+               customer_name = COALESCE(customer_name, ?), card_last4 = COALESCE(card_last4, ?),
+               card_exp_date = COALESCE(card_exp_date, ?), card_type = COALESCE(card_type, ?),
+               issuing_bank = COALESCE(issuing_bank, ?) 
            WHERE upya_id = ?`, 
-          [bantosStatus, contract_id, client_bantos_id, dynamicore_tx_id]
+          [bantosStatus, contract_id, client_bantos_id, card_name, card_last4, card_exp_date, card_type, issuing_bank, dynamicore_tx_id]
         );
         console.log(`  ✅ Pago actualizado: ${dynamicore_tx_id} -> ${bantosStatus}`);
       } else {
@@ -3612,11 +3700,11 @@ app.post('/api/webhooks/dynamicore', async (req, res) => {
         await pool.query(
           `INSERT INTO payments (
             upya_id, transaction_id, tenant_id, contract_id, amount, method, status, payment_date,
-            is_recurring, client_id
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            is_recurring, client_id, customer_name, card_last4, card_exp_date, card_type, issuing_bank
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
           [
             payId, `TX-${payId}`, tenant_id, contract_id, amount, 'Tarjeta Automática', bantosStatus, new Date(),
-            1, client_bantos_id
+            1, client_bantos_id, card_name, card_last4, card_exp_date, card_type, issuing_bank
           ]
         );
         console.log(`  ✅ Nuevo pago registrado: ${payId} -> ${bantosStatus}`);
@@ -4055,6 +4143,12 @@ app.get('/api/insight/clearing', async (req, res) => {
           p.is_recurring,
           p.is_reconciled,
           p.bank_reference,
+          p.client_id AS customer_id,
+          p.customer_name,
+          p.card_last4,
+          p.card_exp_date,
+          p.card_type,
+          p.issuing_bank,
           ROUND(p.amount * 0.035 + 2.50, 2) AS estimated_fee,
           ROUND(p.amount - (p.amount * 0.035 + 2.50), 2) AS estimated_net
       FROM payments p
