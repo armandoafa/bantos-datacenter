@@ -413,7 +413,7 @@ body {
   border-radius: var(--radius-md);
   border: 1px solid #e2e8f0;
   box-shadow: var(--shadow-sm);
-  overflow: hidden;
+  overflow-x: auto;
 }
 
 .operation-type-badge {
