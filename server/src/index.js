@@ -3729,14 +3729,10 @@ app.post('/api/webhooks/dynamicore', async (req, res) => {
       const extObj = tx.status?.extras || tx.extras || {};
       const binInfo = extObj.original_service?.binInformation || {};
       const card_name = extObj.customer_name || extObj.name || null;
-      let card_last4 = extObj.last4 || extObj.card_last4 || null;
-      if (!card_last4 && extObj.first6) {
-        // En algunos entornos de Dynamicore last4 viene nulo perofirst6 o binInformation contiene identificador del plástico
-        card_last4 = extObj.first6.substring(2);
-      }
+      const card_last4 = extObj.last4 || extObj.card_last4 || null;
       const card_exp_date = extObj.exp_date || extObj.expiration || null;
-      const card_type = extObj.card_type || extObj.type || binInfo.type || extObj.brand || null;
-      const issuing_bank = extObj.bank || extObj.issuing_bank || extObj.issuer || binInfo.bank || null;
+      const card_type = binInfo.type || extObj.card_type || extObj.type || extObj.brand || null;
+      const issuing_bank = binInfo.bank || extObj.bank || extObj.issuing_bank || extObj.issuer || null;
 
       // Revisar si la transacción ya existe (pago único)
       const [payRows] = await pool.query('SELECT id FROM payments WHERE upya_id = ?', [dynamicore_tx_id]);
