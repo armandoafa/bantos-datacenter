@@ -3727,11 +3727,12 @@ app.post('/api/webhooks/dynamicore', async (req, res) => {
       console.log(`  ➡️ TX ${dynamicore_tx_id} | Status: ${bantosStatus} | Tenant: ${tenant_id} | Client: ${client_bantos_id} | Contract: ${contract_id}`);
 
       const extObj = tx.status?.extras || tx.extras || {};
+      const binInfo = extObj.original_service?.binInformation || {};
       const card_name = extObj.customer_name || extObj.name || null;
       const card_last4 = extObj.last4 || extObj.card_last4 || null;
       const card_exp_date = extObj.exp_date || extObj.expiration || null;
-      const card_type = extObj.card_type || extObj.type || null;
-      const issuing_bank = extObj.bank || extObj.issuing_bank || extObj.issuer || null;
+      const card_type = extObj.card_type || extObj.type || binInfo.type || extObj.brand || null;
+      const issuing_bank = extObj.bank || extObj.issuing_bank || extObj.issuer || binInfo.bank || null;
 
       // Revisar si la transacción ya existe (pago único)
       const [payRows] = await pool.query('SELECT id FROM payments WHERE upya_id = ?', [dynamicore_tx_id]);
