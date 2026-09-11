@@ -6,9 +6,7 @@ import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
 import './App.css';
 
-const API_BASE = 'https://bantos.cloud/datacenter-api'; // O local en dev: 'http://localhost:4000/api'
-const isLocal = window.location.hostname === 'localhost';
-const API = isLocal ? 'http://localhost:4000/api' : API_BASE;
+const API = window.location.hostname === 'localhost' ? 'http://localhost:4000/api' : '/datacenter-api';
 
 function App() {
   const [tenants, setTenants] = useState([]);
@@ -121,7 +119,8 @@ function App() {
   const fetchClearing = async () => {
     setLoading(true);
     try {
-      const url = `${API}/insight/clearing`;
+      let url = `${API}/insight/clearing`;
+      if (selectedTenant) url += `?tenantId=${selectedTenant}`;
       const res = await fetch(url);
       const data = await res.json();
       setClearingData(data);
@@ -134,7 +133,8 @@ function App() {
 
   const pollClearing = async () => {
     try {
-      const url = `${API}/insight/clearing`;
+      let url = `${API}/insight/clearing`;
+      if (selectedTenant) url += `?tenantId=${selectedTenant}`;
       const res = await fetch(url);
       const data = await res.json();
       setClearingData(data);
@@ -149,7 +149,7 @@ function App() {
       interval = setInterval(pollClearing, 10000);
     }
     return () => clearInterval(interval);
-  }, [activeView]);
+  }, [activeView, selectedTenant]);
 
   const exportClearingToCSV = () => {
     if (!clearingData || clearingData.length === 0) return;
@@ -180,7 +180,7 @@ function App() {
       return;
     }
 
-    const headers = ['Fecha', 'Tenant', 'Transaccion', 'Metodo', 'Monto Bruto', 'Comision', 'Monto Neto', 'Conciliacion', 'Estado Tx'];
+    const headers = ['Fecha', 'Tenant', 'Transaccion', 'ID Cliente', 'Cliente', 'Ultimos 4', 'Vencimiento', 'Tipo Tarjeta', 'Banco Emisor', 'Metodo', 'Monto Bruto', 'Comision', 'Monto Neto', 'Conciliacion', 'Estado Tx'];
     
     const rows = filteredData.map(c => {
       const d = new Date(c.payment_date);
@@ -194,6 +194,12 @@ function App() {
       
       const tenant = c.tenant_name || c.tenant_id || 'Comercializadora Romel';
       const txId = c.transaction_id || 'N/A';
+      const customerId = c.customer_id || 'N/A';
+      const customerName = c.customer_name || 'N/A';
+      const last4 = c.card_last4 ? `**** ${c.card_last4}` : 'N/A';
+      const expDate = c.card_exp_date || 'N/A';
+      const cardType = c.card_type || 'N/A';
+      const bank = c.issuing_bank || 'N/A';
       const method = c.method || 'Tarjeta Automatica';
       const reconciled = c.is_reconciled ? 'Conciliado' : 'Pendiente';
       const status = c.status?.toUpperCase() || 'PENDING';
@@ -202,6 +208,12 @@ function App() {
         `"${dateStr}"`,
         `"${tenant}"`,
         `"${txId}"`,
+        `"${customerId}"`,
+        `"${customerName}"`,
+        `"${last4}"`,
+        `"${expDate}"`,
+        `"${cardType}"`,
+        `"${bank}"`,
         `"${method}"`,
         c.amount,
         c.estimated_fee,
@@ -781,58 +793,82 @@ function App() {
             </div>
           </div>
 
-          <div className="reports-table-card" style={{ marginTop: '20px' }}>
-            <table>
-              <thead>
-                <tr>
-                  <th>Fecha</th>
-                  <th>Tenant</th>
-                  <th>Transacción</th>
-                  <th>Método</th>
-                  <th>Monto Bruto</th>
-                  <th>Comisión</th>
-                  <th>Monto Neto</th>
-                  <th>Conciliación</th>
-                  <th>Estado Tx</th>
-                </tr>
-              </thead>
-              <tbody>
-                {clearingData.length > 0 ? (
-                  clearingData.map(c => (
-                    <tr key={c.id}>
-                      <td className="text-muted">{new Date(c.payment_date).toLocaleString('es-MX')}</td>
-                      <td className="font-bold">{c.tenant_name || c.tenant_id || 'Comercializadora Romel'}</td>
-                      <td>
-                        <div className="detail-preview">
-                          <span className="font-bold text-indigo">{c.transaction_id || 'N/A'}</span>
-                          {c.is_recurring == 1 && <span className="badge badge-success" style={{ marginLeft: '8px', fontSize: '10px' }}>Automático</span>}
-                        </div>
-                      </td>
-                      <td className="text-muted">{c.method || 'Tarjeta Automática'}</td>
-                      <td className="font-bold">${Number(c.amount).toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
-                      <td className="text-danger font-medium">-${Number(c.estimated_fee).toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
-                      <td className="text-success font-bold">${Number(c.estimated_net).toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
-                      <td>
-                        {c.is_reconciled ? (
-                          <span className="badge badge-success" title={c.bank_reference || ''} style={{ background: '#dcfce7', color: '#166534' }}>✓ Conciliado</span>
-                        ) : (
-                          <span className="badge badge-warning" style={{ background: '#fef3c7', color: '#92400e' }}>Pendiente</span>
-                        )}
-                      </td>
-                      <td>
-                        <span className={`badge badge-${c.status?.toUpperCase() === 'PAID' || c.status?.toUpperCase() === 'ACCEPTED' ? 'success' : c.status?.toUpperCase() === 'FAILED' ? 'danger' : 'warning'}`}>
-                          {c.status?.toUpperCase() || 'PENDING'}
-                        </span>
-                      </td>
-                    </tr>
-                  ))
-                ) : (
-                  <tr>
-                    <td colSpan="9" className="empty-state">No hay transacciones registradas.</td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
+          <div style={{ marginTop: '20px', display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: '20px' }}>
+            {clearingData.length > 0 ? (
+              clearingData.map(c => (
+                <div key={c.id} className="stat-card" style={{ display: 'flex', flexDirection: 'column', gap: '12px', padding: '20px', backgroundColor: '#fff', borderRadius: '12px', boxShadow: '0 4px 6px rgba(0,0,0,0.05)', border: '1px solid #e5e7eb' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                    <div style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      <span className="font-bold text-indigo" style={{ display: 'block', wordBreak: 'break-all', fontSize: '14px' }}>{c.transaction_id || 'N/A'}</span>
+                      <span className="text-muted" style={{ fontSize: '12px' }}>{new Date(c.payment_date).toLocaleString('es-MX')}</span>
+                    </div>
+                    <span className={`badge badge-${c.status?.toUpperCase() === 'PAID' || c.status?.toUpperCase() === 'ACCEPTED' ? 'success' : c.status?.toUpperCase() === 'FAILED' ? 'danger' : 'warning'}`}>
+                      {c.status?.toUpperCase() || 'PENDING'}
+                    </span>
+                  </div>
+                  
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #f3f4f6', paddingBottom: '8px' }}>
+                    <span className="text-muted" style={{ fontSize: '13px' }}>Tenant</span>
+                    <span className="font-bold" style={{ fontSize: '13px', textAlign: 'right' }}>{c.tenant_name || c.tenant_id || 'Comercializadora Romel'}</span>
+                  </div>
+
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span className="text-muted" style={{ fontSize: '13px' }}>Cliente</span>
+                    <div style={{ textAlign: 'right' }}>
+                      <span className="font-medium" style={{ display: 'block', fontSize: '13px' }}>{c.customer_name || 'N/A'}</span>
+                      <span className="font-mono text-muted" style={{ fontSize: '11px' }}>{c.customer_id || 'N/A'}</span>
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #f3f4f6', paddingBottom: '8px' }}>
+                    <span className="text-muted" style={{ fontSize: '13px' }}>Tarjeta</span>
+                    <div style={{ textAlign: 'right' }}>
+                      <span className="font-mono" style={{ display: 'block', fontSize: '13px' }}>{c.card_last4 ? `**** ${c.card_last4}` : 'N/A'}</span>
+                      <span className="text-muted" style={{ fontSize: '11px' }}>Vence: {c.card_exp_date || 'N/A'}</span>
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span className="text-muted" style={{ fontSize: '13px' }}>Banco / Tipo</span>
+                    <div style={{ textAlign: 'right' }}>
+                      <span className="font-medium" style={{ display: 'block', fontSize: '13px' }}>{c.issuing_bank || 'N/A'}</span>
+                      <span className="badge" style={{ background: c.card_type === 'Crédito' ? '#e0e7ff' : '#ecfdf5', color: c.card_type === 'Crédito' ? '#3730a3' : '#065f46', fontSize: '10px' }}>{c.card_type || 'N/A'}</span>
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#f9fafb', padding: '12px', borderRadius: '8px', marginTop: '4px' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column' }}>
+                      <span className="text-muted" style={{ fontSize: '11px', textTransform: 'uppercase' }}>Bruto</span>
+                      <span className="font-bold" style={{ fontSize: '14px' }}>${Number(c.amount).toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                      <span className="text-muted" style={{ fontSize: '11px', textTransform: 'uppercase' }}>Comisión</span>
+                      <span className="text-danger font-medium" style={{ fontSize: '14px' }}>-${Number(c.estimated_fee).toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
+                      <span className="text-muted" style={{ fontSize: '11px', textTransform: 'uppercase' }}>Neto</span>
+                      <span className="text-success font-bold" style={{ fontSize: '14px' }}>${Number(c.estimated_net).toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '4px' }}>
+                    <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                      {c.is_recurring == 1 && <span className="badge badge-success" style={{ fontSize: '10px' }}>Automático</span>}
+                      {c.is_reconciled ? (
+                        <span className="badge badge-success" title={c.bank_reference || ''} style={{ background: '#dcfce7', color: '#166534', fontSize: '10px' }}>✓ Conciliado</span>
+                      ) : (
+                        <span className="badge badge-warning" style={{ background: '#fef3c7', color: '#92400e', fontSize: '10px' }}>Pendiente Conc.</span>
+                      )}
+                    </div>
+                    <span className="text-muted" style={{ fontSize: '11px' }}>{c.method || 'Tarjeta Automática'}</span>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <div className="empty-state" style={{ gridColumn: '1 / -1', padding: '40px', textAlign: 'center', backgroundColor: '#fff', borderRadius: '12px', border: '1px solid #e5e7eb' }}>
+                No hay transacciones registradas.
+              </div>
+            )}
           </div>
         </div>
       )}
