@@ -2685,8 +2685,8 @@ app.post('/api/backoffice/contracts/generate-and-sign', async (req, res) => {
       modules: [new ImageModule(opts)]
     });
 
-    // 3. Set data from manual form
-    doc.setData({
+    // 3. Render data from manual form
+    doc.render({
       signature: signaturePath,
       clientName: contractData.client_name || 'Cliente',
       productName: contractData.product_name || 'N/A',
@@ -2695,8 +2695,6 @@ app.post('/api/backoffice/contracts/generate-and-sign', async (req, res) => {
       date: new Date().toLocaleDateString(),
       contractId: contractData.upya_id || 'N/A'
     });
-
-    doc.render();
 
     const buf = doc.getZip().generate({ type: 'nodebuffer' });
     const outputFilename = `CONTRATO_GENERADO_${Date.now()}.docx`;
@@ -3729,7 +3727,7 @@ app.post('/api/webhooks/dynamicore', async (req, res) => {
       const extObj = tx.status?.extras || tx.extras || {};
       const binInfo = extObj.original_service?.binInformation || {};
       const card_name = extObj.customer_name || extObj.name || null;
-      const card_last4 = extObj.last4 || extObj.card_last4 || null;
+      const card_last4 = extObj.last4 || extObj.card_last4 || (extObj.first6 ? extObj.first6.slice(-4) : null) || null;
       const card_exp_date = extObj.exp_date || extObj.expiration || null;
       const card_type = binInfo.type || extObj.card_type || extObj.type || extObj.brand || null;
       const issuing_bank = binInfo.bank || extObj.bank || extObj.issuing_bank || extObj.issuer || null;
@@ -4185,7 +4183,8 @@ app.get('/api/insight/stream', (req, res) => {
 // --- API INSIGHTS Y STATS (insight.bantos.cloud) ---
 app.get('/api/insight/clearing', async (req, res) => {
   try {
-    const [rows] = await pool.query(`
+    const { tenantId } = req.query;
+    let query = `
       SELECT 
           p.id, 
           p.transaction_id, 
@@ -4208,9 +4207,17 @@ app.get('/api/insight/clearing', async (req, res) => {
           ROUND(p.amount - (p.amount * 0.035 + 2.50), 2) AS estimated_net
       FROM payments p
       LEFT JOIN tenants t ON p.tenant_id = t.tenant_id
-      ORDER BY p.payment_date DESC
-      LIMIT 1000
-    `);
+    `;
+    const params = [];
+    
+    if (tenantId) {
+      query += ` WHERE p.tenant_id = ? `;
+      params.push(tenantId);
+    }
+    
+    query += ` ORDER BY p.payment_date DESC LIMIT 1000`;
+    
+    const [rows] = await pool.query(query, params);
     res.json(rows);
   } catch (e) {
     res.status(500).json({ error: e.message });
