@@ -7,6 +7,8 @@ import './App.css';
 const API_BASE = 'https://bantos.cloud/datacenter-api';
 const isLocal = window.location.hostname === 'localhost';
 const API = isLocal ? 'http://localhost:4000/api' : API_BASE;
+const LICENSES_PER_PAGE = 20;
+const DEVICES_PER_PAGE = 15;
 
 function App() {
   const [session, setSession] = useState(() => {
@@ -55,21 +57,6 @@ function App() {
     status: 'active'
   });
 
-  const [showLicenseModal, setShowLicenseModal] = useState(false);
-  const [licenseForm, setLicenseForm] = useState({
-    tenant_id: '',
-    quantity: 1,
-    unit_cost: 0
-  });
-
-  const [showEditLicenseModal, setShowEditLicenseModal] = useState(false);
-  const [editingLicense, setEditingLicense] = useState(null);
-  const [editLicenseForm, setEditLicenseForm] = useState({ device_imei: '', status: 'available', unit_cost: '' });
-
-  // Filtros de la tabla de Licencias
-  const [licenseFilterTenant, setLicenseFilterTenant] = useState('');
-  const [licenseFilterImei, setLicenseFilterImei] = useState('');
-
   const [showUserModal, setShowUserModal] = useState(false);
   const [editingUser, setEditingUser] = useState(null);
   const [userForm, setUserForm] = useState({
@@ -89,12 +76,31 @@ function App() {
     tenant_id: ''
   });
 
+  const [showLicenseModal, setShowLicenseModal] = useState(false);
+  const [licenseForm, setLicenseForm] = useState({
+    tenant_id: '',
+    quantity: 1,
+    unit_cost: 0
+  });
+
+  const [showEditLicenseModal, setShowEditLicenseModal] = useState(false);
+  const [editingLicense, setEditingLicense] = useState(null);
+  const [editLicenseForm, setEditLicenseForm] = useState({ device_imei: '', status: 'available', unit_cost: '' });
+
   // Search Filters
   const [searchQuery, setSearchQuery] = useState('');
-  
+
+  // Filtros de la tabla de Licencias
+  const [licenseFilterTenant, setLicenseFilterTenant] = useState('');
+  const [licenseFilterImei, setLicenseFilterImei] = useState('');
+  const [licensePage, setLicensePage] = useState(1);
+
+  useEffect(() => {
+    setLicensePage(1);
+  }, [licenseFilterTenant, licenseFilterImei, searchQuery]);
+
   // Pagination
   const [devicePage, setDevicePage] = useState(1);
-  const DEVICES_PER_PAGE = 15;
 
   const openEditLicenseModal = (l) => {
     setEditingLicense(l);
@@ -822,7 +828,7 @@ function App() {
                       </td>
                       <td>
                         <div className="action-buttons">
-                          <button className="btn-icon" onClick={() => openEditTenantModal(t)} title="Editar"><Edit2 size={16} /></button>
+                          <button className="btn-icon text-indigo" onClick={() => openEditTenantModal(t)} title="Editar"><Edit2 size={16} /></button>
                           <button className="btn-icon text-danger" onClick={() => handleDeleteTenant(t.tenant_id)} title="Eliminar"><Trash2 size={16} /></button>
                         </div>
                       </td>
@@ -871,6 +877,7 @@ function App() {
                       <td>{u.scope_role || '—'}</td>
                       <td>
                         <div className="action-buttons">
+                          <button className="btn-icon text-indigo" onClick={() => openEditUserModal(u)} title="Editar Usuario"><Edit2 size={16} /></button>
                           <button 
                             className="btn-icon" 
                             title="Gestionar Alcance"
@@ -884,9 +891,8 @@ function App() {
                               setShowScopeModal(true);
                             }}
                           >
-                            <ShieldCheck size={16} className="text-indigo" />
+                            <ShieldCheck size={16} />
                           </button>
-                          <button className="btn-icon" onClick={() => openEditUserModal(u)} title="Editar"><Edit2 size={16} /></button>
                           <button className="btn-icon text-danger" onClick={() => handleDeleteUser(u.id)} title="Eliminar"><Trash2 size={16} /></button>
                         </div>
                       </td>
@@ -953,69 +959,112 @@ function App() {
               </div>
             </div>
 
-            <div className="card-table">
-              <table>
-                <thead>
-                  <tr>
-                    <th>License Key</th>
-                    <th>Tenant</th>
-                    <th>Dispositivo (IMEI)</th>
-                    <th>Costo Unitario</th>
-                    <th>Estado</th>
-                    <th>Expiración</th>
-                    <th>Acciones</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {licenses
-                    .filter(l => {
-                      const matchTenant = !licenseFilterTenant || l.tenant_id === licenseFilterTenant;
-                      const matchImei = !licenseFilterImei || (l.device_imei && l.device_imei.toLowerCase().includes(licenseFilterImei.toLowerCase()));
-                      return matchTenant && matchImei;
-                    })
-                    .map(l => (
-                      <tr key={l.id}>
-                        <td className="font-mono text-xs">{l.license_key}</td>
-                        <td className="font-bold text-indigo">{l.tenant_id}</td>
-                        <td>{l.device_imei || '—'}</td>
-                        <td>${parseFloat(l.unit_cost).toFixed(2)}</td>
-                        <td>
-                          <span className={`badge badge-${l.status === 'active' ? 'success' : l.status === 'available' ? 'primary' : 'danger'}`}>
-                            {l.status === 'active' ? 'Activa' : l.status === 'available' ? 'Disponible' : 'Suspendida'}
-                          </span>
-                        </td>
-                        <td>{l.expires_at ? new Date(l.expires_at).toLocaleDateString() : 'Sin expiración'}</td>
-                        <td>
-                          <div className="action-buttons">
-                            <button
-                              className="btn-icon text-indigo"
-                              onClick={() => openEditLicenseModal(l)}
-                              title="Editar"
-                            >
-                              <Edit2 size={16} />
-                            </button>
-                            <button
-                              className={`btn-icon ${l.status === 'suspended' ? 'text-success' : 'text-warning'}`}
-                              onClick={() => handleToggleLicenseStatus(l.id, l.status)}
-                              title={l.status === 'suspended' ? 'Activar' : 'Suspender'}
-                            >
-                              {l.status === 'suspended' ? <Check size={16} /> : <AlertCircle size={16} />}
-                            </button>
-                            <button
-                              className="btn-icon text-danger"
-                              onClick={() => handleDeleteLicense(l.id)}
-                              title="Eliminar"
-                              disabled={l.status === 'active'}
-                            >
-                              <Trash2 size={16} />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            {(() => {
+              const filteredLicenses = licenses.filter(l => {
+                const matchSearch = !searchQuery || 
+                  l.license_key.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                  l.tenant_id.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                  (l.device_imei && l.device_imei.toLowerCase().includes(searchQuery.toLowerCase()));
+                const matchTenant = !licenseFilterTenant || l.tenant_id === licenseFilterTenant;
+                const matchImei = !licenseFilterImei || (l.device_imei && l.device_imei.toLowerCase().includes(licenseFilterImei.toLowerCase()));
+                return matchSearch && matchTenant && matchImei;
+              });
+
+              const totalPages = Math.ceil(filteredLicenses.length / LICENSES_PER_PAGE);
+              const startIndex = (licensePage - 1) * LICENSES_PER_PAGE;
+              const paginatedLicenses = filteredLicenses.slice(startIndex, startIndex + LICENSES_PER_PAGE);
+
+              return (
+                <div className="card-table">
+                  <div className="card-table-scroll">
+                    <table>
+                      <thead>
+                        <tr>
+                          <th>License Key</th>
+                          <th>Tenant</th>
+                          <th>Dispositivo (IMEI)</th>
+                          <th>Costo Unitario</th>
+                          <th>Estado</th>
+                          <th>Expiración</th>
+                          <th>Acciones</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {paginatedLicenses.map(l => (
+                          <tr key={l.id}>
+                            <td className="font-mono text-xs">{l.license_key}</td>
+                            <td className="font-bold text-indigo">{l.tenant_id}</td>
+                            <td>{l.device_imei || '—'}</td>
+                            <td>${parseFloat(l.unit_cost).toFixed(2)}</td>
+                            <td>
+                              <span className={`badge badge-${l.status === 'active' ? 'success' : l.status === 'available' ? 'primary' : 'danger'}`}>
+                                {l.status === 'active' ? 'Activa' : l.status === 'available' ? 'Disponible' : 'Suspendida'}
+                              </span>
+                            </td>
+                            <td>{l.expires_at ? new Date(l.expires_at).toLocaleDateString() : 'Sin expiración'}</td>
+                            <td>
+                              <div className="action-buttons">
+                                <button
+                                  className="btn-icon text-indigo"
+                                  onClick={() => openEditLicenseModal(l)}
+                                  title="Editar"
+                                >
+                                  <Edit2 size={16} />
+                                </button>
+                                <button
+                                  className={`btn-icon ${l.status === 'suspended' ? 'text-success' : 'text-warning'}`}
+                                  onClick={() => handleToggleLicenseStatus(l.id, l.status)}
+                                  title={l.status === 'suspended' ? 'Activar' : 'Suspender'}
+                                >
+                                  {l.status === 'suspended' ? <Check size={16} /> : <AlertCircle size={16} />}
+                                </button>
+                                <button
+                                  className="btn-icon text-danger"
+                                  onClick={() => handleDeleteLicense(l.id)}
+                                  title="Eliminar"
+                                  disabled={l.status === 'active'}
+                                >
+                                  <Trash2 size={16} />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                        {filteredLicenses.length === 0 && (
+                          <tr>
+                            <td colSpan="7" style={{ textAlign: 'center', padding: '32px', color: '#64748b' }}>
+                              No se encontraron licencias que coincidan con la búsqueda o filtros.
+                            </td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {totalPages > 1 && (
+                    <div className="pagination" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '15px', padding: '16px', borderTop: '1px solid #e2e8f0', backgroundColor: '#f8fafc' }}>
+                      <button 
+                        className="btn btn-light" 
+                        disabled={licensePage === 1}
+                        onClick={() => setLicensePage(prev => Math.max(prev - 1, 1))}
+                      >
+                        Anterior
+                      </button>
+                      <span style={{ fontSize: '13px', color: '#64748b', fontWeight: '600' }}>
+                        Página {licensePage} de {totalPages} ({filteredLicenses.length} licencias)
+                      </span>
+                      <button 
+                        className="btn btn-light" 
+                        disabled={licensePage === totalPages || totalPages === 0}
+                        onClick={() => setLicensePage(prev => Math.min(prev + 1, totalPages))}
+                      >
+                        Siguiente
+                      </button>
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
           </div>
         )}
         {activeTab === 'devices' && (() => {
@@ -1218,7 +1267,6 @@ function App() {
                 <select 
                   value={userForm.tenant_id}
                   onChange={e => setUserForm({ ...userForm, tenant_id: e.target.value })}
-                  disabled={!!editingUser}
                   required
                 >
                   <option value="">Selecciona un tenant</option>
