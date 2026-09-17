@@ -2494,6 +2494,16 @@ app.post('/api/backoffice/payments', async (req, res) => {
     // Real-Time Push to Upya if status is not Pending
     if ((status || '').toUpperCase() === 'PAID' || (status || '').toUpperCase() === 'VALIDATED') {
        pushPaymentToUpya(req.body, tenantId);
+       
+       // Activar en Trustonic
+       if (req.body.imei) {
+         try {
+           console.log(`[PAYMENT] Solicitando activación de Trustonic para IMEI: ${req.body.imei}`);
+           await trustonicApi.activateDevice(pool, tenantId, req.body.imei, 'Prepago');
+         } catch (trustonicErr) {
+           console.error('Error activando dispositivo en Trustonic durante el pago:', trustonicErr.message);
+         }
+       }
     }
 
   } catch (e) { res.status(500).json({ error: e.message }); }
@@ -2605,6 +2615,16 @@ app.post('/api/backoffice/contracts/:id/settle', async (req, res) => {
       method: `Finiquito (${payMethod})`,
       payment_date: new Date()
     }, tenantId);
+
+    // 5. Activar en Trustonic si viene el IMEI
+    if (req.body.imei) {
+      try {
+        console.log(`[SETTLE] Solicitando activación de Trustonic para IMEI: ${req.body.imei}`);
+        await trustonicApi.activateDevice(pool, tenantId, req.body.imei, 'Prepago');
+      } catch (trustonicErr) {
+        console.error('Error activando dispositivo en Trustonic durante el finiquito:', trustonicErr.message);
+      }
+    }
 
     res.json({
       success: true,

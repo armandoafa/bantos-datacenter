@@ -1,0 +1,4 @@
+ALTER TABLE payments 
+ADD COLUMN is_reconciled BOOLEAN DEFAULT FALSE,
+ADD COLUMN reconciled_at DATETIME,
+ADD COLUMN bank_reference VARCHAR(255);

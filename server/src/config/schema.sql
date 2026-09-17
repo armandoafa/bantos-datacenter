@@ -141,6 +141,9 @@ CREATE TABLE IF NOT EXISTS payments (
     is_settlement BOOLEAN DEFAULT FALSE,
     discount_amount DECIMAL(15, 2) DEFAULT 0.00,
     synced_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    is_reconciled BOOLEAN DEFAULT FALSE,
+    reconciled_at DATETIME,
+    bank_reference VARCHAR(255),
     UNIQUE KEY (upya_id, tenant_id)
 );
 

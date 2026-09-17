@@ -3,7 +3,7 @@ import axios from 'axios';
 import { Mail, Plus, X, Edit, Trash2, Image as ImageIcon } from 'lucide-react';
 import { motion } from 'framer-motion';
 
-const API = import.meta.env.VITE_API_URL || (window.location.hostname === 'localhost' ? 'http://localhost:4000/api' : 'https://bantos.cloud/datacenter-api');
+const API = import.meta.env.VITE_API_URL || (window.location.hostname === 'localhost' ? 'http://localhost:4000/api' : '/datacenter-api');
 
 const MODULE_VARIABLES = {
   'Ventas': ['{{NombreCliente}}', '{{NumeroCliente}}'],

@@ -172,6 +172,25 @@ export const processTrustonicWebhook = async (payload) => {
          tenant=VALUES(tenant), service=VALUES(service), tac=VALUES(tac), brand=VALUES(brand), model=VALUES(model), status=VALUES(status), expiration_date=VALUES(expiration_date), last_sync=NOW()`,
         [deviceUid, tenant, service, tac, brand, model, state, expiration]
     );
+
+    // Update tenant-specific trustonic_devices table
+    let deviceTenant = tenant !== 'Unknown' ? tenant : null;
+    if (!deviceTenant || deviceTenant === 'Unknown') {
+        const [invRows] = await poolDb.query('SELECT tenant_id FROM inventory WHERE serial_number = ? LIMIT 1', [deviceUid]);
+        if (invRows.length > 0) {
+            deviceTenant = invRows[0].tenant_id;
+        } else {
+            deviceTenant = 'c-romel'; // Fallback
+        }
+    }
+
+    await poolDb.query(
+        `INSERT INTO trustonic_devices (imei1, tenant_id, service, status, brand, model, last_change) 
+         VALUES (?, ?, ?, ?, ?, ?, NOW()) 
+         ON DUPLICATE KEY UPDATE 
+         status=VALUES(status), last_change=VALUES(last_change)`,
+        [deviceUid, deviceTenant, service, state, brand, model]
+    );
     
-    console.log(`[Trustonic API] Dispositivo ${deviceUid} actualizado correctamente vía Webhook.`);
+    console.log(`[Trustonic API] Dispositivo ${deviceUid} actualizado correctamente vía Webhook en inventario general y de tenant.`);
 };

@@ -3343,7 +3343,7 @@ const SettlementModal = ({ isOpen, onClose, contract, session, onSettled }) => {
   );
 };
 
-const DynamicoreIframeContainer = ({ amount, clientId, isRecurring, recurringDates, recurringFrequency, onSuccess, onError, onLoading, iframeId = 'dynamicore-iframe', initialClientData = null, onBeforeTransaction, isSettlement = false, discountAmount = 0, tenantId = 'c-romel' }) => {
+const DynamicoreIframeContainer = ({ amount, clientId, isRecurring, recurringDates, recurringFrequency, onSuccess, onError, onLoading, iframeId = 'dynamicore-iframe', initialClientData = null, onBeforeTransaction, isSettlement = false, discountAmount = 0, tenantId = 'c-romel', imei = null }) => {
   const dynamicorePublicKey = import.meta.env.VITE_DYNAMICORE_PUBLIC_KEY || 'REEMPLAZAR_PUBLIC_KEY';
   const dynamicoreKeyId = import.meta.env.VITE_DYNAMICORE_KEY_ID || 'REEMPLAZAR_KEY_ID';
 
@@ -3505,7 +3505,8 @@ const DynamicoreIframeContainer = ({ amount, clientId, isRecurring, recurringDat
         card_exp_date: cardInfo.exp_date || (cardInfo.exp_month && cardInfo.exp_year ? `${cardInfo.exp_month}/${cardInfo.exp_year}` : null),
         card_type: cardInfo.type || cardInfo.card_type || cardInfo.brand || null,
         issuing_bank: cardInfo.bank || cardInfo.issuing_bank || null,
-        source: 'datacenter'
+        source: 'datacenter',
+        imei: imei
       };
       console.info(`[DYNAMICORE - Paso 4] Ejecutando transacción (is_recurrent: ${isRecurring})...`, txPayload);
       
@@ -3853,6 +3854,7 @@ export const PaymentFormContent = ({
                       recurringDates={formData.recurring_dates} 
                       recurringFrequency={formData.repayment_frequency || "mensual"}
                       tenantId={tenantId}
+                      imei={formData.serialNumber || formData.imei}
                       onSuccess={(token, externalId) => {
                         setDynamicoreSuccess(true);
                         setFormData({...formData, account_number: 'TOKEN:'+token.substring(0,6)+'...', status: 'Paid', transaction_id: externalId ? 'TX-'+externalId : formData.transaction_id});
@@ -8308,14 +8310,15 @@ const App = () => {
         }
       }
 
-      const payload = { ...paymentData, contract_id: finalContractId, tenantId: session.tenantId, userId: session.id, orgId: session.scope?.orgId };
+      const payload = { ...paymentData, contract_id: finalContractId, tenantId: session.tenantId, userId: session.id, orgId: session.scope?.orgId, imei: paymentData.serialNumber || paymentData.imei || null };
       let savedItem = paymentData;
       const paymentIdToUpdate = modalState.item?.upya_id || modalState.item?.id;
       
       if (paymentData._isFiniquito) {
         const settlePayload = {
           tenantId: session.tenantId, userId: session.id, orgId: session.scope?.orgId,
-          amount: paymentData.amount, method: paymentData.method, notes: 'Finiquito procesado'
+          amount: paymentData.amount, method: paymentData.method, notes: 'Finiquito procesado',
+          imei: payload.imei
         };
         const res = await axios.post(`${API}/backoffice/contracts/${finalContractId}/settle`, settlePayload);
         savedItem = { ...paymentData, id: res.data.payment_id, status: 'COMPLETED' };

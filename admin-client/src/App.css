@@ -437,6 +437,12 @@ body {
   overflow: hidden;
 }
 
+.card-table-scroll {
+  max-height: 580px;
+  overflow-y: auto;
+  position: relative;
+}
+
 table {
   width: 100%;
   border-collapse: collapse;
@@ -452,6 +458,13 @@ th {
   letter-spacing: 0.5px;
   color: var(--text-muted);
   border-bottom: 1px solid #e2e8f0;
+}
+
+.card-table-scroll th {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.05);
 }
 
 td {

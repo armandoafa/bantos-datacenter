@@ -1,0 +1,262 @@
+0|bantos-api  | ═══════════════════════════════════════════════════
+0|bantos-api  | 🟦 [WEBVIEW PASO 1] POST /card-payments/create-customer
+0|bantos-api  |   ➡️  REQ body: {
+0|bantos-api  |   "first_name": "Armando de la Caridad",
+0|bantos-api  |   "last_name": "Afa Delgado",
+0|bantos-api  |   "email": "armandoafa@gmail.com",
+0|bantos-api  |   "phone": "5528882885",
+0|bantos-api  |   "username": "admin.cromel",
+0|bantos-api  |   "address_one": "Lago Huron 21",
+0|bantos-api  |   "city": "",
+0|bantos-api  |   "state": "",
+0|bantos-api  |   "zipcode": "",
+0|bantos-api  |   "country": "México",
+0|bantos-api  |   "date_of_birth": "",
+0|bantos-api  |   "is_recurrent": false
+0|bantos-api  | }
+0|bantos-api  |   💾 CACHE HIT — cliente ya registrado
+0|bantos-api  |   ⬅️  RES: {"success":true,"customer_id":"3395725b-93b1-4ff2-83e0-9461c6710c41","from_cache":true}
+0|bantos-api  | ═══════════════════════════════════════════════════
+0|bantos-api  | ═══════════════════════════════════════════════════
+0|bantos-api  | 🟩 [WEBVIEW PASO 3] POST /card-payments/assign-card
+0|bantos-api  |   ➡️  REQ body: {
+0|bantos-api  |   "customer_id": "3395725b-93b1-4ff2-83e0-9461c6710c41",
+0|bantos-api  |   "token_id": "53f11e21-8581-4f44-8dfb-680c832da61e",
+0|bantos-api  |   "is_recurrent": false
+0|bantos-api  | }
+0|bantos-api  | >>> [DynamiCardPay Request] POST https://api.dynamicore.io/marketplace/apps/dynamicardpay/v2/card/assignToCustomer {"customer_id":"3395725b-93b1-4ff2-83e0-9461c6710c41","token_id":"53f11e21-8581-4f44-8dfb-680c832da61e","recurrent":false}
+0|bantos-api  |   ⬅️  Dynamicore RAW response: {
+0|bantos-api  |   "status": "success",
+0|bantos-api  |   "message": {
+0|bantos-api  |     "id": "2594bc46-3bc9-42a5-98db-d770ab4360c7",
+0|bantos-api  |     "token": "53f11e21-8581-4f44-8dfb-680c832da61e",
+0|bantos-api  |     "default": "0",
+0|bantos-api  |     "client": "3395725b-93b1-4ff2-83e0-9461c6710c41",
+0|bantos-api  |     "created_at": "2026-08-30T20:35:59.570578"
+0|bantos-api  |   }
+0|bantos-api  | }
+0|bantos-api  |   ⬅️  RES: {"success":true,"payment_method_id":"2594bc46-3bc9-42a5-98db-d770ab4360c7","data":{"id":"2594bc46-3bc9-42a5-98db-d770ab4360c7","token":"53f11e21-8581-4f44-8dfb-680c832da61e","default":"0","client":"3395725b-93b1-4ff2-83e0-9461c6710c41","created_at":"2026-08-30T20:35:59.570578"}}
+0|bantos-api  | ═══════════════════════════════════════════════════
+0|bantos-api  | ═══════════════════════════════════════════════════
+0|bantos-api  | 🟨 [WEBVIEW PASO 4] POST /card-payments/transactions
+0|bantos-api  |   ➡️  REQ body (hacia Dynamicore): {
+0|bantos-api  |   "payment_method": "2594bc46-3bc9-42a5-98db-d770ab4360c7",
+0|bantos-api  |   "customer_id": "3395725b-93b1-4ff2-83e0-9461c6710c41",
+0|bantos-api  |   "amount": 24,
+0|bantos-api  |   "sc": 0,
+0|bantos-api  |   "accept_url": "https://bantos.cloud/datacenter/?3ds=done",
+0|bantos-api  |   "cancel_url": "https://bantos.cloud/datacenter/?3ds=cancel"
+0|bantos-api  | }
+0|bantos-api  | >>> [DynamiCardPay Request] POST https://api.dynamicore.io/marketplace/apps/dynamicardpay/v2/transactions/ccTransaction {"payment_method":"2594bc46-3bc9-42a5-98db-d770ab4360c7","customer_id":"3395725b-93b1-4ff2-83e0-9461c6710c41","amount":24,"sc":0,"accept_url":"https://bantos.cloud/datacenter/?3ds=done","cancel_url":"https://bantos.cloud/datacenter/?3ds=cancel"}
+0|bantos-api  |   ⬅️  Dynamicore RAW response: {
+0|bantos-api  |   "status": "success",
+0|bantos-api  |   "message": {
+0|bantos-api  |     "external_id": "trs_269f654d-91b7-4836-a9af-9127f927958d_pinpeo_1001480062",
+0|bantos-api  |     "date": "2026-08-30T20:36:02.813527+00:00",
+0|bantos-api  |     "client": "3395725b-93b1-4ff2-83e0-9461c6710c41",
+0|bantos-api  |     "message": "RD",
+0|bantos-api  |     "redirection_url": "https://3ds-mpi.placetopay.com/threeds/v2/sessions/100759804/f92c041d47e17f571ced6efd335c322b4b28a6cf5b602d8fdc065a7276adb6bd"
+0|bantos-api  |   }
+0|bantos-api  | }
+0|bantos-api  |   ⬅️  RES: {"success":true,"external_id":"trs_269f654d-91b7-4836-a9af-9127f927958d_pinpeo_1001480062","redirection_url":"https://3ds-mpi.placetopay.com/threeds/v2/sessions/100759804/f92c041d47e17f571ced6efd335c322b4b28a6cf5b602d8fdc065a7276adb6bd","status":"PENDING_3DS"}
+0|bantos-api  |   🔐 3DS redirection_url: https://3ds-mpi.placetopay.com/threeds/v2/sessions/100759804/f92c041d47e17f571ced6efd335c322b4b28a6cf5b602d8fdc065a7276adb6bd
+0|bantos-api  | ═══════════════════════════════════════════════════
+0|bantos-api  | 🔔 [WEBHOOK] Recepción de Dynamicore
+0|bantos-api  |   📦 Payload recibido: {
+0|bantos-api  |   "code": 1,
+0|bantos-api  |   "total": 1,
+0|bantos-api  |   "data": [
+0|bantos-api  |     {
+0|bantos-api  |       "id": "trs_269f654d-91b7-4836-a9af-9127f927958d_pinpeo_1001480062",
+0|bantos-api  |       "service": 67,
+0|bantos-api  |       "operation": {
+0|bantos-api  |         "code": 1,
+0|bantos-api  |         "name": "Transacción con tarjeta"
+0|bantos-api  |       },
+0|bantos-api  |       "status": {
+0|bantos-api  |         "code": 8,
+0|bantos-api  |         "name": "Pending",
+0|bantos-api  |         "company": 61,
+0|bantos-api  |         "commerce": "Bantos",
+0|bantos-api  |         "commerce_id": 2061,
+0|bantos-api  |         "extras": {
+0|bantos-api  |           "dcc": null,
+0|bantos-api  |           "msi": null,
+0|bantos-api  |           "name": "armando afa",
+0|bantos-api  |           "last4": "0002",
+0|bantos-api  |           "first6": "400000",
+0|bantos-api  |           "secure": "true",
+0|bantos-api  |           "channel": {
+0|bantos-api  |             "type": 2
+0|bantos-api  |           },
+0|bantos-api  |           "recurring": false,
+0|bantos-api  |           "secure_data": {
+0|bantos-api  |             "identifier": 100815366,
+0|bantos-api  |             "redirectURL": "https://3ds-mpi.placetopay.com/threeds/v2/sessions/100759804/f92c041d47e17f571ced6efd335c322b4b28a6cf5b602d8fdc065a7276adb6bd",
+0|bantos-api  |             "sessionToken": "f92c041d47e17f571ced6efd335c322b4b28a6cf5b602d8fdc065a7276adb6bd",
+0|bantos-api  |             "transactionID": 100815366
+0|bantos-api  |           },
+0|bantos-api  |           "redirect_3ds": "https://bantos.cloud/datacenter/?3ds=done",
+0|bantos-api  |           "pos_environment": "ecommerce",
+0|bantos-api  |           "reference_number": "1001480062"
+0|bantos-api  |         },
+0|bantos-api  |         "fees": {
+0|bantos-api  |           "total": 0,
+0|bantos-api  |           "interest": 0,
+0|bantos-api  |           "commission": 0,
+0|bantos-api  |           "interest_tax": 0,
+0|bantos-api  |           "percent_value": 0,
+0|bantos-api  |           "commission_tax": 0,
+0|bantos-api  |           "total_interest": 0,
+0|bantos-api  |           "original_amount": 24,
+0|bantos-api  |           "total_commission": 0
+0|bantos-api  |         }
+0|bantos-api  |       },
+0|bantos-api  |       "created_at": "2026-08-30T20:36:02.813527",
+0|bantos-api  |       "updated_at": "2026-08-30T20:36:02.813527",
+0|bantos-api  |       "client": "3395725b-93b1-4ff2-83e0-9461c6710c41",
+0|bantos-api  |       "payment_method": "53f11e21-8581-4f44-8dfb-680c832da61e",
+0|bantos-api  |       "amount": 24
+0|bantos-api  |     }
+0|bantos-api  |   ]
+0|bantos-api  | }
+0|bantos-api  |   ➡️ TX trs_269f654d-91b7-4836-a9af-9127f927958d_pinpeo_1001480062 | Status: PENDING | Tenant: c-romel | Client: CLI-1787857097674 | Contract: null
+0|bantos-api  | 🔔 [WEBHOOK] Recepción de Dynamicore
+0|bantos-api  |   📦 Payload recibido: {
+0|bantos-api  |   "code": 1,
+0|bantos-api  |   "total": 1,
+0|bantos-api  |   "data": [
+0|bantos-api  |     {
+0|bantos-api  |       "id": "trs_269f654d-91b7-4836-a9af-9127f927958d_pinpeo_1001480062",
+0|bantos-api  |       "service": 67,
+0|bantos-api  |       "operation": {
+0|bantos-api  |         "code": 1,
+0|bantos-api  |         "name": "Transacción con tarjeta"
+0|bantos-api  |       },
+0|bantos-api  |       "status": {
+0|bantos-api  |         "code": 3,
+0|bantos-api  |         "name": "Pending",
+0|bantos-api  |         "company": 61,
+0|bantos-api  |         "commerce": "Bantos",
+0|bantos-api  |         "commerce_id": 2061,
+0|bantos-api  |         "extras": {
+0|bantos-api  |           "dcc": null,
+0|bantos-api  |           "msi": null,
+0|bantos-api  |           "name": "armando afa",
+0|bantos-api  |           "last4": "0002",
+0|bantos-api  |           "first6": "400000",
+0|bantos-api  |           "secure": "true",
+0|bantos-api  |           "channel": {
+0|bantos-api  |             "type": 2
+0|bantos-api  |           },
+0|bantos-api  |           "recurring": false,
+0|bantos-api  |           "secure_data": {
+0|bantos-api  |             "identifier": 100815366,
+0|bantos-api  |             "redirectURL": "https://3ds-mpi.placetopay.com/threeds/v2/sessions/100759804/f92c041d47e17f571ced6efd335c322b4b28a6cf5b602d8fdc065a7276adb6bd",
+0|bantos-api  |             "sessionToken": "f92c041d47e17f571ced6efd335c322b4b28a6cf5b602d8fdc065a7276adb6bd",
+0|bantos-api  |             "transactionID": 100815366
+0|bantos-api  |           },
+0|bantos-api  |           "redirect_3ds": "https://bantos.cloud/datacenter/?3ds=done",
+0|bantos-api  |           "pos_environment": "ecommerce",
+0|bantos-api  |           "reference_number": "1001480062"
+0|bantos-api  |         },
+0|bantos-api  |         "fees": {
+0|bantos-api  |           "total": 0,
+0|bantos-api  |           "interest": 0,
+0|bantos-api  |           "commission": 0,
+0|bantos-api  |           "interest_tax": 0,
+0|bantos-api  |           "percent_value": 0,
+0|bantos-api  |           "commission_tax": 0,
+0|bantos-api  |           "total_interest": 0,
+0|bantos-api  |           "original_amount": 24,
+0|bantos-api  |           "total_commission": 0
+0|bantos-api  |         }
+0|bantos-api  |       },
+0|bantos-api  |       "created_at": "2026-08-30T20:36:02.813527",
+0|bantos-api  |       "updated_at": "2026-08-30T20:36:04.355706",
+0|bantos-api  |       "client": "3395725b-93b1-4ff2-83e0-9461c6710c41",
+0|bantos-api  |       "payment_method": "53f11e21-8581-4f44-8dfb-680c832da61e",
+0|bantos-api  |       "amount": 24
+0|bantos-api  |     }
+0|bantos-api  |   ]
+0|bantos-api  | }
+0|bantos-api  |   ➡️ TX trs_269f654d-91b7-4836-a9af-9127f927958d_pinpeo_1001480062 | Status: PENDING | Tenant: c-romel | Client: CLI-1787857097674 | Contract: null
+0|bantos-api  | 🔔 [WEBHOOK] Recepción de Dynamicore
+0|bantos-api  |   📦 Payload recibido: {
+0|bantos-api  |   "code": 1,
+0|bantos-api  |   "total": 1,
+0|bantos-api  |   "data": [
+0|bantos-api  |     {
+0|bantos-api  |       "id": "trs_269f654d-91b7-4836-a9af-9127f927958d_pinpeo_1001480062",
+0|bantos-api  |       "service": 67,
+0|bantos-api  |       "operation": {
+0|bantos-api  |         "code": 1,
+0|bantos-api  |         "name": "Transacción con tarjeta"
+0|bantos-api  |       },
+0|bantos-api  |       "status": {
+0|bantos-api  |         "code": 2,
+0|bantos-api  |         "name": "Declined",
+0|bantos-api  |         "company": 61,
+0|bantos-api  |         "commerce": "Bantos",
+0|bantos-api  |         "commerce_id": 2061,
+0|bantos-api  |         "extras": {
+0|bantos-api  |           "tip": 0,
+0|bantos-api  |           "name": "armando afa",
+0|bantos-api  |           "brand": "",
+0|bantos-api  |           "last4": "0002",
+0|bantos-api  |           "first6": "400000",
+0|bantos-api  |           "issuer": "",
+0|bantos-api  |           "secure": "true",
+0|bantos-api  |           "channel": {
+0|bantos-api  |             "type": 2
+0|bantos-api  |           },
+0|bantos-api  |           "currency": "484",
+0|bantos-api  |           "auth_code": "",
+0|bantos-api  |           "card_type": "",
+0|bantos-api  |           "recurring": false,
+0|bantos-api  |           "successful": "",
+0|bantos-api  |           "affiliation": "9703724",
+0|bantos-api  |           "result_code": "06",
+0|bantos-api  |           "secure_data": {
+0|bantos-api  |             "eci": "07",
+0|bantos-api  |             "enrolled": "N",
+0|bantos-api  |             "dsTransID": null,
+0|bantos-api  |             "acsTransID": null,
+0|bantos-api  |             "authMethod": null,
+0|bantos-api  |             "sdkTransID": null,
+0|bantos-api  |             "transStatus": "U",
+0|bantos-api  |             "authTimestamp": null,
+0|bantos-api  |             "messageVersion": "2.2.0",
+0|bantos-api  |             "messageCategory": null,
+0|bantos-api  |             "transStatusReason": "N",
+0|bantos-api  |             "authenticationValue": null,
+0|bantos-api  |             "threeDSServerTransID": "3d29fdea-39be-44be-8466-b8037b842fa3"
+0|bantos-api  |           },
+0|bantos-api  |           "acquiereBankId": "",
+0|bantos-api  |           "transaction_id": "",
+0|bantos-api  |           "display_message": "Rechazado por 3ds",
+0|bantos-api  |           "pos_environment": "ecommerce",
+0|bantos-api  |           "acquiereBankName": "",
+0|bantos-api  |           "reference_number": "trs_269f654d-91b7-4836-a9af-9127f927958d_pinpeo_1001480062"
+0|bantos-api  |         },
+0|bantos-api  |         "fees": {
+0|bantos-api  |           "total": 0,
+0|bantos-api  |           "interest": 0,
+0|bantos-api  |           "commission": 0,
+0|bantos-api  |           "interest_tax": 0,
+0|bantos-api  |           "percent_value": 0,
+0|bantos-api  |           "commission_tax": 0,
+0|bantos-api  |           "total_interest": 0,
+0|bantos-api  |           "original_amount": 24,
+0|bantos-api  |           "total_commission": 0
+0|bantos-api  |         }
+0|bantos-api  |       },
+0|bantos-api  |       "created_at": "2026-08-30T20:36:02.813527",
+0|bantos-api  |       "updated_at": "2026-08-30T20:36:05.664674",
+0|bantos-api  |       "client": "3395725b-93b1-4ff2-83e0-9461c6710c41",
+0|bantos-api  |       "payment_method": "53f11e21-8581-4f44-8dfb-680c832da61e",
+0|bantos-api  |       "amount": 24
+0|bantos-api  |     }
+0|bantos-api  |   ]
+0|bantos-api  | }
+0|bantos-api  |   ➡️ TX trs_269f654d-91b7-4836-a9af-9127f927958d_pinpeo_1001480062 | Status: FAILED | Tenant: c-romel | Client: CLI-1787857097674 | Contract: null
