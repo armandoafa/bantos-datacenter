@@ -808,7 +808,7 @@ function App() {
                 <tr>
                   <th>Tenant ID</th>
                   <th>Nombre Comercial</th>
-                  <th>Usuario Upya</th>
+                  <th>Usuario</th>
                   <th>Estado</th>
                   <th>Acciones</th>
                 </tr>
