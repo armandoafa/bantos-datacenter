@@ -4121,8 +4121,9 @@ const SmartExcelImportModal = ({ isOpen, onClose, onImportSuccess, tenantId, use
           item[targetKey] = row[excelCol];
         }
       });
+      // Force name to be the concatenation of manufacturer (Marca) and model (Modelo)
       const computedName = `${item.manufacturer || ''} ${item.model || ''}`.trim();
-      if (!item.name && computedName) {
+      if (computedName) {
         item.name = computedName;
       }
       return item;
