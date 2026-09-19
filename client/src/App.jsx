@@ -4121,6 +4121,10 @@ const SmartExcelImportModal = ({ isOpen, onClose, onImportSuccess, tenantId, use
           item[targetKey] = row[excelCol];
         }
       });
+      const computedName = `${item.manufacturer || ''} ${item.model || ''}`.trim();
+      if (!item.name && computedName) {
+        item.name = computedName;
+      }
       return item;
     }).filter(item => item.name || item.reference || item.imei1 || item.serial_number);
   };
@@ -4254,6 +4258,7 @@ const SmartExcelImportModal = ({ isOpen, onClose, onImportSuccess, tenantId, use
                   <thead className="bg-slate-100 text-slate-600 font-bold uppercase tracking-wider sticky top-0">
                     <tr>
                       <th className="p-3">Nombre</th>
+                      <th className="p-3">Modelo</th>
                       <th className="p-3">Referencia</th>
                       <th className="p-3">Marca</th>
                       <th className="p-3">Precio</th>
@@ -4264,6 +4269,7 @@ const SmartExcelImportModal = ({ isOpen, onClose, onImportSuccess, tenantId, use
                     {getMappedItems().slice(0, 5).map((item, idx) => (
                       <tr key={idx} className="hover:bg-slate-50">
                         <td className="p-3 font-bold text-slate-900">{item.name || '-'}</td>
+                        <td className="p-3 text-slate-700">{item.model || '-'}</td>
                         <td className="p-3 font-mono text-blue-600">{item.reference || '-'}</td>
                         <td className="p-3">{item.manufacturer || '-'}</td>
                         <td className="p-3">${item.base_value || 0}</td>
