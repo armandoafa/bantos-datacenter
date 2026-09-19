@@ -453,12 +453,10 @@ const ProductModal = ({ isOpen, onClose, product, onSave, session, inventory = [
           </div>
           <button onClick={onClose} className="p-3 hover:bg-white rounded-2xl transition-all text-slate-400"><LogOut size={20} /></button>
         </div>
-        {product && (
-          <div className="flex border-b border-slate-100 bg-white px-8">
-            <button onClick={() => setActiveTab('general')} className={`py-4 px-6 font-bold text-sm tracking-wide border-b-2 transition-colors ${activeTab === 'general' ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-400 hover:text-slate-600'}`}>Configuración Comercial</button>
-            <button onClick={() => setActiveTab('inventory')} className={`py-4 px-6 font-bold text-sm tracking-wide border-b-2 transition-colors ${activeTab === 'inventory' ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-400 hover:text-slate-600'}`}>Stock (Dispositivos)</button>
-          </div>
-        )}
+        <div className="flex border-b border-slate-100 bg-white px-8">
+          <button onClick={() => setActiveTab('general')} className={`py-4 px-6 font-bold text-sm tracking-wide border-b-2 transition-colors ${activeTab === 'general' ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-400 hover:text-slate-600'}`}>Configuración Comercial</button>
+          <button onClick={() => setActiveTab('inventory')} className={`py-4 px-6 font-bold text-sm tracking-wide border-b-2 transition-colors ${activeTab === 'inventory' ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-400 hover:text-slate-600'}`}>Stock (Dispositivos)</button>
+        </div>
         <div className="p-8 overflow-y-auto flex-1 max-h-[60vh]">
           {activeTab === 'general' ? (
             <div className="grid grid-cols-1 md:grid-cols-5 gap-4 md:gap-5 items-start">
@@ -522,7 +520,7 @@ const ProductModal = ({ isOpen, onClose, product, onSave, session, inventory = [
           ) : (
             (() => {
               const matchedInventory = inventory.filter(i => {
-                const matchModel = matchesProduct(i.model, product.name);
+                const matchModel = matchesProduct(i.model, product?.name || formData.name);
                 const invVariant = (i.variant || '').trim().toLowerCase();
                 const prodVariant = (formData.variant || '').trim().toLowerCase();
                 return matchModel && invVariant === prodVariant;
