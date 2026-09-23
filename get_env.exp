@@ -1,0 +1,13 @@
+#!/usr/bin/expect -f
+set timeout -1
+set password "4p1B4nt0sC10ud26#"
+spawn ssh -o StrictHostKeyChecking=no root@72.62.128.126
+expect "password:"
+send "$password\r"
+expect "#"
+send "cd /var/www/bantos.cloud/bantos-datacenter/server && cat .env\r"
+expect "#"
+set output $expect_out(buffer)
+send "exit\r"
+expect eof
+puts $output

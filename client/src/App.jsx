@@ -413,6 +413,15 @@ const ProductModal = ({ isOpen, onClose, product, onSave, session, inventory = [
     }
   }, [product, isOpen]);
 
+  useEffect(() => {
+    if (!product && formData.manufacturer && formData.model) {
+      setFormData(prev => ({
+        ...prev,
+        name: `${prev.manufacturer} ${prev.model}`.trim()
+      }));
+    }
+  }, [formData.manufacturer, formData.model, product]);
+
   const handleSave = () => {
     if (formData.manufacturer) saveToCatalogHistory('bantos_catalog_manufacturers', formData.manufacturer);
     if (formData.model) saveToCatalogHistory('bantos_catalog_models', formData.model);
@@ -4370,7 +4379,7 @@ const ProductsView = ({ products = [], onEdit, onCreate, onDelete, onImportSucce
     withVariant: safeProducts.filter(p => p.variant && p.variant.trim() !== '').length,
   };
 
-  const canEdit = user?.role === 'admin' || user?.role === 'manager' || user?.scopeRole === 'MANAGER' || user?.scope?.role === 'MANAGER';
+  const canEdit = user?.role === 'admin' || user?.role === 'superadmin' || user?.role === 'manager' || user?.scopeRole === 'MANAGER' || user?.scope?.role === 'MANAGER' || user?.tenant_id === 'Super Admin Global' || user?.tenantId === 'Super Admin Global';
 
   const filtered = safeProducts.filter(p => {
     if (!p) return false;
@@ -7301,6 +7310,8 @@ const ActionFormView = ({ actionType, prefillData, onBack, onSaveDraft, deals, p
                           product_name: selectedProduct?.name || '',
                           deal_id: selectedDeal,
                           deal_name: deals?.find(d => String(d.name) === String(selectedDeal))?.name || selectedDeal || '',
+                          imei: formData.serialNumber || selectedProduct?.imei || '',
+                          serial_number: formData.serialNumber || selectedProduct?.imei || '',
                           total_value: totalCost,
                           paid_value: paymentFormData.amount || 0,
                           date_created: new Date().toISOString(),
@@ -8712,7 +8723,7 @@ const App = () => {
     </div>
   );
 
-  const isAdmin = session?.role === 'admin' || session?.role === 'superadmin';
+  const isAdmin = session?.role === 'admin' || session?.role === 'superadmin' || session?.tenant_id === 'Super Admin Global' || session?.tenantId === 'Super Admin Global';
 
   const navItems = [
     { section: 'Operación', items: [

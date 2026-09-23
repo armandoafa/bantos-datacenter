@@ -2496,14 +2496,27 @@ app.post('/api/backoffice/payments', async (req, res) => {
        pushPaymentToUpya(req.body, tenantId);
        
        // Activar en Trustonic
-       if (req.body.imei) {
+       let targetImei = req.body.imei || req.body.serialNumber;
+       if (!targetImei && contract_id) {
          try {
-           console.log(`[PAYMENT] Solicitando activación de Trustonic para IMEI: ${req.body.imei}`);
-           await trustonicApi.activateDevice(pool, tenantId, req.body.imei, 'Prepago');
+           const [cRows] = await pool.query('SELECT imei, serial_number FROM contract_history WHERE upya_id = ? OR id = ? LIMIT 1', [contract_id, contract_id]);
+           if (cRows.length > 0) {
+             targetImei = cRows[0].imei || cRows[0].serial_number;
+           }
+         } catch (cErr) {
+           console.error('Error resolviendo IMEI del contrato:', cErr.message);
+         }
+       }
+
+       if (targetImei) {
+         try {
+           console.log(`[PAYMENT] Solicitando activación de Trustonic para IMEI: ${targetImei}`);
+           await trustonicApi.activateDevice(pool, tenantId, targetImei);
          } catch (trustonicErr) {
            console.error('Error activando dispositivo en Trustonic durante el pago:', trustonicErr.message);
          }
        }
+
     }
 
   } catch (e) { res.status(500).json({ error: e.message }); }

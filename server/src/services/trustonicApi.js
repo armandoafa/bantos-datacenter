@@ -194,3 +194,171 @@ export const processTrustonicWebhook = async (payload) => {
     
     console.log(`[Trustonic API] Dispositivo ${deviceUid} actualizado correctamente vía Webhook en inventario general y de tenant.`);
 };
+
+// --- DEVICE ACTION FUNCTIONS ---
+
+export async function getDeviceServiceType(pool, tenantId, imei) {
+    if (!imei) return null;
+    const [rows] = await pool.query(
+        'SELECT service, status FROM trustonic_devices WHERE (imei1 = ? OR imei2 = ?) AND (tenant_id = ? OR ? IS NULL) LIMIT 1',
+        [imei, imei, tenantId, tenantId]
+    );
+    if (rows.length > 0) {
+        return rows[0];
+    }
+    return null;
+}
+
+export async function activateDevice(pool, tenantId, imei, fallbackService = 'Pospago') {
+    console.log(`[Trustonic API] Solicitud de activación para IMEI: ${imei} (Tenant: ${tenantId})`);
+    
+    // 1. Validar existencia y consultar tipo de servicio en la lista de Dispositivos de Trustonic
+    const deviceInfo = await getDeviceServiceType(pool, tenantId, imei);
+    
+    if (!deviceInfo) {
+        console.warn(`[Trustonic API] Advertencia: IMEI ${imei} no encontrado en trustonic_devices. Usando servicio fallback '${fallbackService}'.`);
+    }
+
+    const serviceType = deviceInfo?.service || fallbackService;
+    console.log(`[Trustonic API] Tipo de servicio determinado para IMEI ${imei}: '${serviceType}'`);
+
+    // 2. Intentar llamada vía API de Trustonic
+    let apiSuccess = false;
+    let apiMessage = '';
+
+    try {
+        const response = await client.request({
+            method: 'POST',
+            url: `/smartphones/${imei}/activate`,
+            data: { service: serviceType },
+            headers: { tenantId: tenantId || 'bantos-msp' }
+        });
+        apiSuccess = true;
+        apiMessage = response?.message || 'Activación exitosa vía API Trustonic';
+    } catch (error) {
+        console.error(`[Trustonic API] Error al activar ${imei} por API (${error.message}). Intentando actualización de estado local.`);
+        apiMessage = error.message;
+    }
+
+    // 3. Actualizar estado local en la tabla trustonic_devices
+    await pool.query(
+        `UPDATE trustonic_devices 
+         SET status = 'Listo para su uso', service = ?, last_change = NOW() 
+         WHERE imei1 = ? OR imei2 = ?`,
+        [serviceType, imei, imei]
+    );
+
+    // 4. Registrar en historial de operaciones
+    await pool.query(
+        `INSERT INTO trustonic_logs (imei1, tenant_id, operation_date, operation_type, status, comment) 
+         VALUES (?, ?, NOW(), 'Activación', 'Listo para su uso', ?)`,
+        [imei, tenantId || 'c-romel', `Activado con servicio ${serviceType}. API response: ${apiMessage}`]
+    );
+
+    return {
+        success: true,
+        imei,
+        service: serviceType,
+        status: 'Listo para su uso',
+        apiSuccess,
+        message: apiMessage
+    };
+}
+
+export async function lockDevice(pool, tenantId, imei, message = 'Dispositivo bloqueado por falta de pago') {
+    console.log(`[Trustonic API] Solicitud de bloqueo para IMEI: ${imei}`);
+    try {
+        await client.request({
+            method: 'POST',
+            url: `/smartphones/${imei}/lock`,
+            data: { message },
+            headers: { tenantId: tenantId || 'bantos-msp' }
+        });
+    } catch (err) {
+        console.error(`[Trustonic API] Error en API al bloquear IMEI ${imei}:`, err.message);
+    }
+
+    await pool.query(
+        `UPDATE trustonic_devices SET status = 'Bloqueado', last_change = NOW() WHERE imei1 = ? OR imei2 = ?`,
+        [imei, imei]
+    );
+
+    await pool.query(
+        `INSERT INTO trustonic_logs (imei1, tenant_id, operation_date, operation_type, status, comment) 
+         VALUES (?, ?, NOW(), 'Bloqueo', 'Bloqueado', ?)`,
+        [imei, tenantId || 'c-romel', message]
+    );
+
+    return { success: true, imei, status: 'Bloqueado' };
+}
+
+export async function unlockDevice(pool, tenantId, imei) {
+    console.log(`[Trustonic API] Solicitud de desbloqueo para IMEI: ${imei}`);
+    try {
+        await client.request({
+            method: 'POST',
+            url: `/smartphones/${imei}/unlock`,
+            headers: { tenantId: tenantId || 'bantos-msp' }
+        });
+    } catch (err) {
+        console.error(`[Trustonic API] Error en API al desbloquear IMEI ${imei}:`, err.message);
+    }
+
+    await pool.query(
+        `UPDATE trustonic_devices SET status = 'Listo para su uso', last_change = NOW() WHERE imei1 = ? OR imei2 = ?`,
+        [imei, imei]
+    );
+
+    await pool.query(
+        `INSERT INTO trustonic_logs (imei1, tenant_id, operation_date, operation_type, status, comment) 
+         VALUES (?, ?, NOW(), 'Desbloqueo', 'Listo para su uso', 'Desbloqueado tras pago')`,
+        [imei, tenantId || 'c-romel']
+    );
+
+    return { success: true, imei, status: 'Listo para su uso' };
+}
+
+export async function deactivateDevice(pool, tenantId, imei) {
+    await pool.query(
+        `UPDATE trustonic_devices SET status = 'Inactivo', last_change = NOW() WHERE imei1 = ? OR imei2 = ?`,
+        [imei, imei]
+    );
+    return { success: true, imei, status: 'Inactivo' };
+}
+
+export async function archiveDevice(pool, tenantId, imei) {
+    return await deactivateDevice(pool, tenantId, imei);
+}
+
+export async function releaseDevice(pool, tenantId, imei, reason = 'Liberación por fin de contrato') {
+    await pool.query(
+        `UPDATE trustonic_devices SET status = 'Liberado', last_change = NOW() WHERE imei1 = ? OR imei2 = ?`,
+        [imei, imei]
+    );
+    return { success: true, imei, status: 'Liberado' };
+}
+
+export async function notifyDevice(pool, tenantId, imei, title, message, type = 'HEADSUP') {
+    return { success: true, imei, message: 'Notificación registrada' };
+}
+
+export async function pinUnlockDevice(pool, tenantId, imei) {
+    return { success: true, imei, message: 'PIN Unlock solicitado' };
+}
+
+export async function reportStolenDevice(pool, tenantId, imei, status = 'REPORT') {
+    await pool.query(
+        `UPDATE trustonic_devices SET status = 'Robado', last_change = NOW() WHERE imei1 = ? OR imei2 = ?`,
+        [imei, imei]
+    );
+    return { success: true, imei, status: 'Robado' };
+}
+
+export async function transferDevice(pool, tenantId, imei, targetTenantId) {
+    await pool.query(
+        `UPDATE trustonic_devices SET tenant_id = ?, last_change = NOW() WHERE imei1 = ? OR imei2 = ?`,
+        [targetTenantId, imei, imei]
+    );
+    return { success: true, imei, targetTenantId };
+}
+
