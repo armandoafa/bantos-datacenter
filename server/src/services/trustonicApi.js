@@ -80,7 +80,7 @@ export async function syncMovements(pool, tenantId) {
             if (invRows.length > 0) {
                 deviceTenant = invRows[0].tenant_id;
             } else {
-                deviceTenant = 'c-romel';
+                deviceTenant = tenantId || 'c-romel';
             }
         }
         
@@ -89,7 +89,11 @@ export async function syncMovements(pool, tenantId) {
             `INSERT INTO trustonic_devices (imei1, imei2, tenant_id, service, status, brand, model, last_change, last_connection) 
              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) 
              ON DUPLICATE KEY UPDATE 
-             status=VALUES(status), last_change=VALUES(last_change), last_connection=VALUES(last_connection)`,
+             tenant_id=IF(VALUES(tenant_id) IS NOT NULL AND VALUES(tenant_id) != '', VALUES(tenant_id), tenant_id),
+             service=COALESCE(VALUES(service), service),
+             status=VALUES(status), 
+             last_change=VALUES(last_change), 
+             last_connection=VALUES(last_connection)`,
             [imei1, d.imei2 || null, deviceTenant, d.service, status, d.brand, d.model, lastChange, lastConn]
         );
 
