@@ -986,14 +986,18 @@ app.get('/api/backoffice/org-structure', async (req, res) => {
 });
 
 app.post('/api/backoffice/org-structure', async (req, res) => {
-  const { name, type, parent_id, administrator, upya_id, tenantId, user_id } = req.body;
+  const { name, type, parent_id, administrator, upya_id, tenantId, user_id, is_central_store } = req.body;
   const connection = await pool.getConnection();
   try {
     await connection.beginTransaction();
     const newUpyaId = upya_id || `local-${Date.now()}`;
+    const isCentral = is_central_store === true || is_central_store === 1 || is_central_store === 'true' ? 1 : 0;
+    if (isCentral) {
+      await connection.query('UPDATE org_structure SET is_central_store = 0 WHERE tenant_id = ?', [tenantId]);
+    }
     const [result] = await connection.query(
-      'INSERT INTO org_structure (upya_id, tenant_id, name, type, parent_id, administrator, user_id) VALUES (?, ?, ?, ?, ?, ?, ?)',
-      [newUpyaId, tenantId, name, type, parent_id || null, administrator, user_id || null]
+      'INSERT INTO org_structure (upya_id, tenant_id, name, type, parent_id, administrator, user_id, is_central_store) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+      [newUpyaId, tenantId, name, type, parent_id || null, administrator, user_id || null, isCentral]
     );
     const newOrgId = result.insertId;
     if (user_id) {
@@ -1010,13 +1014,17 @@ app.post('/api/backoffice/org-structure', async (req, res) => {
 });
 
 app.put('/api/backoffice/org-structure/:id', async (req, res) => {
-  const { name, type, parent_id, administrator, tenantId, user_id } = req.body;
+  const { name, type, parent_id, administrator, tenantId, user_id, is_central_store } = req.body;
   const connection = await pool.getConnection();
   try {
     await connection.beginTransaction();
+    const isCentral = is_central_store === true || is_central_store === 1 || is_central_store === 'true' ? 1 : 0;
+    if (isCentral) {
+      await connection.query('UPDATE org_structure SET is_central_store = 0 WHERE tenant_id = ?', [tenantId]);
+    }
     await connection.query(
-      'UPDATE org_structure SET name=?, type=?, parent_id=?, administrator=?, user_id=? WHERE id=? AND tenant_id=?',
-      [name, type, parent_id || null, administrator, user_id || null, req.params.id, tenantId]
+      'UPDATE org_structure SET name=?, type=?, parent_id=?, administrator=?, user_id=?, is_central_store=? WHERE id=? AND tenant_id=?',
+      [name, type, parent_id || null, administrator, user_id || null, isCentral, req.params.id, tenantId]
     );
     if (user_id) {
       await connection.query('UPDATE users SET store_id = ? WHERE id = ? AND tenant_id = ?', [req.params.id, user_id, tenantId]);
@@ -2175,6 +2183,21 @@ app.post('/api/backoffice/inventory/transfer', async (req, res) => {
   try {
     conn = await pool.getConnection();
     await conn.beginTransaction();
+
+    // 0. Check if tenant has a designated Central Store
+    const [centralStores] = await conn.query(
+      'SELECT id, name FROM org_structure WHERE tenant_id = ? AND is_central_store = 1 LIMIT 1',
+      [tenantId]
+    );
+    if (centralStores.length > 0) {
+      const centralStore = centralStores[0];
+      if (String(centralStore.id) !== String(originStoreId)) {
+        await conn.rollback();
+        return res.status(403).json({ 
+          error: `La tienda origen seleccionada no está autorizada para generar transferencias. Solo la Tienda Central (${centralStore.name}) puede originar transferencias en este tenant.` 
+        });
+      }
+    }
 
     // 1. Transfer inventory: set new store_id and unassign from any user.
     await conn.query(

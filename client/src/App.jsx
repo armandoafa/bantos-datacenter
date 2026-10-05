@@ -5908,11 +5908,16 @@ const OrgTreeNode = ({ node, items, level = 0, onEdit, onDelete, users = [] }) =
         </div>
 
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 overflow-hidden">
+          <div className="flex items-center gap-2 overflow-hidden flex-wrap">
             <h4 className="font-black text-slate-800 text-sm tracking-tight leading-none truncate">{node.name}</h4>
             <span className={`text-[8px] font-black uppercase tracking-[0.15em] px-1.5 py-0.5 rounded-md bg-slate-100 text-slate-400 shrink-0`}>
               {node.type}
             </span>
+            {Boolean(node.is_central_store) && (
+              <span className="text-[8px] font-black uppercase tracking-[0.15em] px-2 py-0.5 rounded-md bg-amber-100 text-amber-700 border border-amber-300 shrink-0 flex items-center gap-1">
+                Central de Transferencias
+              </span>
+            )}
           </div>
           <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-1 truncate">
             {responsibleName} • {node.upya_id}
@@ -5978,6 +5983,7 @@ const OrganizationView = ({ structure, session, refreshData }) => {
     }
     payload.name = payload.name.trim();
     payload.tenantId = session.tenantId;
+    payload.is_central_store = payload.is_central_store === 'on' || payload.is_central_store === 'true' || payload.is_central_store === true;
 
     try {
       if (editingNode?.id) {
@@ -6081,7 +6087,24 @@ const OrganizationView = ({ structure, session, refreshData }) => {
                       ))}
                     </select>
                   </div>
-                  {/* Keep administrator as hidden field just in case backend still expects it, or just omit it */}
+                  {nodeType === 'Manager' && (
+                    <div className="bg-amber-50/70 border border-amber-200 rounded-2xl p-4 space-y-2">
+                      <label className="flex items-center gap-3 cursor-pointer">
+                        <input 
+                          type="checkbox" 
+                          name="is_central_store" 
+                          defaultChecked={Boolean(editingNode?.is_central_store)} 
+                          className="w-5 h-5 accent-blue-600 rounded cursor-pointer" 
+                        />
+                        <span className="text-xs font-black uppercase tracking-wider text-amber-900">
+                          Establecer como Tienda Central de Transferencias
+                        </span>
+                      </label>
+                      <p className="text-[10px] font-bold text-amber-700/80 leading-relaxed pl-8">
+                        Al marcar esta tienda, se autoriza de manera exclusiva como el origen de transferencias de inventario para este tenant.
+                      </p>
+                    </div>
+                  )}
                   <input type="hidden" name="administrator" value={users.find(u => u.id === editingNode?.user_id)?.contact_name || editingNode?.administrator || ''} />
                 </div>
                 <button type="submit" className="w-full bg-blue-600 text-white font-black text-sm uppercase tracking-widest py-4 rounded-2xl shadow-lg shadow-blue-600/30 hover:bg-blue-700 transition-all shrink-0">
@@ -7717,6 +7740,22 @@ const TransferenciasView = ({ stores, inventory, session, refreshData, users, pr
   const [destStoreId, setDestStoreId] = useState('');
   const [selectedItems, setSelectedItems] = useState([]);
   
+  const centralStore = stores?.find(s => Boolean(s.is_central_store));
+  const originStores = stores?.filter(s => Boolean(s.is_central_store));
+  const selectableOriginStores = (originStores && originStores.length > 0) ? originStores : (stores || []);
+
+  const handleOpenModal = () => {
+    if (centralStore) {
+      setOriginStoreId(String(centralStore.id));
+    } else if (stores && stores.length > 0) {
+      setOriginStoreId(String(stores[0].id));
+    }
+    setSelectedItems([]);
+    setModelFilter('');
+    setDestStoreId('');
+    setShowModal(true);
+  };
+  
   const originInventory = inventory?.filter(i => i.store_id == originStoreId && originStoreId !== '') || [];
 
   const loadTransfers = useCallback(async () => {
@@ -7760,7 +7799,7 @@ const TransferenciasView = ({ stores, inventory, session, refreshData, users, pr
       setShowModal(false);
       refreshData();
       loadTransfers();
-    } catch(e) { alert('Error: ' + e.message); }
+    } catch(e) { alert('Error: ' + (e.response?.data?.error || e.message)); }
   };
 
   const handleRevert = async (id) => {
@@ -7787,7 +7826,7 @@ const TransferenciasView = ({ stores, inventory, session, refreshData, users, pr
       <div className="flex justify-between items-center">
         <PageHeader title="Transferencias" subtitle="Historial y movimientos de inventario" />
         <button 
-          onClick={() => setShowModal(true)} 
+          onClick={handleOpenModal} 
           className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl shadow-blue-600/30 transition-all flex items-center gap-2"
         >
           <Plus size={16} /> Nueva Transferencia
@@ -7895,17 +7934,23 @@ const TransferenciasView = ({ stores, inventory, session, refreshData, users, pr
             <div className="p-6 md:p-8 flex-1 overflow-y-auto space-y-8">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="bg-slate-50 p-6 rounded-[24px] border border-slate-200">
-                  <label className="text-xs font-black uppercase text-slate-500 tracking-widest block mb-2">Tienda Origen</label>
+                  <label className="text-xs font-black uppercase text-slate-500 tracking-widest block mb-2">
+                    Tienda Origen {centralStore ? '(Central Autorizada)' : ''}
+                  </label>
                   <select value={originStoreId} onChange={e => { setOriginStoreId(e.target.value); setSelectedItems([]); setModelFilter(''); }} className="w-full bg-white border-2 border-slate-200 rounded-xl py-3 px-4 font-bold outline-none focus:border-blue-500 transition-all">
                     <option value="">-- Seleccionar origen --</option>
-                    {stores?.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                    {selectableOriginStores?.map(s => (
+                      <option key={s.id} value={s.id}>
+                        {s.name} {s.is_central_store ? '★ (Tienda Central)' : ''}
+                      </option>
+                    ))}
                   </select>
                 </div>
                 <div className="bg-slate-50 p-6 rounded-[24px] border border-slate-200">
                   <label className="text-xs font-black uppercase text-slate-500 tracking-widest block mb-2">Tienda Destino</label>
                   <select value={destStoreId} onChange={e => setDestStoreId(e.target.value)} className="w-full bg-white border-2 border-slate-200 rounded-xl py-3 px-4 font-bold outline-none focus:border-emerald-500 transition-all">
                     <option value="">-- Seleccionar destino --</option>
-                    {stores?.filter(s => s.id != originStoreId).map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                    {stores?.filter(s => String(s.id) !== String(originStoreId)).map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
                   </select>
                 </div>
               </div>

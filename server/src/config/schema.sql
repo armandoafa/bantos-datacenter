@@ -173,6 +173,7 @@ CREATE TABLE IF NOT EXISTS org_structure (
     email VARCHAR(255),
     mobile VARCHAR(50),
     address TEXT,
+    is_central_store TINYINT(1) DEFAULT 0,
     synced_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     UNIQUE KEY (upya_id, tenant_id)
 );
