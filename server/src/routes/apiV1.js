@@ -370,7 +370,8 @@ router.get('/v1/devices/:imei', authenticateExternalApiToken, async (req, res) =
  * @openapi
  * /api/v1/devices/{imei}/lock:
  *   post:
- *     summary: Solicitar bloqueo de dispositivo por IMEI
+ *     summary: Lock (Bloquear dispositivo)
+ *     description: Solicita el bloqueo de la pantalla del dispositivo por IMEI.
  *     tags:
  *       - Dispositivos
  *     security:
@@ -381,14 +382,25 @@ router.get('/v1/devices/:imei', authenticateExternalApiToken, async (req, res) =
  *         required: true
  *         schema:
  *           type: string
+ *     requestBody:
+ *       required: false
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               lock_message:
+ *                 type: string
+ *                 example: Dispositivo bloqueado por falta de pago
  *     responses:
  *       200:
  *         description: Orden de bloqueo emitida exitosamente
  */
 router.post('/v1/devices/:imei/lock', authenticateExternalApiToken, async (req, res) => {
   try {
-    const result = await trustonicApi.lockDevice(pool, req.tenantId, req.params.imei);
-    res.json({ success: true, imei: req.params.imei, action: 'LOCK', result });
+    const lockMsg = req.body?.lock_message || 'Dispositivo bloqueado por falta de pago';
+    const result = await trustonicApi.lockDevice(pool, req.tenantId, req.params.imei, lockMsg);
+    res.json({ success: true, imei: req.params.imei, action: 'LOCK', lock_message: lockMsg, result });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
@@ -398,7 +410,8 @@ router.post('/v1/devices/:imei/lock', authenticateExternalApiToken, async (req, 
  * @openapi
  * /api/v1/devices/{imei}/unlock:
  *   post:
- *     summary: Solicitar desbloqueo de dispositivo por IMEI
+ *     summary: UnLock (Desbloquear dispositivo)
+ *     description: Solicita el desbloqueo del dispositivo por IMEI.
  *     tags:
  *       - Dispositivos
  *     security:
@@ -417,6 +430,168 @@ router.post('/v1/devices/:imei/unlock', authenticateExternalApiToken, async (req
   try {
     const result = await trustonicApi.unlockDevice(pool, req.tenantId, req.params.imei);
     res.json({ success: true, imei: req.params.imei, action: 'UNLOCK', result });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+/**
+ * @openapi
+ * /api/v1/devices/{imei}/release:
+ *   post:
+ *     summary: Liberar dispositivo (Release)
+ *     description: Remueve la gestión de seguridad de Trustonic del dispositivo (liberación por fin de contrato o pago total).
+ *     tags:
+ *       - Dispositivos
+ *     security:
+ *       - BearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: imei
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: false
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               reason:
+ *                 type: string
+ *                 example: Liberación por fin de contrato
+ *     responses:
+ *       200:
+ *         description: Orden de liberación ejecutada exitosamente
+ */
+router.post('/v1/devices/:imei/release', authenticateExternalApiToken, async (req, res) => {
+  try {
+    const reason = req.body?.reason || 'Liberación vía API externa';
+    const result = await trustonicApi.releaseDevice(pool, req.tenantId, req.params.imei, reason);
+    res.json({ success: true, imei: req.params.imei, action: 'RELEASE', reason, result });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+/**
+ * @openapi
+ * /api/v1/devices/{imei}/notify:
+ *   post:
+ *     summary: Notificar dispositivo (Send Notification)
+ *     description: Envía un mensaje emergente / notificación push en pantalla al dispositivo.
+ *     tags:
+ *       - Dispositivos
+ *     security:
+ *       - BearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: imei
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - message
+ *             properties:
+ *               title:
+ *                 type: string
+ *                 example: Recordatorio de Pago Bantos
+ *               message:
+ *                 type: string
+ *                 example: Su mensualidad vence pronto. Evite el bloqueo de su equipo.
+ *     responses:
+ *       200:
+ *         description: Notificación enviada al dispositivo exitosamente
+ */
+router.post('/v1/devices/:imei/notify', authenticateExternalApiToken, async (req, res) => {
+  const { title = 'Aviso Bantos', message } = req.body;
+  if (!message) {
+    return res.status(400).json({ error: 'El parámetro "message" es requerido para enviar una notificación.' });
+  }
+  try {
+    const result = await trustonicApi.notifyDevice(pool, req.tenantId, req.params.imei, title, message, 'HEADSUP');
+    res.json({ success: true, imei: req.params.imei, action: 'NOTIFY', title, message, result });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+/**
+ * @openapi
+ * /api/v1/devices/{imei}/pin-unlock:
+ *   post:
+ *     summary: PIN Unlock (Generar código PIN de Desbloqueo)
+ *     description: Genera o consulta un código PIN de emergencia/desbloqueo de 4 u 8 dígitos para el dispositivo.
+ *     tags:
+ *       - Dispositivos
+ *     security:
+ *       - BearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: imei
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Código PIN generado exitosamente
+ */
+router.post('/v1/devices/:imei/pin-unlock', authenticateExternalApiToken, async (req, res) => {
+  try {
+    const result = await trustonicApi.pinUnlockDevice(pool, req.tenantId, req.params.imei);
+    res.json({ success: true, imei: req.params.imei, action: 'PIN_UNLOCK', result });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+/**
+ * @openapi
+ * /api/v1/devices/{imei}/lock-message:
+ *   post:
+ *     summary: Lock Message (Establecer mensaje de bloqueo)
+ *     description: Envía o actualiza el mensaje de bloqueo personalizado que se muestra en la pantalla del dispositivo bloqueado.
+ *     tags:
+ *       - Dispositivos
+ *     security:
+ *       - BearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: imei
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - lock_message
+ *             properties:
+ *               lock_message:
+ *                 type: string
+ *                 example: Estimado cliente, su pago se encuentra vencido. Favor de comunicarse a atención al cliente.
+ *     responses:
+ *       200:
+ *         description: Mensaje de bloqueo enviado exitosamente
+ */
+router.post('/v1/devices/:imei/lock-message', authenticateExternalApiToken, async (req, res) => {
+  const { lock_message } = req.body;
+  if (!lock_message) {
+    return res.status(400).json({ error: 'El parámetro "lock_message" es requerido.' });
+  }
+  try {
+    const result = await trustonicApi.lockDevice(pool, req.tenantId, req.params.imei, lock_message);
+    res.json({ success: true, imei: req.params.imei, action: 'LOCK_MESSAGE', lock_message, result });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
