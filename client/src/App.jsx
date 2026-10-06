@@ -9015,7 +9015,6 @@ const App = () => {
         ...(isAdmin ? [{ id: 'setup-org', label: 'Organización', icon: Building2 }] : []),
         ...(isAdmin ? [{ id: 'setup-users', label: 'Usuarios', icon: Users }] : []),
         ...(isAdmin ? [{ id: 'setup-transfers', label: 'Transferencias', icon: ArrowRightLeft }] : []),
-        ...(isAdmin ? [{ id: 'setup-apikeys', label: 'Integraciones API', icon: KeyRound }] : []),
       ]},
       { id: 'records', label: 'Registro', icon: BookOpen, children: [
         { id: 'record-actions', label: 'Ventas', icon: Zap },
@@ -9029,7 +9028,11 @@ const App = () => {
       ]}] : []),
       { id: 'manage-audit', label: 'Auditoría', icon: Clock },
     ]},
-    ...(isAdmin ? [{ section: 'Estructura', items: [ { id: 'setup-messaging', label: 'Mensajería', icon: Mail }, { id: 'setup-config', label: 'Sistema', icon: Settings2 } ]}] : []),
+    ...(isAdmin ? [{ section: 'Estructura', items: [
+      { id: 'setup-messaging', label: 'Mensajería', icon: Mail },
+      { id: 'setup-config', label: 'Sistema', icon: Settings2 },
+      { id: 'setup-apikeys', label: 'Integraciones API', icon: KeyRound }
+    ]}] : []),
   ];
 
   const isAgent = session?.role === 'agent' || session?.role === 'agente';
