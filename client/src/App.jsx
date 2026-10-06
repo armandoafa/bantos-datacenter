@@ -8070,6 +8070,242 @@ const TransferenciasView = ({ stores, inventory, session, refreshData, users, pr
   );
 };
 
+const ApiKeyManagementView = ({ session }) => {
+  const [apiKeys, setApiKeys] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [newKeyName, setNewKeyName] = useState('');
+  const [createdSecretData, setCreatedSecretData] = useState(null);
+
+  const fetchApiKeys = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await axios.get(`${API}/backoffice/api-keys?tenantId=${session.tenantId}`);
+      setApiKeys(res.data || []);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoading(false);
+    }
+  }, [session.tenantId]);
+
+  useEffect(() => {
+    fetchApiKeys();
+  }, [fetchApiKeys]);
+
+  const handleCreate = async (e) => {
+    e.preventDefault();
+    if (!newKeyName.trim()) return alert('Ingresa un nombre para la API Key');
+    try {
+      const res = await axios.post(`${API}/backoffice/api-keys`, {
+        tenantId: session.tenantId,
+        name: newKeyName,
+        userId: session.id || session.userId
+      });
+      setCreatedSecretData(res.data);
+      setShowCreateModal(false);
+      setNewKeyName('');
+      fetchApiKeys();
+    } catch (e) {
+      alert('Error creando API Key: ' + (e.response?.data?.error || e.message));
+    }
+  };
+
+  const handleRevoke = async (id, name) => {
+    if (!window.confirm(`¿Seguro que deseas revocar la API Key "${name}"? Los sistemas externos usando esta clave perderán acceso.`)) return;
+    try {
+      await axios.delete(`${API}/backoffice/api-keys/${id}?tenantId=${session.tenantId}`);
+      fetchApiKeys();
+    } catch (e) {
+      alert('Error revocando API Key: ' + (e.response?.data?.error || e.message));
+    }
+  };
+
+  return (
+    <div className="space-y-10 pb-20 relative">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <PageHeader 
+          title="Integraciones API & Webhooks" 
+          subtitle="Credenciales de acceso para consumo de servicios Bantos LMS por sistemas terceros" 
+        />
+        <div className="flex items-center gap-3">
+          <a 
+            href={`${API}/v1/docs`} 
+            target="_blank" 
+            rel="noopener noreferrer" 
+            className="bg-slate-100 hover:bg-slate-200 text-slate-700 px-5 py-3 rounded-2xl font-black text-xs uppercase tracking-widest transition-all flex items-center gap-2 border border-slate-200"
+          >
+            <BookOpen size={16} /> Documentación Swagger
+          </a>
+          <button 
+            onClick={() => setShowCreateModal(true)} 
+            className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl shadow-blue-600/30 transition-all flex items-center gap-2"
+          >
+            <Plus size={16} /> Nueva API Key
+          </button>
+        </div>
+      </div>
+
+      <div className="bg-white rounded-[32px] shadow-sm border border-slate-100 overflow-hidden">
+        {loading ? (
+          <div className="p-10 text-center text-slate-500 font-bold">Cargando API Keys...</div>
+        ) : apiKeys.length === 0 ? (
+          <div className="p-16 text-center space-y-4">
+            <div className="w-16 h-16 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center mx-auto">
+              <KeyRound size={32} />
+            </div>
+            <div>
+              <p className="text-lg font-bold text-slate-800">No hay API Keys generadas</p>
+              <p className="text-sm text-slate-500 max-w-md mx-auto mt-1">
+                Crea una API Key para conectar sistemas externos (ERP, CRM, Pasarelas) con la API RESTful de Bantos LMS.
+              </p>
+            </div>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="bg-slate-50 border-b border-slate-100 text-[11px] font-black uppercase tracking-widest text-slate-400">
+                  <th className="py-4 px-6">Nombre Integración</th>
+                  <th className="py-4 px-6">API Key (Client ID)</th>
+                  <th className="py-4 px-6">Fecha Creación</th>
+                  <th className="py-4 px-6">Último Uso</th>
+                  <th className="py-4 px-6">Estado</th>
+                  <th className="py-4 px-6 text-right">Acción</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {apiKeys.map(k => (
+                  <tr key={k.id} className="hover:bg-slate-50/50 transition-colors">
+                    <td className="py-4 px-6 font-bold text-slate-800">{k.name}</td>
+                    <td className="py-4 px-6">
+                      <code className="bg-slate-100 text-slate-700 font-mono text-xs px-2.5 py-1 rounded-lg border border-slate-200">
+                        {k.api_key}
+                      </code>
+                    </td>
+                    <td className="py-4 px-6 text-xs text-slate-500 font-medium">
+                      {new Date(k.created_at).toLocaleDateString()}
+                    </td>
+                    <td className="py-4 px-6 text-xs text-slate-500 font-medium">
+                      {k.last_used_at ? new Date(k.last_used_at).toLocaleString() : 'Nunca'}
+                    </td>
+                    <td className="py-4 px-6">
+                      {k.status === 'active' ? (
+                        <span className="bg-emerald-50 text-emerald-600 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider">
+                          Activa
+                        </span>
+                      ) : (
+                        <span className="bg-red-50 text-red-600 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider">
+                          Revocada
+                        </span>
+                      )}
+                    </td>
+                    <td className="py-4 px-6 text-right">
+                      {k.status === 'active' && (
+                        <button 
+                          onClick={() => handleRevoke(k.id, k.name)}
+                          className="text-xs font-bold text-red-500 hover:text-red-700 hover:bg-red-50 px-3 py-1.5 rounded-xl transition-all"
+                        >
+                          Revocar
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      {/* Modal Crear Nueva API Key */}
+      {showCreateModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => setShowCreateModal(false)} />
+          <div className="bg-white rounded-[36px] shadow-2xl border border-slate-100 w-full max-w-lg overflow-hidden flex flex-col relative z-10">
+            <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+              <h3 className="text-xl font-black text-slate-800 tracking-tight">Nueva API Key de Integración</h3>
+              <button onClick={() => setShowCreateModal(false)} className="w-9 h-9 bg-white border border-slate-200 rounded-full flex items-center justify-center text-slate-400 hover:text-slate-600 transition-all">
+                <X size={18} />
+              </button>
+            </div>
+            <form onSubmit={handleCreate} className="p-6 space-y-6">
+              <div>
+                <label className="text-xs font-black uppercase text-slate-500 tracking-widest block mb-2">Nombre de la Integración / Sistema</label>
+                <input 
+                  type="text" 
+                  required 
+                  placeholder="Ej: ERP SAP, CRM Hubspot, Pasarela Externa..." 
+                  value={newKeyName} 
+                  onChange={e => setNewKeyName(e.target.value)} 
+                  className="w-full bg-slate-50 border-2 border-slate-200 rounded-xl py-3 px-4 font-bold text-slate-800 outline-none focus:border-blue-600 transition-all"
+                />
+              </div>
+              <div className="bg-blue-50/70 border border-blue-200 rounded-2xl p-4 text-xs font-medium text-blue-900 leading-relaxed">
+                Al generar la API Key, el sistema emitirá un <strong>API Secret</strong> único. Deberás resguardarlo en tu servidor seguro para la autenticación vía token JWT.
+              </div>
+              <div className="flex justify-end gap-3 pt-2">
+                <button type="button" onClick={() => setShowCreateModal(false)} className="px-5 py-3 bg-white border border-slate-200 text-slate-600 font-bold rounded-2xl text-xs uppercase tracking-widest hover:bg-slate-50 transition-all">
+                  Cancelar
+                </button>
+                <button type="submit" className="px-6 py-3 bg-blue-600 text-white font-black rounded-2xl text-xs uppercase tracking-widest shadow-lg shadow-blue-600/30 hover:bg-blue-700 transition-all">
+                  Generar Credenciales
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Mostrar API Secret Generado (Única Vez) */}
+      {createdSecretData && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" />
+          <div className="bg-white rounded-[36px] shadow-2xl border border-slate-100 w-full max-w-xl overflow-hidden flex flex-col relative z-10">
+            <div className="p-6 border-b border-slate-100 bg-amber-50/60 flex justify-between items-center">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-amber-100 text-amber-700 rounded-xl flex items-center justify-center font-bold">
+                  <ShieldCheck size={20} />
+                </div>
+                <div>
+                  <h3 className="text-lg font-black text-amber-950 tracking-tight">API Key Generada Exitosamente</h3>
+                  <p className="text-xs font-bold text-amber-700">Copia tus credenciales antes de cerrar esta ventana</p>
+                </div>
+              </div>
+            </div>
+            <div className="p-6 space-y-6">
+              <div className="bg-amber-50/70 border border-amber-200 rounded-2xl p-4 text-xs font-bold text-amber-900 leading-relaxed">
+                ⚠️ El <strong>API Secret</strong> sólo se muestra en este momento. Por razones de seguridad no volverá a mostrarse en la plataforma.
+              </div>
+              <div className="space-y-4">
+                <div>
+                  <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest block mb-1">API Key (Public Identifier)</label>
+                  <div className="flex gap-2">
+                    <input readOnly value={createdSecretData.api_key} className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 font-mono text-xs font-bold text-slate-800" />
+                    <button onClick={() => { navigator.clipboard.writeText(createdSecretData.api_key); alert('API Key copiada'); }} className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 rounded-xl text-xs font-bold text-slate-700">Copiar</button>
+                  </div>
+                </div>
+                <div>
+                  <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest block mb-1">API Secret (Private Key)</label>
+                  <div className="flex gap-2">
+                    <input readOnly value={createdSecretData.api_secret} className="flex-1 bg-amber-50/50 border border-amber-300 rounded-xl px-4 py-2.5 font-mono text-xs font-bold text-amber-900" />
+                    <button onClick={() => { navigator.clipboard.writeText(createdSecretData.api_secret); alert('API Secret copiado'); }} className="px-4 py-2.5 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-bold shadow-md shadow-amber-600/20">Copiar Secret</button>
+                  </div>
+                </div>
+              </div>
+              <div className="pt-2">
+                <button onClick={() => setCreatedSecretData(null)} className="w-full py-4 bg-slate-900 hover:bg-slate-800 text-white font-black rounded-2xl text-xs uppercase tracking-widest shadow-xl transition-all">
+                  He guardado mi API Secret de forma segura
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
 // --- APP PRINCIPAL ---
 const App = () => {
   const getScanSessionParam = () => {
@@ -8779,6 +9015,7 @@ const App = () => {
         ...(isAdmin ? [{ id: 'setup-org', label: 'Organización', icon: Building2 }] : []),
         ...(isAdmin ? [{ id: 'setup-users', label: 'Usuarios', icon: Users }] : []),
         ...(isAdmin ? [{ id: 'setup-transfers', label: 'Transferencias', icon: ArrowRightLeft }] : []),
+        ...(isAdmin ? [{ id: 'setup-apikeys', label: 'Integraciones API', icon: KeyRound }] : []),
       ]},
       { id: 'records', label: 'Registro', icon: BookOpen, children: [
         { id: 'record-actions', label: 'Ventas', icon: Zap },
@@ -9017,6 +9254,7 @@ const App = () => {
             {view === 'setup-org' && <OrganizationView structure={data.orgStructure} session={session} refreshData={refreshData} />}
             {view === 'setup-users' && <UsersView users={data.users} structure={data.orgStructure} session={session} refreshData={refreshData} />}
             {view === 'setup-transfers' && <TransferenciasView stores={data.orgStructure?.filter(o => o.type === 'Manager' || o.type === 'BRANCH')} inventory={data.inventory} session={session} refreshData={refreshData} users={data.users} products={data.products} />}
+            {view === 'setup-apikeys' && <ApiKeyManagementView session={session} />}
             
             {/* Navigational state for Actions Form vs List */}
             {view === 'record-actions' && !actionFormState.open && (

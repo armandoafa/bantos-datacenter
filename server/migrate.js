@@ -11,7 +11,21 @@ async function migrate() {
       "ALTER TABLE tenant_settings ADD COLUMN interest_type VARCHAR(50) DEFAULT 'Porciento'",
       "ALTER TABLE client_history ADD COLUMN created_by_user_id INT DEFAULT NULL",
       "ALTER TABLE org_structure ADD COLUMN is_central_store TINYINT(1) DEFAULT 0",
-      "UPDATE org_structure SET is_central_store = 1 WHERE tenant_id = 'c-romel' AND type = 'Manager' AND (name LIKE '%Tienda Central%' OR name LIKE '%Central%')"
+      "UPDATE org_structure SET is_central_store = 1 WHERE tenant_id = 'c-romel' AND type = 'Manager' AND (name LIKE '%Tienda Central%' OR name LIKE '%Central%')",
+      `CREATE TABLE IF NOT EXISTS tenant_api_keys (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        tenant_id VARCHAR(100) NOT NULL,
+        name VARCHAR(255) NOT NULL,
+        api_key VARCHAR(100) NOT NULL UNIQUE,
+        api_secret_hash VARCHAR(255) NOT NULL,
+        scopes TEXT DEFAULT NULL,
+        status ENUM('active', 'revoked') DEFAULT 'active',
+        created_by_user_id INT NULL,
+        last_used_at TIMESTAMP NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;`
     ];
 
     for (let q of columns) {

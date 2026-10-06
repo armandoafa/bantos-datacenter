@@ -17,6 +17,11 @@ import puppeteer from 'puppeteer';
 import { generateContractHTML, generateVoucherHTML } from './pdf-template.js';
 import helmet from 'helmet';
 import { rateLimit } from 'express-rate-limit';
+import jwt from 'jsonwebtoken';
+import swaggerUi from 'swagger-ui-express';
+import swaggerJsdoc from 'swagger-jsdoc';
+import crypto from 'crypto';
+import apiV1Router from './routes/apiV1.js';
 
 const require = createRequire(import.meta.url);
 const PizZip = require('pizzip');
@@ -171,6 +176,8 @@ app.use(cors({
 
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
+
+app.use('/api', apiV1Router);
 
 
 app.post('/api/backoffice/send-document', async (req, res) => {
