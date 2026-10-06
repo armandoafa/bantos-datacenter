@@ -221,7 +221,7 @@ export const authenticateExternalApiToken = (req, res, next) => {
       });
     }
     req.externalApi = decoded;
-    req.tenantId = decoded.tenantId;
+    req.tenantId = decoded.tenantId || decoded.tenant_id;
     next();
   });
 };
@@ -363,6 +363,136 @@ router.post('/v1/auth/token', async (req, res) => {
       tenant_id: keyRecord.tenant_id
     });
   } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+
+/**
+ * @openapi
+ * /api/v1/auth/login:
+ *   post:
+ *     summary: Autenticación directa por usuario y contraseña (Login para UIs de Terceros)
+ *     description: Permite que interfaces de usuario o aplicaciones desarrolladas por terceros autentiquen directamente a los usuarios o administradores del tenant usando sus credenciales de Bantos LMS, obteniendo un Bearer Token (JWT) sin necesidad de generar una API Key previa en la web.
+ *     tags:
+ *       - Autenticación
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - tenant_id
+ *               - username
+ *               - password
+ *             properties:
+ *               tenant_id:
+ *                 type: string
+ *                 example: c-romel
+ *               username:
+ *                 type: string
+ *                 example: admin_tienda
+ *               password:
+ *                 type: string
+ *                 example: Password123#
+ *     responses:
+ *       200:
+ *         description: Autenticación exitosa y generación de Token JWT
+ *       400:
+ *         description: Parámetros requeridos faltantes
+ *       401:
+ *         description: Usuario o contraseña incorrectos
+ *       403:
+ *         description: Usuario no autorizado para el tenant especificado
+ */
+router.post('/v1/auth/login', async (req, res) => {
+  const { tenant_id, tenantId, username, password } = req.body;
+  const targetTenant = tenant_id || tenantId;
+
+  if (!targetTenant || !username || !password) {
+    return res.status(400).json({ error: 'tenant_id, username y password son requeridos en el cuerpo de la petición' });
+  }
+
+  try {
+    const [rows] = await pool.query(
+      `SELECT u.*, s.org_id, s.role as scope_role, o.name as org_name, o.type as org_type
+       FROM users u
+       LEFT JOIN user_scopes s ON u.id = s.user_id
+       LEFT JOIN org_structure o ON s.org_id = o.id
+       WHERE u.username = ? OR u.email = ?`,
+      [username.trim(), username.trim()]
+    );
+
+    if (rows.length === 0) {
+      return res.status(401).json({ error: 'Credenciales inválidas', message: 'Usuario o contraseña incorrectos' });
+    }
+
+    const user = rows[0];
+
+    if (!user.password) {
+      return res.status(401).json({ error: 'Credenciales inválidas', message: 'El usuario no tiene una contraseña local configurada' });
+    }
+
+    const valid = await bcrypt.compare(password, user.password);
+    if (!valid) {
+      return res.status(401).json({ error: 'Credenciales inválidas', message: 'Usuario o contraseña incorrectos' });
+    }
+
+    // Verificar pertenencia a tenant o superadmin
+    const isSuperAdmin = user.role === 'superadmin' || user.tenant_id === null;
+
+    if (isSuperAdmin) {
+      const [tenantRows] = await pool.query(
+        'SELECT tenant_id FROM tenants WHERE tenant_id = ? AND status = "active"',
+        [targetTenant]
+      );
+      if (tenantRows.length === 0) {
+        return res.status(403).json({ error: 'Acceso denegado', message: 'El tenant solicitado no existe o no está activo.' });
+      }
+    } else if (user.tenant_id !== targetTenant) {
+      return res.status(403).json({ error: 'Acceso denegado', message: 'El usuario no pertenece al tenant especificado.' });
+    }
+
+    // Token Payload
+    const activeTenant = isSuperAdmin ? targetTenant : user.tenant_id;
+    const tokenPayload = {
+      userId: user.id,
+      username: user.username,
+      tenantId: activeTenant,
+      tenant_id: activeTenant,
+      role: user.role,
+      storeId: user.store_id,
+      authType: 'user_login'
+    };
+
+    const accessToken = jwt.sign(tokenPayload, JWT_SECRET, { expiresIn: '24h' });
+
+    // Registramos log de operación
+    try {
+      await pool.query(
+        'INSERT INTO operation_logs (user_id, tenant_id, process_type, process_id, status) VALUES (?, ?, ?, ?, ?)',
+        [user.id, activeTenant, 'API_USER_LOGIN', user.username, 'SUCCESS']
+      );
+    } catch(err) { console.error('Error logging API login:', err.message); }
+
+    res.json({
+      success: true,
+      access_token: accessToken,
+      token_type: 'Bearer',
+      expires_in: 86400,
+      tenant_id: activeTenant,
+      user: {
+        id: user.id,
+        username: user.username,
+        role: user.role,
+        tenant_id: activeTenant,
+        contact_name: user.contact_name || user.username
+      }
+    });
+
+  } catch (e) {
+    console.error('[API AUTH LOGIN ERROR]:', e);
     res.status(500).json({ error: e.message });
   }
 });
