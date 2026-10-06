@@ -8130,7 +8130,7 @@ const ApiKeyManagementView = ({ session }) => {
         />
         <div className="flex items-center gap-3">
           <a 
-            href={`${API}/v1/docs`} 
+            href={`${API}/v1/docs/`} 
             target="_blank" 
             rel="noopener noreferrer" 
             className="bg-slate-100 hover:bg-slate-200 text-slate-700 px-5 py-3 rounded-2xl font-black text-xs uppercase tracking-widest transition-all flex items-center gap-2 border border-slate-200"
