@@ -5723,7 +5723,7 @@ const UsersView = ({ users, structure, session, refreshData }) => {
   };
 
   const handleSave = async (e) => {
-    e.preventDefault();
+    if (e && e.preventDefault) e.preventDefault();
     const cleanUsername = userFormData.username.trim();
     if (!cleanUsername) {
       return alert('El nombre de usuario es obligatorio.');
@@ -5854,17 +5854,12 @@ const UsersView = ({ users, structure, session, refreshData }) => {
                 </div>
                 <button onClick={() => setModalOpen(false)} className="w-10 h-10 bg-slate-50 text-slate-400 rounded-2xl flex items-center justify-center hover:bg-slate-100 hover:text-slate-700 transition-colors"><X size={20} /></button>
               </div>
-              <form onSubmit={handleSave} autoComplete="off" className="p-5 md:p-8 space-y-6 overflow-y-auto">
-                {/* Inputs de trampa para evitar que Chrome/Edge auto-completen las credenciales del admin logueado */}
-                <input type="text" style={{ display: 'none' }} tabIndex={-1} />
-                <input type="password" style={{ display: 'none' }} tabIndex={-1} />
-
+              <div className="p-5 md:p-8 space-y-6 overflow-y-auto">
                 <div className="space-y-4">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-2">Nombre Completo</label>
                       <input 
-                        name="contact_name" 
                         required 
                         value={userFormData.contact_name} 
                         onChange={e => setUserFormData({ ...userFormData, contact_name: e.target.value })}
@@ -5874,7 +5869,6 @@ const UsersView = ({ users, structure, session, refreshData }) => {
                     <div>
                       <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-2">Email</label>
                       <input 
-                        name="email" 
                         type="email" 
                         value={userFormData.email} 
                         onChange={e => setUserFormData({ ...userFormData, email: e.target.value })}
@@ -5884,7 +5878,6 @@ const UsersView = ({ users, structure, session, refreshData }) => {
                     <div className="col-span-2">
                       <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-2">Usuario</label>
                       <input 
-                        name="username" 
                         required 
                         readOnly={!!editingUser?.id} 
                         value={userFormData.username} 
@@ -5898,7 +5891,6 @@ const UsersView = ({ users, structure, session, refreshData }) => {
                         Contraseña {editingUser?.id ? '(Dejar en blanco para no cambiar)' : ''}
                       </label>
                       <input 
-                        name="password" 
                         type="password" 
                         placeholder={editingUser?.id ? "••••••••" : "Ingresa contraseña..."} 
                         required={!editingUser?.id} 
@@ -5916,7 +5908,6 @@ const UsersView = ({ users, structure, session, refreshData }) => {
                       <div>
                         <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-2">Nodo Asignado (Tienda/Sucursal)</label>
                         <select 
-                          name="org_id" 
                           value={userFormData.org_id} 
                           onChange={e => setUserFormData({ ...userFormData, org_id: e.target.value })}
                           className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl py-3 px-5 mt-1 font-bold outline-none focus:border-blue-600 transition-all"
@@ -5930,7 +5921,6 @@ const UsersView = ({ users, structure, session, refreshData }) => {
                       <div>
                         <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-2">Nivel de Acceso (Rol)</label>
                         <select 
-                          name="scope_role" 
                           value={userFormData.scope_role} 
                           onChange={e => setUserFormData({ ...userFormData, scope_role: e.target.value })}
                           className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl py-3 px-5 mt-1 font-bold outline-none focus:border-blue-600 transition-all"
@@ -5942,10 +5932,10 @@ const UsersView = ({ users, structure, session, refreshData }) => {
                     </div>
                   </div>
                 </div>
-                <button type="submit" className="w-full bg-blue-600 text-white font-black text-sm uppercase tracking-widest py-4 rounded-2xl shadow-lg shadow-blue-600/30 hover:bg-blue-700 transition-all shrink-0">
+                <button type="button" onClick={handleSave} className="w-full bg-blue-600 text-white font-black text-sm uppercase tracking-widest py-4 rounded-2xl shadow-lg shadow-blue-600/30 hover:bg-blue-700 transition-all shrink-0">
                   Guardar Usuario
                 </button>
-              </form>
+              </div>
             </motion.div>
           </div>
         )}
