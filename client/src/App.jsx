@@ -4628,23 +4628,34 @@ const AuditView = ({ audit }) => (
     <PageHeader title="Auditoría" subtitle={`${audit.length} registros de trazabilidad operativa`} />
     <Table cols={['Fecha', 'Usuario', 'Tipo', 'ID Recurso', 'Detalle', 'Estado']} rows={audit} render={r => {
       let detailText = '—';
+      let detailFull = '';
       if (r.detalle) {
+        const fmt = (obj) => Object.entries(obj || {})
+          .filter(([, v]) => v !== null && v !== undefined && v !== '')
+          .map(([k, v]) => `${k}: ${typeof v === 'object' ? JSON.stringify(v) : v}`).join(' · ');
         try {
           const d = typeof r.detalle === 'string' ? JSON.parse(r.detalle) : r.detalle;
-          if (d && d.errorName) detailText = `${d.resultCode || ''} - ${d.errorName}`;
+          if (typeof d === 'string') detailText = d;
+          else if (d && d.summary) {
+            detailText = d.summary;
+            const extra = fmt(d.fields);
+            detailFull = [d.summary, extra, d.ip ? `IP: ${d.ip}` : ''].filter(Boolean).join('\n');
+          }
+          else if (d && d.errorName) detailText = `${d.resultCode || ''} - ${d.errorName}`;
           else if (d && d.count !== undefined) detailText = `Count: ${d.count}`;
-          else detailText = typeof r.detalle === 'string' ? r.detalle : JSON.stringify(r.detalle);
+          else if (d && typeof d === 'object') detailText = fmt(d) || '—';
         } catch(e) {
           detailText = String(r.detalle);
         }
       }
+      if (!detailFull) detailFull = detailText;
       return (
         <>
           <td className="px-8 py-5 text-slate-400 text-sm">{r.fecha_registro ? new Date(r.fecha_registro).toLocaleString('es-MX') : '—'}</td>
           <td className="px-8 py-5 font-bold">{r.cliente || 'Sistema'}</td>
           <td className="px-8 py-5 font-black text-[12px] uppercase tracking-wider text-blue-600">{r.tipo || 'SYNC'}</td>
           <td className="px-8 py-5 font-mono text-slate-400 text-sm">{r.ref_contrato}</td>
-          <td className="px-8 py-5 text-sm text-slate-500 max-w-xs truncate" title={detailText}>{detailText}</td>
+          <td className="px-8 py-5 text-sm text-slate-500 max-w-xs truncate" title={detailFull}>{detailText}</td>
           <td className="px-8 py-5"><Badge status={r.estado} /></td>
         </>
       );
@@ -8553,6 +8564,8 @@ const App = () => {
   useEffect(() => {
     const reqInterceptor = axios.interceptors.request.use(config => {
       if (session && config.method !== 'get') {
+        config.headers = config.headers || {};
+        if (session.username) config.headers['X-Actor-Username'] = session.username;
         if (config.data && typeof config.data === 'object' && !(config.data instanceof FormData)) {
           config.data.storeId = session.store_id || session.storeId;
           config.data.role = session.role;
@@ -8568,8 +8581,32 @@ const App = () => {
       }
       return config;
     });
-    return () => axios.interceptors.request.eject(reqInterceptor);
-  }, [session]);
+    // Tras cada operación de escritura exitosa, refresca el módulo de Auditoría automáticamente
+    let auditTimer = null;
+    const resInterceptor = axios.interceptors.response.use(response => {
+      const method = response.config?.method;
+      if (session?.tenantId && method && method !== 'get' && !String(response.config.url || '').includes('/auth')) {
+        clearTimeout(auditTimer);
+        auditTimer = setTimeout(async () => {
+          try {
+            const r = await axios.get(`${API}/backoffice/audit`, { params: {
+              tenantId: session.tenantId,
+              userId: activeScope?.userId || session?.id,
+              role: session?.role,
+              scopeRole: activeScope?.role || undefined
+            } });
+            setData(prev => ({ ...prev, audit: r.data }));
+          } catch (_) { /* silencioso */ }
+        }, 600);
+      }
+      return response;
+    });
+    return () => {
+      axios.interceptors.request.eject(reqInterceptor);
+      axios.interceptors.response.eject(resInterceptor);
+      clearTimeout(auditTimer);
+    };
+  }, [session, activeScope]);
 
   // Reset state on tenant switch to ensure clean multi-tenant isolation
   useEffect(() => {

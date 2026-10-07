@@ -177,6 +177,86 @@ app.use(cors({
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
+// --- AUDITORÍA AUTOMÁTICA DE OPERACIONES ---
+// Registra en operation_logs toda operación de escritura exitosa del backoffice,
+// con un detalle legible de la operación realizada.
+const AUDIT_SKIP = [/\/auth$/, /\/login/, /\/sync/, /\/audit/, /\/support/, /\/ai\b/, /\/chat/, /\/batch-import/];
+const AUDIT_SENSITIVE = ['password', 'pass', 'api_secret', 'secret', 'token', 'signature', 'pdf', 'file', 'image', 'logo', 'photo', 'base64'];
+const AUDIT_META = ['storeId', 'role', 'actorUsername', 'tenantId', 'tenant_id'];
+const AUDIT_ENTITIES = {
+  users: 'usuario', clients: 'cliente', contracts: 'contrato', payments: 'pago', products: 'producto',
+  'payment-plans': 'plan de pago', 'org-structure': 'nodo organizacional', inventory: 'inventario',
+  transfers: 'transferencia', sales: 'venta', 'api-keys': 'API key', settings: 'configuración',
+  'trustonic-devices': 'dispositivo Trustonic', trustonic: 'dispositivo Trustonic', terms: 'términos y condiciones',
+  'data-collections': 'formulario', actions: 'acción'
+};
+const AUDIT_VERB = { POST: ['CREATE', 'Creó'], PUT: ['UPDATE', 'Actualizó'], PATCH: ['UPDATE', 'Actualizó'], DELETE: ['DELETE', 'Eliminó'] };
+
+function sanitizeAuditBody(body) {
+  if (!body || typeof body !== 'object') return {};
+  const out = {};
+  for (const [k, v] of Object.entries(body)) {
+    if (AUDIT_META.includes(k)) continue;
+    if (AUDIT_SENSITIVE.some(s => k.toLowerCase().includes(s))) continue;
+    if (v === undefined || v === null || v === '') continue;
+    if (typeof v === 'string' && v.length > 200) continue;
+    if (typeof v === 'object') { try { const s = JSON.stringify(v); if (s.length <= 300) out[k] = v; } catch (_) {} continue; }
+    out[k] = v;
+  }
+  return out;
+}
+
+app.use('/api', (req, res, next) => {
+  if (!AUDIT_VERB[req.method]) return next();
+  if (req.path.startsWith('/v1/')) return next(); // API pública tiene su propio registro
+  if (AUDIT_SKIP.some(r => r.test(req.path))) return next();
+
+  let responseBody;
+  const originalJson = res.json.bind(res);
+  res.json = (b) => { responseBody = b; return originalJson(b); };
+
+  res.on('finish', async () => {
+    try {
+      if (res.statusCode >= 400) return;
+      if (responseBody && responseBody.success === false) return;
+      const body = req.body || {};
+      const tenantId = body.tenantId || body.tenant_id || req.query.tenantId || null;
+      if (!tenantId) return;
+
+      const segments = req.path.split('/').filter(Boolean).filter(s => s !== 'backoffice');
+      const resourceKey = segments[0] || 'recurso';
+      const action = segments.length > 2 ? segments[segments.length - 1] : null; // ej. /devices/:id/lock
+      const entity = AUDIT_ENTITIES[resourceKey] || resourceKey.replace(/-/g, ' ');
+      const [verbCode, verbText] = AUDIT_VERB[req.method];
+      const pathId = segments.length > 1 ? segments[1] : null;
+      const resourceId = responseBody?.id || responseBody?.insertId || pathId || body.id || body.upya_id || null;
+
+      const processType = `${resourceKey.replace(/-/g, '_').toUpperCase()}_${action && !/^\d+$/.test(action) ? action.replace(/-/g, '_').toUpperCase() : verbCode}`;
+
+      const clean = sanitizeAuditBody(body);
+      const label = clean.contact_name || clean.name || clean.username || clean.full_name || clean.imei || clean.email || null;
+      let summary = action && !/^\d+$/.test(action)
+        ? `Ejecutó "${action}" sobre ${entity}${resourceId ? ` #${resourceId}` : ''}`
+        : `${verbText} ${entity}${label ? ` "${label}"` : ''}${resourceId ? ` (ID ${resourceId})` : ''}`;
+      const fields = {};
+      Object.entries(clean).filter(([k]) => k !== 'id').slice(0, 10).forEach(([k, v]) => { fields[k] = v; });
+      const detail = JSON.stringify({ summary, method: req.method, endpoint: req.originalUrl.split('?')[0], fields });
+
+      const actor = req.get('X-Actor-Username') || body.actorUsername || null;
+      let userId = null;
+      if (actor) {
+        const [u] = await pool.query('SELECT id FROM users WHERE username = ? LIMIT 1', [actor]);
+        if (u.length) userId = u[0].id;
+      }
+      await pool.query(
+        'INSERT INTO operation_logs (user_id, tenant_id, process_type, process_id, detail, status) VALUES (?, ?, ?, ?, ?, ?)',
+        [userId, tenantId, processType, String(resourceId || label || '-').slice(0, 100), detail, 'SUCCESS']
+      );
+    } catch (e) { console.error('Audit middleware error:', e.message); }
+  });
+  next();
+});
+
 app.use('/api', apiV1Router);
 
 
@@ -1276,8 +1356,8 @@ app.post('/api/backoffice/auth', /* authLimiter — desactivado en QA */ async (
               return res.status(403).json({ success: false, message: 'El tenant solicitado no existe o no está activo.' });
             }
             try {
-              await pool.query('INSERT INTO operation_logs (user_id, tenant_id, process_type, process_id, status) VALUES (?, ?, ?, ?, ?)',
-                [user.id, tenantId, 'SUPERADMIN_LOGIN', user.username, 'SUCCESS']);
+              await pool.query('INSERT INTO operation_logs (user_id, tenant_id, process_type, process_id, detail, status) VALUES (?, ?, ?, ?, ?, ?)',
+                [user.id, tenantId, 'SUPERADMIN_LOGIN', user.username, JSON.stringify({ summary: `Inicio de sesión de SuperAdmin "${user.username}" en el tenant ${tenantId}`, ip: req.ip || null }), 'SUCCESS']);
             } catch(e) { console.error('Error logging superadmin login:', e.message); }
 
             return res.json({
@@ -1299,8 +1379,8 @@ app.post('/api/backoffice/auth', /* authLimiter — desactivado en QA */ async (
           }
 
           try {
-            await pool.query('INSERT INTO operation_logs (user_id, tenant_id, process_type, process_id, status) VALUES (?, ?, ?, ?, ?)',
-              [user.id, user.tenant_id, 'USER_LOGIN', user.username, 'SUCCESS']);
+            await pool.query('INSERT INTO operation_logs (user_id, tenant_id, process_type, process_id, detail, status) VALUES (?, ?, ?, ?, ?, ?)',
+              [user.id, user.tenant_id, 'USER_LOGIN', user.username, JSON.stringify({ summary: `Inicio de sesión de "${user.username}"${user.org_name ? ` (${user.org_name})` : ''}`, ip: req.ip || null }), 'SUCCESS']);
           } catch(e) { console.error('Error logging login:', e.message); }
 
           return res.json({
