@@ -8556,7 +8556,10 @@ const App = () => {
         if (config.data && typeof config.data === 'object' && !(config.data instanceof FormData)) {
           config.data.storeId = session.store_id || session.storeId;
           config.data.role = session.role;
-          config.data.username = session.username;
+          if (config.data.username === undefined || config.data.username === null || config.data.username === '') {
+            config.data.username = session.username;
+          }
+          config.data.actorUsername = session.username;
         } else if (config.data instanceof FormData) {
           if (!config.data.has('storeId')) config.data.append('storeId', session.store_id || session.storeId || '');
           if (!config.data.has('role')) config.data.append('role', session.role || '');
