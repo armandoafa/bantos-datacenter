@@ -1145,12 +1145,23 @@ app.get('/api/backoffice/users', async (req, res) => {
 
 app.post('/api/backoffice/users', async (req, res) => {
   const { username, contact_name, email, password, org_id, scope_role, tenantId } = req.body;
+  if (!username || !username.trim()) {
+    return res.status(400).json({ error: 'El nombre de usuario es requerido.' });
+  }
+
   try {
+    const cleanUsername = username.trim();
+    // Verificar si el usuario ya existe previamente
+    const [existing] = await pool.query('SELECT id FROM users WHERE username = ?', [cleanUsername]);
+    if (existing.length > 0) {
+      return res.status(400).json({ error: `El usuario "${cleanUsername}" ya existe en el sistema. Por favor elige otro nombre de usuario.` });
+    }
+
     const pwdHash = password ? await bcrypt.hash(password, 10) : null;
     const upyaId = `local-${Date.now()}`;
     const [uRes] = await pool.query(
       'INSERT INTO users (upya_id, tenant_id, username, password, contact_name, email, role) VALUES (?, ?, ?, ?, ?, ?, ?)',
-      [upyaId, tenantId, username, pwdHash, contact_name, email, 'agent']
+      [upyaId, tenantId, cleanUsername, pwdHash, contact_name || null, email || null, 'agent']
     );
     
     if (org_id) {
@@ -1160,7 +1171,12 @@ app.post('/api/backoffice/users', async (req, res) => {
       );
     }
     res.json({ success: true, id: uRes.insertId });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) {
+    if (e.code === 'ER_DUP_ENTRY') {
+      return res.status(400).json({ error: `El usuario "${username}" ya está registrado.` });
+    }
+    res.status(500).json({ error: e.message });
+  }
 });
 
 app.put('/api/backoffice/users/:id', async (req, res) => {

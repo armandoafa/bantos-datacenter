@@ -5687,16 +5687,60 @@ const TrustonicLogsView = ({ data, onSync, syncing }) => {
 const UsersView = ({ users, structure, session, refreshData }) => {
   const [modalOpen, setModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState(null);
+  const [userFormData, setUserFormData] = useState({
+    contact_name: '',
+    email: '',
+    username: '',
+    password: '',
+    org_id: '',
+    scope_role: 'STAFF'
+  });
+
+  const handleOpenNew = () => {
+    setEditingUser(null);
+    setUserFormData({
+      contact_name: '',
+      email: '',
+      username: '',
+      password: '',
+      org_id: '',
+      scope_role: 'STAFF'
+    });
+    setModalOpen(true);
+  };
+
+  const handleOpenEdit = (u) => {
+    setEditingUser(u);
+    setUserFormData({
+      contact_name: u.contact_name || '',
+      email: u.email || '',
+      username: u.username || '',
+      password: '',
+      org_id: u.org_id || '',
+      scope_role: u.scope_role || 'STAFF'
+    });
+    setModalOpen(true);
+  };
 
   const handleSave = async (e) => {
     e.preventDefault();
-    const fd = new FormData(e.target);
-    const payload = Object.fromEntries(fd.entries());
-    payload.username = payload.sys_username;
-    payload.password = payload.sys_password;
-    delete payload.sys_username;
-    delete payload.sys_password;
-    payload.tenantId = session?.tenantId || session?.tenant_id || localStorage.getItem('tenantId');
+    const cleanUsername = userFormData.username.trim();
+    if (!cleanUsername) {
+      return alert('El nombre de usuario es obligatorio.');
+    }
+    if (!editingUser?.id && !userFormData.password) {
+      return alert('La contraseña es requerida para nuevos usuarios.');
+    }
+
+    const payload = {
+      contact_name: userFormData.contact_name,
+      email: userFormData.email,
+      username: cleanUsername,
+      password: userFormData.password || undefined,
+      org_id: userFormData.org_id || null,
+      scope_role: userFormData.scope_role,
+      tenantId: session?.tenantId || session?.tenant_id || localStorage.getItem('tenantId')
+    };
 
     try {
       if (editingUser?.id) {
@@ -5707,7 +5751,7 @@ const UsersView = ({ users, structure, session, refreshData }) => {
       setModalOpen(false);
       refreshData();
     } catch (err) {
-      alert('Error guardando usuario: ' + (err.response?.data?.error || err.message));
+      alert('Error guardando usuario: ' + (err.response?.data?.error || err.response?.data?.message || err.message));
     }
   };
 
@@ -5728,7 +5772,7 @@ const UsersView = ({ users, structure, session, refreshData }) => {
         title="Gestión de Usuarios" 
         subtitle="Administra los accesos y asigna usuarios a la estructura organizacional"
         action={
-          <button onClick={() => { setEditingUser(null); setModalOpen(true); }} className="bg-blue-600 text-white px-6 py-3 rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl shadow-blue-600/30 hover:scale-105 transition-all flex items-center gap-2">
+          <button onClick={handleOpenNew} className="bg-blue-600 text-white px-6 py-3 rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl shadow-blue-600/30 hover:scale-105 transition-all flex items-center gap-2">
             <Plus size={16} /> Nuevo Usuario
           </button>
         }
@@ -5760,7 +5804,7 @@ const UsersView = ({ users, structure, session, refreshData }) => {
             </td>
             <td className="px-8 py-5 text-right">
               <div className="flex items-center justify-end gap-1">
-                <button onClick={() => { setEditingUser(u); setModalOpen(true); }} className="p-2 hover:bg-blue-50 hover:text-blue-600 rounded-xl text-slate-400 transition-all" title="Editar"><Edit size={16}/></button>
+                <button onClick={() => handleOpenEdit(u)} className="p-2 hover:bg-blue-50 hover:text-blue-600 rounded-xl text-slate-400 transition-all" title="Editar"><Edit size={16}/></button>
                 <button onClick={() => handleDelete(u.id, u.contact_name || u.username)} className="p-2 hover:bg-rose-50 hover:text-rose-600 rounded-xl text-slate-400 transition-all" title="Eliminar"><Trash2 size={16}/></button>
               </div>
             </td>
@@ -5787,7 +5831,7 @@ const UsersView = ({ users, structure, session, refreshData }) => {
                 ) : <span className="text-slate-300 font-bold text-xs italic">Sin Asignar</span>}
               </div>
               <div className="flex items-center gap-1">
-                <button onClick={() => { setEditingUser(u); setModalOpen(true); }} className="p-2.5 bg-slate-50 hover:bg-blue-50 hover:text-blue-600 rounded-xl text-slate-400 transition-all"><Edit size={16}/></button>
+                <button onClick={() => handleOpenEdit(u)} className="p-2.5 bg-slate-50 hover:bg-blue-50 hover:text-blue-600 rounded-xl text-slate-400 transition-all"><Edit size={16}/></button>
                 <button onClick={() => handleDelete(u.id, u.contact_name || u.username)} className="p-2.5 bg-slate-50 hover:bg-rose-50 hover:text-rose-600 rounded-xl text-slate-400 transition-all"><Trash2 size={16}/></button>
               </div>
             </div>
@@ -5801,31 +5845,68 @@ const UsersView = ({ users, structure, session, refreshData }) => {
             <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className="bg-white rounded-[40px] w-full max-w-lg shadow-2xl overflow-hidden max-h-[90vh] flex flex-col">
               <div className="p-5 md:p-8 border-b border-slate-100 flex items-center justify-between shrink-0">
                 <div>
-                  <h3 className="text-2xl font-black tracking-tight text-slate-900">Asignar Rol de Usuario</h3>
-                  <p className="text-slate-400 font-bold text-xs mt-1">Configura el acceso de {editingUser?.contact_name || 'este usuario'}</p>
+                  <h3 className="text-2xl font-black tracking-tight text-slate-900">
+                    {editingUser ? 'Editar Usuario' : 'Asignar Rol de Usuario'}
+                  </h3>
+                  <p className="text-slate-400 font-bold text-xs mt-1">
+                    {editingUser ? `Configurando acceso de ${editingUser.contact_name || editingUser.username}` : 'Crea y asigna permisos a un nuevo usuario'}
+                  </p>
                 </div>
                 <button onClick={() => setModalOpen(false)} className="w-10 h-10 bg-slate-50 text-slate-400 rounded-2xl flex items-center justify-center hover:bg-slate-100 hover:text-slate-700 transition-colors"><X size={20} /></button>
               </div>
-              <form key={editingUser?.id || 'new'} onSubmit={handleSave} autoComplete="off" className="p-5 md:p-8 space-y-6 overflow-y-auto">
+              <form onSubmit={handleSave} autoComplete="off" className="p-5 md:p-8 space-y-6 overflow-y-auto">
+                {/* Inputs de trampa para evitar que Chrome/Edge auto-completen las credenciales del admin logueado */}
+                <input type="text" style={{ display: 'none' }} tabIndex={-1} />
+                <input type="password" style={{ display: 'none' }} tabIndex={-1} />
+
                 <div className="space-y-4">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-2">Nombre Completo</label>
-                      <input name="contact_name" required defaultValue={editingUser?.contact_name || ''} className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl py-3 px-5 mt-1 font-bold outline-none focus:border-blue-600 transition-all" />
+                      <input 
+                        name="contact_name" 
+                        required 
+                        value={userFormData.contact_name} 
+                        onChange={e => setUserFormData({ ...userFormData, contact_name: e.target.value })}
+                        className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl py-3 px-5 mt-1 font-bold outline-none focus:border-blue-600 transition-all" 
+                      />
                     </div>
                     <div>
                       <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-2">Email</label>
-                      <input name="email" type="email" defaultValue={editingUser?.email || ''} className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl py-3 px-5 mt-1 font-bold outline-none focus:border-blue-600 transition-all" />
+                      <input 
+                        name="email" 
+                        type="email" 
+                        value={userFormData.email} 
+                        onChange={e => setUserFormData({ ...userFormData, email: e.target.value })}
+                        className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl py-3 px-5 mt-1 font-bold outline-none focus:border-blue-600 transition-all" 
+                      />
                     </div>
                     <div className="col-span-2">
                       <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-2">Usuario</label>
-                      <input name="sys_username" required readOnly={!!editingUser?.id} defaultValue={editingUser?.username || ''} autoComplete="new-password" className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl py-3 px-5 mt-1 font-bold outline-none focus:border-blue-600 transition-all read-only:bg-slate-200 read-only:text-slate-500" />
+                      <input 
+                        name="username" 
+                        required 
+                        readOnly={!!editingUser?.id} 
+                        value={userFormData.username} 
+                        onChange={e => setUserFormData({ ...userFormData, username: e.target.value })}
+                        autoComplete="off" 
+                        className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl py-3 px-5 mt-1 font-bold outline-none focus:border-blue-600 transition-all read-only:bg-slate-200 read-only:text-slate-500" 
+                      />
                     </div>
                     <div className="col-span-2">
                       <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-2">
                         Contraseña {editingUser?.id ? '(Dejar en blanco para no cambiar)' : ''}
                       </label>
-                      <input name="sys_password" type="password" placeholder={editingUser?.id ? "••••••••" : "Ingresa contraseña..."} required={!editingUser?.id} autoComplete="new-password" className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl py-3 px-5 mt-1 font-bold outline-none focus:border-blue-600 transition-all" />
+                      <input 
+                        name="password" 
+                        type="password" 
+                        placeholder={editingUser?.id ? "••••••••" : "Ingresa contraseña..."} 
+                        required={!editingUser?.id} 
+                        value={userFormData.password} 
+                        onChange={e => setUserFormData({ ...userFormData, password: e.target.value })}
+                        autoComplete="new-password" 
+                        className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl py-3 px-5 mt-1 font-bold outline-none focus:border-blue-600 transition-all" 
+                      />
                     </div>
                   </div>
                   
@@ -5834,7 +5915,12 @@ const UsersView = ({ users, structure, session, refreshData }) => {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
                         <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-2">Nodo Asignado (Tienda/Sucursal)</label>
-                        <select name="org_id" defaultValue={editingUser?.org_id || ''} className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl py-3 px-5 mt-1 font-bold outline-none focus:border-blue-600 transition-all">
+                        <select 
+                          name="org_id" 
+                          value={userFormData.org_id} 
+                          onChange={e => setUserFormData({ ...userFormData, org_id: e.target.value })}
+                          className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl py-3 px-5 mt-1 font-bold outline-none focus:border-blue-600 transition-all"
+                        >
                           <option value="">-- Sin Asignar --</option>
                           {structure.map(s => (
                             <option key={s.id} value={s.id}>{s.name} ({s.type})</option>
@@ -5843,7 +5929,12 @@ const UsersView = ({ users, structure, session, refreshData }) => {
                       </div>
                       <div>
                         <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-2">Nivel de Acceso (Rol)</label>
-                        <select name="scope_role" defaultValue={editingUser?.scope_role || 'STAFF'} className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl py-3 px-5 mt-1 font-bold outline-none focus:border-blue-600 transition-all">
+                        <select 
+                          name="scope_role" 
+                          value={userFormData.scope_role} 
+                          onChange={e => setUserFormData({ ...userFormData, scope_role: e.target.value })}
+                          className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl py-3 px-5 mt-1 font-bold outline-none focus:border-blue-600 transition-all"
+                        >
                           <option value="STAFF">Vendedor / Staff</option>
                           <option value="MANAGER">Gerente / Manager</option>
                         </select>
