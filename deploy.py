@@ -28,6 +28,7 @@ def deploy():
     
     commands = [
         "cd /var/www/bantos.cloud/bantos-datacenter",
+        "git reset --hard HEAD",
         "git pull origin main",
         "cd server",
         "npm install",

@@ -1293,12 +1293,10 @@ app.delete('/api/backoffice/users/:id', async (req, res) => {
   const { tenantId } = req.query;
   try {
     await pool.query('DELETE FROM user_scopes WHERE user_id = ?', [req.params.id]);
-    await pool.query('DELETE FROM users WHERE id = ? AND tenant_id = ?', [req.params.id, tenantId]);
+    await pool.query('DELETE FROM users WHERE id = ? AND tenantId = ?', [req.params.id, tenantId]);
     res.json({ success: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
-
-
 
 app.get('/api/backoffice/actions', async (req, res) => {
   const { tenantId } = req.query;
@@ -1306,6 +1304,56 @@ app.get('/api/backoffice/actions', async (req, res) => {
     const [rows] = await pool.query('SELECT * FROM operation_actions WHERE tenant_id = ? ORDER BY due_date ASC, status DESC', [tenantId]);
     res.json(rows);
   } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// ── SALES DRAFTS ──────────────────────────────────────────────────────────────
+app.get('/api/backoffice/drafts', async (req, res) => {
+  const { tenantId, userId, role, orgId, scopeRole, storeId, username } = req.query;
+  try {
+    const scope = await getScopeFilter(tenantId, userId, role, orgId, scopeRole, 'sd', storeId, username);
+    const [rows] = await pool.query(
+      `SELECT sd.*, u.contact_name AS creator_name
+       FROM sales_drafts sd
+       LEFT JOIN users u ON sd.created_by_user_id = u.id
+       WHERE sd.tenant_id = ? AND (${scope.filter})
+       ORDER BY sd.updated_at DESC`,
+      [tenantId, ...scope.params]
+    );
+    res.json(rows);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.post('/api/backoffice/drafts', async (req, res) => {
+  const { id, tenant_id, created_by_user_id, org_id, store_id, client_name, device_name, status, payload } = req.body;
+  try {
+    await pool.query(
+      `INSERT INTO sales_drafts (id, tenant_id, created_by_user_id, org_id, store_id, client_name, device_name, status, payload)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+       ON DUPLICATE KEY UPDATE
+       client_name = VALUES(client_name),
+       device_name = VALUES(device_name),
+       status = VALUES(status),
+       payload = VALUES(payload)`,
+      [id, tenant_id, created_by_user_id, org_id || null, store_id || null, client_name || '', device_name || '', status || '', payload || '{}']
+    );
+    res.json({ success: true, id });
+  } catch (e) {
+    console.error('Save Draft Error:', e);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.delete('/api/backoffice/drafts/:id', async (req, res) => {
+  const { id } = req.params;
+  const { tenantId } = req.query;
+  try {
+    await pool.query('DELETE FROM sales_drafts WHERE id = ? AND tenant_id = ?', [id, tenantId]);
+    res.json({ success: true });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
 });
 
 // Endpoint público para que el login muestre el selector de tenants (sin datos sensibles)
@@ -4732,6 +4780,29 @@ app.listen(PORT, async () => {
     console.log('>>> [DB] Tabla webview_customers lista.');
   } catch (e) {
     console.warn('>>> [DB] No se pudo crear tabla webview_customers:', e.message);
+  }
+
+  // Crear tabla para drafts
+  try {
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS sales_drafts (
+          id VARCHAR(100) PRIMARY KEY,
+          tenant_id VARCHAR(100) NOT NULL,
+          created_by_user_id INT,
+          org_id INT,
+          store_id INT,
+          client_name VARCHAR(255),
+          device_name VARCHAR(255),
+          status VARCHAR(100),
+          payload LONGTEXT,
+          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+          FOREIGN KEY (created_by_user_id) REFERENCES users(id) ON DELETE SET NULL,
+          INDEX idx_tenant (tenant_id)
+      );
+    `);
+    console.log('>>> [DB] Tabla sales_drafts lista.');
+  } catch (e) {
+    console.warn('>>> [DB] No se pudo crear tabla sales_drafts:', e.message);
   }
 });
 

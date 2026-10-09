@@ -249,3 +249,18 @@ CREATE TABLE IF NOT EXISTS tenant_api_keys (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     INDEX idx_tenant (tenant_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS sales_drafts (
+    id VARCHAR(100) PRIMARY KEY,
+    tenant_id VARCHAR(100) NOT NULL,
+    created_by_user_id INT,
+    org_id INT,
+    store_id INT,
+    client_name VARCHAR(255),
+    device_name VARCHAR(255),
+    status VARCHAR(100),
+    payload LONGTEXT,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (created_by_user_id) REFERENCES users(id) ON DELETE SET NULL,
+    INDEX idx_tenant (tenant_id)
+);

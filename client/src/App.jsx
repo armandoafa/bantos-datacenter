@@ -6681,7 +6681,7 @@ const MobileDocScannerView = ({ sessionId, mode }) => {
   );
 };
 
-const ActionFormView = ({ actionType, prefillData, onBack, onSaveDraft, deals, products, inventory, clients, onOpenClientModal, onSaveContract, onSavePayment, session, globalSettings }) => {
+const ActionFormView = ({ actionType, prefillData, onBack, onSaveDraft, onDeleteDraft, deals, products, inventory, clients, onOpenClientModal, onSaveContract, onSavePayment, session, globalSettings }) => {
   const isCompleted = !!prefillData?.contract_id;
   const [selectedDeal, setSelectedDeal] = useState(prefillData?.dealId || '');
   const [selectedProductId, setSelectedProductId] = useState(() => {
@@ -7684,20 +7684,8 @@ const ActionFormView = ({ actionType, prefillData, onBack, onSaveDraft, deals, p
                             selectedDeal
                           });
                           
-                          if (prefillData?.id) {
-                            await onSaveDraft({
-                              id: prefillData.id,
-                              firstName,
-                              lastName,
-                              clientName: `${firstName} ${lastName}`.trim(), 
-                              device: selectedProduct?.name || '', 
-                              status: `Paso ${currentStep}: Pago`,
-                              selectedProductId,
-                              dealId: selectedDeal,
-                              ...formData,
-                              signature: formData.signature,
-                              contract_id: newContractId
-                            });
+                          if (prefillData?.id && onDeleteDraft) {
+                            await onDeleteDraft(prefillData.id);
                           }
                           
                           alert('¡Venta y Pago registrados con éxito!');
@@ -8442,14 +8430,7 @@ const App = () => {
   const [syncingTrustonicLogs, setSyncingTrustonicLogs] = useState(false);
   const [modalState, setModalState] = useState({ type: null, open: false, item: null });
   const [actionFormState, setActionFormState] = useState({ open: false, actionType: null, prefillData: null });
-  const [incompleteActions, setIncompleteActions] = useState(() => {
-    try {
-      const saved = localStorage.getItem('bantos_drafts');
-      return saved ? JSON.parse(saved) : [];
-    } catch {
-      return [];
-    }
-  });
+  const [incompleteActions, setIncompleteActions] = useState([]);
   const [isRegistering, setIsRegistering] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [whitelabel, setWhitelabel] = useState(null);
@@ -8474,10 +8455,6 @@ const App = () => {
       setGlobalSettings(null);
     }
   }, []);
-
-  useEffect(() => {
-    localStorage.setItem('bantos_drafts', JSON.stringify(incompleteActions));
-  }, [incompleteActions]);
 
   useEffect(() => {
     const handleWhitelabelUpdate = () => {
@@ -8522,7 +8499,7 @@ const App = () => {
           scopeRole: activeScope?.role || undefined
         } 
       };
-      const [sumRes, cliRes, conRes, invRes, payRes, proRes, ppRes, orgRes, actRes, dcRes, audRes, truRes, truLogRes, usrRes] = await Promise.allSettled([
+      const [sumRes, cliRes, conRes, invRes, payRes, proRes, ppRes, orgRes, actRes, dcRes, audRes, truRes, truLogRes, usrRes, dftRes] = await Promise.allSettled([
         axios.get(`${API}/backoffice/summary`, config),
         axios.get(`${API}/backoffice/clients`, config),
         axios.get(`${API}/backoffice/contracts`, config),
@@ -8536,9 +8513,20 @@ const App = () => {
         axios.get(`${API}/backoffice/audit`, config),
         axios.get(`${API}/backoffice/trustonic-devices`, config),
         axios.get(`${API}/backoffice/trustonic-logs`, config),
-        axios.get(`${API}/backoffice/users`, config)
+        axios.get(`${API}/backoffice/users`, config),
+        axios.get(`${API}/backoffice/drafts`, config)
       ]);
       if (sumRes.status === 'fulfilled') setSummary(sumRes.value.data);
+      if (dftRes && dftRes.status === 'fulfilled') {
+        setIncompleteActions(dftRes.value.data.map(d => {
+          try {
+            const parsed = JSON.parse(d.payload);
+            return { ...parsed, creator_name: d.creator_name, db_id: d.id };
+          } catch(e) {
+            return { id: d.id, status: d.status, creator_name: d.creator_name };
+          }
+        }));
+      }
       setData({
         clients: cliRes.status === 'fulfilled' ? cliRes.value.data : [],
         contracts: conRes.status === 'fulfilled' ? conRes.value.data : [],
@@ -9392,17 +9380,32 @@ const App = () => {
                   onOpenClientModal={() => setModalState({ type: 'client', open: true, item: null })}
                   onSaveContract={handleSaveContract}
                   onSavePayment={handleSavePayment}
-                  onSaveDraft={(updatedData) => {
-                    setIncompleteActions(prev => {
-                      const idx = prev.findIndex(a => a.id === updatedData.id);
-                      if (idx >= 0) {
-                        const newActions = [...prev];
-                        newActions[idx] = { ...newActions[idx], ...updatedData };
-                        return newActions;
-                      }
-                      return [{ ...updatedData, date: new Date().toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true }) }, ...prev];
-                    });
+                  onSaveDraft={async (updatedData) => {
+                    try {
+                      await axios.post(`${API}/backoffice/drafts`, {
+                        id: updatedData.id,
+                        tenant_id: session.tenant_id || session.tenantId,
+                        created_by_user_id: session.id,
+                        org_id: session.org_id || session.orgId || session.store_id || null,
+                        store_id: session.store_id || session.storeId || null,
+                        client_name: updatedData.clientName,
+                        device_name: updatedData.device,
+                        status: updatedData.status,
+                        payload: JSON.stringify(updatedData)
+                      });
+                      refreshData();
+                    } catch (e) {
+                      console.error("Error saving draft:", e);
+                    }
                     setActionFormState({ open: false, actionType: null, prefillData: null });
+                  }}
+                  onDeleteDraft={async (id) => {
+                    try {
+                      await axios.delete(`${API}/backoffice/drafts/${id}?tenantId=${session.tenant_id || session.tenantId}`);
+                      refreshData();
+                    } catch(e) {
+                      console.error("Error deleting draft:", e);
+                    }
                   }}
                   onBack={() => setActionFormState({ open: false, actionType: null, prefillData: null })} 
                 />
