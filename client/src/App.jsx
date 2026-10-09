@@ -6044,25 +6044,12 @@ const OrgTreeNode = ({ node, items, level = 0, onEdit, onDelete, users = [] }) =
   );
 };
 
-const OrganizationView = ({ structure, session, refreshData }) => {
+const OrganizationView = ({ structure, session, refreshData, users = [] }) => {
   const [modalOpen, setModalOpen] = useState(false);
   const [editingNode, setEditingNode] = useState(null);
-  const [users, setUsers] = useState([]);
   const [nodeType, setNodeType] = useState('Manager');
   
   const rootNodes = (structure || []).filter(item => !item.parent_id);
-
-  useEffect(() => {
-    const fetchUsers = async () => {
-      try {
-        const { data } = await axios.get(`${API}/backoffice/users?tenantId=${session.tenantId}`);
-        setUsers(data);
-      } catch (err) {
-        console.error('Error fetching users:', err);
-      }
-    };
-    fetchUsers();
-  }, [session.tenantId]);
 
   const handleSave = async (e) => {
     e.preventDefault();
@@ -9383,7 +9370,7 @@ const App = () => {
             )}
             {view === 'setup-data-collection' && <DataCollectionView collections={data.dataCollections} onEdit={(c) => setModalState({ type: 'collection', open: true, item: c })} onCreate={() => setModalState({ type: 'collection', open: true, item: null })} />}
             {view === 'setup-terms' && <TermsView deals={data.paymentPlans} onEdit={(d) => setModalState({ type: 'term', open: true, item: d })} onCreate={() => setModalState({ type: 'term', open: true, item: null })} onDelete={handleDeleteTerm} />}
-            {view === 'setup-org' && <OrganizationView structure={data.orgStructure} session={session} refreshData={refreshData} />}
+            {view === 'setup-org' && <OrganizationView structure={data.orgStructure} session={session} refreshData={refreshData} users={data.users} />}
             {view === 'setup-users' && <UsersView users={data.users} structure={data.orgStructure} session={session} refreshData={refreshData} />}
             {view === 'setup-transfers' && <TransferenciasView stores={data.orgStructure?.filter(o => o.type === 'Manager' || o.type === 'BRANCH')} inventory={data.inventory} session={session} refreshData={refreshData} users={data.users} products={data.products} />}
             {view === 'setup-apikeys' && <ApiKeyManagementView session={session} />}
