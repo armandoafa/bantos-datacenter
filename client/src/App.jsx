@@ -6170,14 +6170,22 @@ const OrganizationView = ({ structure, session, refreshData }) => {
                     <select name="user_id" defaultValue={editingNode?.user_id || ''} className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl py-3 px-5 mt-1 font-bold outline-none focus:border-blue-600 transition-all">
                       <option value="">-- Sin usuario asignado --</option>
                       {users.filter(u => {
-                        if (nodeType === 'Administración') return u.global_role === 'admin' || u.global_role === 'superadmin';
-                        if (nodeType === 'Manager') return u.global_role === 'manager';
-                        if (nodeType === 'Agente') return u.global_role === 'agent';
+                        const g = (u.global_role || '').toLowerCase();
+                        const s = (u.scope_role || '').toLowerCase();
+                        if (u.id === editingNode?.user_id) return true;
+                        if (nodeType === 'Administración') return g === 'admin' || g === 'superadmin';
+                        if (nodeType === 'Manager') return g === 'manager' || s === 'manager' || g === 'admin';
+                        if (nodeType === 'Agente') return g === 'agent' || s === 'staff' || s === 'agent';
                         return true;
                       }).map(u => (
                         <option key={u.id} value={u.id}>{u.contact_name || u.username} ({u.email})</option>
                       ))}
                     </select>
+                    {editingNode?.administrator && !editingNode?.user_id && (
+                      <p className="text-[11px] font-bold text-amber-600 mt-2 ml-2">
+                        Responsable heredado de Upya: "{editingNode.administrator}" (no es un usuario del LMS). Asigna un usuario para reemplazarlo.
+                      </p>
+                    )}
                   </div>
                   {nodeType === 'Manager' && (
                     <div className="bg-amber-50/70 border border-amber-200 rounded-2xl p-4 space-y-2">
