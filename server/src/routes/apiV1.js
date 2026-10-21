@@ -800,7 +800,7 @@ router.post('/v1/devices/:imei/lock-message', authenticateExternalApiToken, asyn
     return res.status(400).json({ error: 'El parámetro "lock_message" es requerido.' });
   }
   try {
-    const result = await trustonicApi.sendLockMessage(pool, req.tenantId, req.params.imei, lock_message);
+    const result = await trustonicApi.lockDevice(pool, req.tenantId, req.params.imei, lock_message);
     res.json({ success: true, imei: req.params.imei, action: 'LOCK_MESSAGE', lock_message, result });
   } catch (e) {
     res.status(500).json({ error: e.message });
