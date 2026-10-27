@@ -1291,9 +1291,21 @@ app.put('/api/backoffice/users/:id', async (req, res) => {
 
 app.delete('/api/backoffice/users/:id', async (req, res) => {
   const { tenantId } = req.query;
+  const uid = req.params.id;
   try {
-    await pool.query('DELETE FROM user_scopes WHERE user_id = ?', [req.params.id]);
-    await pool.query('DELETE FROM users WHERE id = ? AND tenant_id = ?', [req.params.id, tenantId]);
+    const [owned] = await pool.query('SELECT id FROM users WHERE id = ? AND tenant_id = ?', [uid, tenantId]);
+    if (!owned.length) return res.status(404).json({ error: 'Usuario no encontrado.' });
+
+    const [[{ n }]] = await pool.query('SELECT COUNT(*) AS n FROM inventory_transfers WHERE user_id = ?', [uid]);
+    if (n > 0) {
+      return res.status(409).json({ error: `No se puede eliminar: el usuario tiene ${n} transferencia(s) de inventario registradas.` });
+    }
+
+    // Conservar historial de auditoría, solo se desvincula el usuario
+    await pool.query('UPDATE operation_logs SET user_id = NULL WHERE user_id = ?', [uid]);
+    await pool.query('UPDATE inventory_transfers SET reverted_by = NULL WHERE reverted_by = ?', [uid]);
+    await pool.query('DELETE FROM user_scopes WHERE user_id = ?', [uid]);
+    await pool.query('DELETE FROM users WHERE id = ? AND tenant_id = ?', [uid, tenantId]);
     res.json({ success: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
