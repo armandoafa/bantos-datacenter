@@ -1293,7 +1293,7 @@ app.delete('/api/backoffice/users/:id', async (req, res) => {
   const { tenantId } = req.query;
   try {
     await pool.query('DELETE FROM user_scopes WHERE user_id = ?', [req.params.id]);
-    await pool.query('DELETE FROM users WHERE id = ? AND tenantId = ?', [req.params.id, tenantId]);
+    await pool.query('DELETE FROM users WHERE id = ? AND tenant_id = ?', [req.params.id, tenantId]);
     res.json({ success: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
