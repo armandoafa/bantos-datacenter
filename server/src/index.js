@@ -4332,8 +4332,17 @@ app.get('/api/superadmin/trustonic-inventory/sync-status', (req, res) => {
 // Registrar webhooks de Trustonic
 app.post('/api/superadmin/trustonic-inventory/register-webhooks', async (req, res) => {
   try {
-    await trustonicApi.registerTrustonicWebhook();
-    res.json({ success: true, message: 'Webhooks registrados en Trustonic' });
+    const results = await trustonicApi.registerTrustonicWebhook();
+    const ok = results.every(r => r.ok);
+    res.status(ok ? 200 : 502).json({ success: ok, message: ok ? 'Webhooks registrados en Trustonic' : 'Algunos webhooks no se pudieron registrar', results });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.get('/api/superadmin/trustonic-inventory/webhooks', async (req, res) => {
+  try {
+    res.json(await trustonicApi.listTrustonicWebhooks());
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
@@ -4341,6 +4350,11 @@ app.post('/api/superadmin/trustonic-inventory/register-webhooks', async (req, re
 
 // Recibir Webhook de Trustonic
 app.post('/api/webhooks/trustonic', express.json(), async (req, res) => {
+  const expected = process.env.TRUSTONIC_WEBHOOK_TOKEN;
+  if (expected && req.query.token !== expected) {
+    console.warn('⚠️ [WEBHOOK] Trustonic rechazado: token inválido');
+    return res.status(401).send('Unauthorized');
+  }
   console.log('\n🔔 [WEBHOOK] Recepción de Trustonic');
   console.log(JSON.stringify(req.body, null, 2));
   

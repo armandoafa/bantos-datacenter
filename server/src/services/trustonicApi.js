@@ -119,25 +119,46 @@ export async function syncMovements(pool, tenantId) {
 // --- WEBHOOK LOGIC ---
 import poolDb from '../config/db.js';
 
+const TRUSTONIC_V2_BASE = 'https://api.cloud.trustonic.com/api/v2';
+const WEBHOOK_BASE_URL = 'https://bantos.cloud/datacenter-api/webhooks/trustonic';
+
+export const getTrustonicWebhookUrl = () => {
+    const token = process.env.TRUSTONIC_WEBHOOK_TOKEN;
+    return token ? `${WEBHOOK_BASE_URL}?token=${encodeURIComponent(token)}` : WEBHOOK_BASE_URL;
+};
+
 export const registerTrustonicWebhook = async () => {
-    try {
-        const events = ['idle', 'readyForUse', 'enrolled', 'active', 'locked', 'released'];
-        for (const event of events) {
-            await client.request({
+    const events = ['idle', 'readyForUse', 'enrolled', 'active', 'locked', 'released'];
+    const results = [];
+    for (const event of events) {
+        try {
+            // La URL absoluta sobrescribe el baseURL v1 del cliente (el webhook solo existe en v2)
+            const data = await client.request({
                 method: 'POST',
-                url: '/webhook/subscription',
-                data: {
-                    eventType: event,
-                    url: 'https://bantos.cloud/datacenter-api/webhooks/trustonic'
-                },
+                url: `${TRUSTONIC_V2_BASE}/webhook/subscription`,
+                data: { eventType: event, url: getTrustonicWebhookUrl() },
                 headers: { tenantId: 'bantos-msp' }
             });
             console.log(`[Trustonic API] Webhook registered for event: ${event}`);
+            results.push({ event, ok: true, id: data?.id });
+        } catch (error) {
+            const duplicate = /WEBHOOK_DUPLICATE_SUBS/i.test(error.message);
+            if (duplicate) console.log(`[Trustonic API] Webhook ya existía para evento: ${event}`);
+            else console.error(`[Trustonic API] Error registering webhook (${event}):`, error.message);
+            results.push({ event, ok: duplicate, alreadyExisted: duplicate, error: duplicate ? undefined : error.message });
         }
-    } catch (error) {
-        console.error('[Trustonic API] Error registering webhook:', error.response?.data || error.message);
     }
+    return results;
 };
+
+export const listTrustonicWebhooks = async () => {
+    return client.request({
+        method: 'GET',
+        url: `${TRUSTONIC_V2_BASE}/webhook/subscriptions/`,
+        headers: { tenantId: 'bantos-msp' }
+    });
+};
+
 
 export const processTrustonicWebhook = async (payload) => {
     const { deviceUid, eventType, actionName, status, serviceType, updatedAt } = payload;
