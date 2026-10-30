@@ -2631,16 +2631,16 @@ async function applyTrustonicReloadForPayment({ tenantId, contract_id, imei, ser
   let freq = null;
   if (contract_id) {
     const [cRows] = await pool.query(
-      'SELECT imei, serial_number, repayment_frequency FROM contract_history WHERE (upya_id = ? OR id = ? OR contract_number = ?) AND tenant_id = ? LIMIT 1',
+      'SELECT imei, repayment_frequency FROM contract_history WHERE (upya_id = ? OR id = ? OR contract_number = ?) AND tenant_id = ? LIMIT 1',
       [contract_id, contract_id, contract_id, tenantId]
     );
     if (cRows.length > 0) {
-      targetImei = targetImei || cRows[0].imei || cRows[0].serial_number;
+      targetImei = targetImei || cRows[0].imei;
       freq = cRows[0].repayment_frequency;
     }
   }
   if (!targetImei) {
-    throw new Error(`No se encontró IMEI para el contrato ${contract_id}; no se pudo recargar en Trustonic`);
+    throw new Error(`El contrato ${contract_id} no tiene IMEI registrado (contract_history.imei); no se pudo recargar en Trustonic. Envía el imei en la solicitud o regístralo en el contrato`);
   }
   const days = trustonicApi.frequencyToDays(freq);
   return trustonicApi.reloadDevice(pool, tenantId, targetImei, days);
@@ -2728,9 +2728,9 @@ app.post('/api/backoffice/payments', async (req, res) => {
        let targetImei = req.body.imei || req.body.serialNumber;
        if (!targetImei && contract_id) {
          try {
-           const [cRows] = await pool.query('SELECT imei, serial_number FROM contract_history WHERE upya_id = ? OR id = ? LIMIT 1', [contract_id, contract_id]);
+           const [cRows] = await pool.query('SELECT imei FROM contract_history WHERE upya_id = ? OR id = ? LIMIT 1', [contract_id, contract_id]);
            if (cRows.length > 0) {
-             targetImei = cRows[0].imei || cRows[0].serial_number;
+             targetImei = cRows[0].imei;
            }
          } catch (cErr) {
            console.error('Error resolviendo IMEI del contrato:', cErr.message);
