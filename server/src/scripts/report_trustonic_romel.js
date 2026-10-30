@@ -3,7 +3,8 @@ import * as xlsx from 'xlsx';
 import pool from '../config/db.js';
 import { TrustonicClient } from '../../modules/trustonic-api-client/index.js';
 
-const API_KEY = 'qjF+s7/rxVffo3Fnzm20PdIlFGDDpYOredEsRvl3wYYUAh2vhnmeHoQuUQNkKdoyOQCQN6oDcAZ7166n59orHQ==';
+import 'dotenv/config';
+const API_KEY = process.env.TRUSTONIC_API_KEY;
 const client = new TrustonicClient(API_KEY);
 
 const OUTPUT_FILE = '/var/www/bantos.cloud/bantos-datacenter/Reporte_Trustonic_c-romel.xlsx';

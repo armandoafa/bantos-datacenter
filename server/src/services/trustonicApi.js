@@ -1,7 +1,12 @@
 import { TrustonicClient } from '../../modules/trustonic-api-client/index.js';
 import { scrapeTrustonic } from './trustonic.js';
 
-const API_KEY = 'qjF+s7/rxVffo3Fnzm20PdIlFGDDpYOredEsRvl3wYYUAh2vhnmeHoQuUQNkKdoyOQCQN6oDcAZ7166n59orHQ==';
+import 'dotenv/config';
+
+const API_KEY = process.env.TRUSTONIC_API_KEY;
+if (!API_KEY) {
+    console.error('[Trustonic API] Falta la variable de entorno TRUSTONIC_API_KEY');
+}
 const client = new TrustonicClient(API_KEY);
 
 export async function getTrustonicToken() {
@@ -288,6 +293,54 @@ export async function activateDevice(pool, tenantId, imei, fallbackService = 'Po
         apiSuccess,
         message: apiMessage
     };
+}
+
+// Convierte la frecuencia de pago del contrato (número o texto) a días de recarga. Default: 15 (quincenal).
+export function frequencyToDays(freq) {
+    if (freq === null || freq === undefined || freq === '') return 15;
+    const n = parseInt(freq, 10);
+    if (!isNaN(n) && n > 0) return n;
+    const f = String(freq).toLowerCase();
+    if (f.includes('seman') || f.includes('week')) return 7;
+    if (f.includes('quinc') || f.includes('bi')) return 15;
+    if (f.includes('mens') || f.includes('month')) return 30;
+    if (f.includes('dia') || f.includes('día') || f.includes('daily')) return 1;
+    return 15;
+}
+
+// Extiende la fecha de expiración del dispositivo (Reload) tras un pago aceptado.
+// A diferencia de activateDevice, un fallo en Trustonic se registra como Error y se propaga.
+export async function reloadDevice(pool, tenantId, imei, reloadDays = 15) {
+    console.log(`[Trustonic API] Solicitud de recarga para IMEI: ${imei} (+${reloadDays} días, Tenant: ${tenantId})`);
+    const logTenant = tenantId || 'c-romel';
+    try {
+        const response = await client.service.update([imei], reloadDays);
+
+        await pool.query(
+            `UPDATE trustonic_devices
+             SET status = 'Listo para su uso',
+                 expiration_date = DATE_ADD(GREATEST(COALESCE(expiration_date, NOW()), NOW()), INTERVAL ? DAY),
+                 last_change = NOW()
+             WHERE imei1 = ? OR imei2 = ?`,
+            [reloadDays, imei, imei]
+        );
+        await pool.query(
+            `INSERT INTO trustonic_logs (imei1, tenant_id, operation_date, operation_type, status, comment)
+             VALUES (?, ?, NOW(), 'Recarga', 'Exitosa', ?)`,
+            [imei, logTenant, `Recarga de ${reloadDays} días aplicada. API response: ${JSON.stringify(response)}`]
+        );
+        return { success: true, imei, reloadDays, response };
+    } catch (error) {
+        console.error(`[Trustonic API] Error en recarga de ${imei}:`, error.message);
+        try {
+            await pool.query(
+                `INSERT INTO trustonic_logs (imei1, tenant_id, operation_date, operation_type, status, comment)
+                 VALUES (?, ?, NOW(), 'Recarga', 'Error', ?)`,
+                [imei, logTenant, `Fallo recarga de ${reloadDays} días: ${error.message}`]
+            );
+        } catch (logErr) { console.error('Error guardando log de recarga:', logErr.message); }
+        throw error;
+    }
 }
 
 export async function lockDevice(pool, tenantId, imei, message = 'Dispositivo bloqueado por falta de pago') {

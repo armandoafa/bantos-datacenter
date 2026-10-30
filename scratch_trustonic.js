@@ -1,6 +1,7 @@
 import { TrustonicClient } from './server/modules/trustonic-api-client/index.js';
 
-const API_KEY = 'qjF+s7/rxVffo3Fnzm20PdIlFGDDpYOredEsRvl3wYYUAh2vhnmeHoQuUQNkKdoyOQCQN6oDcAZ7166n59orHQ==';
+import 'dotenv/config';
+const API_KEY = process.env.TRUSTONIC_API_KEY;
 const client = new TrustonicClient(API_KEY);
 
 async function test() {

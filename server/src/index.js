@@ -684,6 +684,9 @@ app.post('/api/sync/bootstrap', async (req, res) => {
               (SELECT id FROM users WHERE upya_id = ? LIMIT 1)
             ) 
             ON DUPLICATE KEY UPDATE 
+              contract_id=COALESCE(VALUES(contract_id), contract_id),
+              amount=VALUES(amount),
+              payment_date=COALESCE(VALUES(payment_date), payment_date),
               status=VALUES(status), 
               org_id=VALUES(org_id), 
               created_by_user_id=VALUES(created_by_user_id)`,
@@ -1877,6 +1880,11 @@ app.post('/api/backoffice/trustonic-actions', async (req, res) => {
       return res.status(400).json({ error: 'Acción de Trustonic no válida' });
     }
 
+    // Si Trustonic no confirmó la operación, no se toca el estado local ni se registra como completada
+    if (!apiResult || apiResult.success !== true) {
+      return res.status(502).json({ success: false, action, imei, error: apiResult?.message || 'Trustonic no confirmó la operación' });
+    }
+
     // Actualizar estado local si aplica
     if (newStatus) {
       await pool.query(
@@ -2617,6 +2625,41 @@ async function pushPaymentToUpya(paymentData, tenantId) {
   }
 }
 
+// Resuelve IMEI y días de recarga del contrato y aplica Reload en Trustonic. Lanza error si no se puede.
+async function applyTrustonicReloadForPayment({ tenantId, contract_id, imei, serialNumber }) {
+  let targetImei = imei || serialNumber;
+  let freq = null;
+  if (contract_id) {
+    const [cRows] = await pool.query(
+      'SELECT imei, serial_number, repayment_frequency FROM contract_history WHERE (upya_id = ? OR id = ? OR contract_number = ?) AND tenant_id = ? LIMIT 1',
+      [contract_id, contract_id, contract_id, tenantId]
+    );
+    if (cRows.length > 0) {
+      targetImei = targetImei || cRows[0].imei || cRows[0].serial_number;
+      freq = cRows[0].repayment_frequency;
+    }
+  }
+  if (!targetImei) {
+    throw new Error(`No se encontró IMEI para el contrato ${contract_id}; no se pudo recargar en Trustonic`);
+  }
+  const days = trustonicApi.frequencyToDays(freq);
+  return trustonicApi.reloadDevice(pool, tenantId, targetImei, days);
+}
+
+// Reintenta la recarga en Trustonic para un pago ya registrado (p. ej. si falló la primera vez)
+app.post('/api/backoffice/payments/:id/trustonic-reload', async (req, res) => {
+  try {
+    const { tenantId, imei } = req.body;
+    const [rows] = await pool.query(
+      'SELECT contract_id FROM payments WHERE (upya_id = ? OR transaction_id = ? OR id = ?) AND tenant_id = ? LIMIT 1',
+      [req.params.id, req.params.id, req.params.id, tenantId]
+    );
+    if (rows.length === 0) return res.status(404).json({ error: 'Pago no encontrado' });
+    const result = await applyTrustonicReloadForPayment({ tenantId, contract_id: rows[0].contract_id, imei });
+    res.json({ success: true, ...result });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 app.post('/api/backoffice/payments', async (req, res) => {
   try {
     const { 
@@ -2697,9 +2740,10 @@ app.post('/api/backoffice/payments', async (req, res) => {
        if (targetImei) {
          try {
            console.log(`[PAYMENT] Solicitando activación de Trustonic para IMEI: ${targetImei}`);
-           await trustonicApi.activateDevice(pool, tenantId, targetImei);
+           await applyTrustonicReloadForPayment({ tenantId, contract_id, imei: targetImei });
          } catch (trustonicErr) {
-           console.error('Error activando dispositivo en Trustonic durante el pago:', trustonicErr.message);
+           console.error('Error recargando dispositivo en Trustonic durante el pago:', trustonicErr.message);
+            pool.query('INSERT INTO operation_logs (user_id, tenant_id, process_type, process_id, detail, status) VALUES (?, ?, ?, ?, ?, ?)', [userId || null, tenantId, 'TRUSTONIC_RELOAD', payId, JSON.stringify({ contract_id, imei: targetImei, error: trustonicErr.message }), 'ERROR']).catch(() => {});
          }
        }
 
