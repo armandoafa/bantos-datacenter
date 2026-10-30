@@ -7,6 +7,7 @@ import UpyaManageClient from '../modules/upya-api-client/src/index.js';
 import pool from './config/db.js';
 import { scrapeTrustonic } from './services/trustonic.js';
 import * as trustonicApi from './services/trustonicApi.js';
+import { validateContractImei } from './services/contractImei.js';
 import dynamicore from './services/dynamicore.js';
 import { getResponseCodeName } from './utils/responseCodes.js';
 import { createRequire } from 'module';
@@ -2114,11 +2115,15 @@ app.get('/api/backoffice/contracts', async (req, res) => {
 
 app.post('/api/backoffice/contracts', async (req, res) => {
   try {
-    const { upya_id, contract_number, client_id, product_name, deal_name, total_value, paid_value, status, signature_image, tenantId, userId, orgId } = req.body;
+    const { upya_id, contract_number, client_id, product_name, deal_name, total_value, paid_value, status, signature_image, tenantId, userId, orgId, imei: rawImei } = req.body;
     const id = upya_id || `CTR-${Date.now()}`;
+    let imei = null;
+    try {
+      imei = await validateContractImei(pool, tenantId, rawImei, { required: false, excludeIds: [id, contract_number] });
+    } catch (vErr) { return res.status(vErr.status || 400).json({ error: vErr.message }); }
     await pool.query(
-      'INSERT INTO contract_history (upya_id, tenant_id, contract_number, client_id, product_name, deal_name, total_value, paid_value, status, signature_image, created_by_user_id, org_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-      [id, tenantId, contract_number || null, client_id || null, product_name || null, deal_name || null, total_value || 0, paid_value || 0, status || 'Signed', signature_image || null, userId || null, orgId || null]
+      'INSERT INTO contract_history (upya_id, tenant_id, contract_number, client_id, product_name, deal_name, total_value, paid_value, status, signature_image, created_by_user_id, org_id, imei) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      [id, tenantId, contract_number || null, client_id || null, product_name || null, deal_name || null, total_value || 0, paid_value || 0, status || 'Signed', signature_image || null, userId || null, orgId || null, imei]
     );
     res.json({ success: true, id });
     if (client_id) ensureClientWallet(client_id, tenantId, total_value);
@@ -2141,6 +2146,13 @@ app.put('/api/backoffice/contracts/:id', async (req, res) => {
       'UPDATE contract_history SET contract_number=?, client_id=?, product_name=?, deal_name=?, total_value=?, paid_value=?, status=?, signature_image=? WHERE (upya_id = ? OR contract_number = ?) AND tenant_id = ?',
       [contract_number || null, client_id || null, product_name || null, deal_name || null, total_value || 0, paid_value || 0, status || 'Signed', signature_image || null, id, id, tenantId]
     );
+    if (req.body.imei) {
+      let editImei;
+      try {
+        editImei = await validateContractImei(pool, tenantId, req.body.imei, { required: false, excludeIds: [id, contract_number] });
+      } catch (vErr) { return res.status(vErr.status || 400).json({ error: vErr.message }); }
+      await pool.query('UPDATE contract_history SET imei = ? WHERE (upya_id = ? OR contract_number = ?) AND tenant_id = ?', [editImei, id, id, tenantId]);
+    }
     res.json({ success: true });
 
     // Log update
@@ -2923,6 +2935,16 @@ app.put('/api/backoffice/payments/:id', async (req, res) => {
 app.post('/api/backoffice/contracts/generate-and-sign', async (req, res) => {
   try {
     const { contractData, signatureData, tenantId } = req.body;
+
+    // 0. El IMEI es obligatorio: garantiza la vinculación IMEI <-> contrato desde el alta
+    let contractImei;
+    try {
+      contractImei = await validateContractImei(
+        pool, tenantId,
+        contractData?.imei || contractData?.serial_number || contractData?.serialNumber,
+        { required: true, excludeIds: [contractData?.upya_id], clientNumber: contractData?.client_number }
+      );
+    } catch (vErr) { return res.status(vErr.status || 400).json({ error: vErr.message }); }
     
     // 1. Save signature
     const signatureBase64 = signatureData.replace(/^data:image\/\w+;base64,/, "");
@@ -2983,13 +3005,13 @@ app.post('/api/backoffice/contracts/generate-and-sign', async (req, res) => {
 
     await pool.query(
       `INSERT INTO contract_history 
-       (upya_id, tenant_id, contract_number, client_id, client_number, product_name, deal_name, total_value, paid_value, status, signature_image, created_by_user_id, org_id) 
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) 
+       (upya_id, tenant_id, contract_number, client_id, client_number, product_name, deal_name, total_value, paid_value, status, signature_image, created_by_user_id, org_id, imei) 
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) 
        ON DUPLICATE KEY UPDATE 
-       contract_number=VALUES(contract_number), status=VALUES(status), signature_image=VALUES(signature_image),
+       imei=COALESCE(VALUES(imei), imei), contract_number=VALUES(contract_number), status=VALUES(status), signature_image=VALUES(signature_image),
        client_id=VALUES(client_id), client_number=VALUES(client_number), product_name=VALUES(product_name), deal_name=VALUES(deal_name),
        total_value=VALUES(total_value), paid_value=VALUES(paid_value)`,
-      [upya_id, tenantId, contractData.contract_number || outputFilename, clientId, clientNumber, contractData.product_name || null, contractData.deal_name || null, contractData.total_value || 0, contractData.paid_value || 0, 'FIRMADO', signatureData, userId, orgId]
+      [upya_id, tenantId, contractData.contract_number || outputFilename, clientId, clientNumber, contractData.product_name || null, contractData.deal_name || null, contractData.total_value || 0, contractData.paid_value || 0, 'FIRMADO', signatureData, userId, orgId, contractImei]
     );
 
     res.json({ success: true, id: upya_id, filename: outputFilename, client_id: clientId });

@@ -6,6 +6,7 @@ import swaggerUi from 'swagger-ui-express';
 import swaggerJsdoc from 'swagger-jsdoc';
 import pool from '../config/db.js';
 import * as trustonicApi from '../services/trustonicApi.js';
+import { validateContractImei } from '../services/contractImei.js';
 
 const router = express.Router();
 const JWT_SECRET = process.env.JWT_SECRET || 'bantos-secret-api-jwt-key-2026';
@@ -1446,6 +1447,11 @@ router.post('/v1/sales', authenticateExternalApiToken, async (req, res) => {
 
   const tenantId = req.tenantId;
 
+  let saleImei = null;
+  try {
+    saleImei = await validateContractImei(pool, tenantId, device?.imei, { required: false, clientNumber: client.client_number });
+  } catch (vErr) { return res.status(vErr.status || 400).json({ error: vErr.message }); }
+
   try {
     // 1. Crear o Actualizar Cliente
     const clientId = client.client_number || `CLI-${Date.now()}`;
@@ -1468,9 +1474,9 @@ router.post('/v1/sales', authenticateExternalApiToken, async (req, res) => {
 
     await pool.query(
       `INSERT INTO contract_history 
-       (upya_id, tenant_id, contract_number, client_id, client_number, product_name, deal_name, total_value, paid_value, status, signature_image) 
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'Firmado', ?)`,
-      [contractUpyaId, tenantId, contractNum, clientUpyaId, clientId, productName, dealName, totalVal, paidVal, signature_image || null]
+       (upya_id, tenant_id, contract_number, client_id, client_number, product_name, deal_name, total_value, paid_value, status, signature_image, imei) 
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'Firmado', ?, ?)`,
+      [contractUpyaId, tenantId, contractNum, clientUpyaId, clientId, productName, dealName, totalVal, paidVal, signature_image || null, saleImei]
     );
 
     // 3. Registrar Pago Inicial si aplica
