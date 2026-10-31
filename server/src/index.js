@@ -8,6 +8,7 @@ import pool from './config/db.js';
 import { scrapeTrustonic } from './services/trustonic.js';
 import * as trustonicApi from './services/trustonicApi.js';
 import { validateContractImei } from './services/contractImei.js';
+import { PAID_STATUS_SQL, recalcContractPaidValue } from './services/paymentStatus.js';
 import dynamicore from './services/dynamicore.js';
 import { getResponseCodeName } from './utils/responseCodes.js';
 import { createRequire } from 'module';
@@ -2716,6 +2717,7 @@ app.post('/api/backoffice/payments', async (req, res) => {
       );
       insertId = result.insertId;
     }
+    try { await recalcContractPaidValue(pool, tenantId, contract_id); } catch (rErr) { console.error('Error recalculando paid_value:', rErr.message); }
     res.json({ success: true, id: insertId || payId });
 
     // Log creation
@@ -2788,7 +2790,7 @@ app.get('/api/backoffice/contracts/:id/settlement-quote', async (req, res) => {
     const [paySum] = await pool.query(
       `SELECT COALESCE(SUM(amount), 0) as total_paid
        FROM payments
-       WHERE contract_id IN (?, ?) AND tenant_id = ? AND UPPER(status) IN ('PAID', 'VALIDATED', 'COMPLETED', 'SUCCESS', 'SUCCESSFUL')`,
+       WHERE contract_id IN (?, ?) AND tenant_id = ? AND UPPER(status) IN ${PAID_STATUS_SQL}`,
       [con.upya_id, con.contract_number, tenantId]
     );
 
@@ -2921,6 +2923,7 @@ app.put('/api/backoffice/payments/:id', async (req, res) => {
     );
     
     // Real-Time Push to Upya si el pago se actualizó a pagado/validado
+    try { await recalcContractPaidValue(pool, tenantId, contract_id); } catch (rErr) { console.error('Error recalculando paid_value:', rErr.message); }
     const newStatus = (status || '').toUpperCase();
     if (newStatus === 'PAID' || newStatus === 'VALIDATED' || newStatus === 'ACEPTADO' || newStatus === 'PAGADO') {
        pushPaymentToUpya(req.body, tenantId);
@@ -4053,7 +4056,7 @@ app.post('/api/webhooks/dynamicore', async (req, res) => {
         const [paySum] = await pool.query(
           `SELECT COALESCE(SUM(amount), 0) as total_paid
            FROM payments
-           WHERE contract_id IN (?, ?) AND tenant_id = ? AND UPPER(status) IN ('PAID', 'VALIDATED', 'COMPLETED', 'SUCCESS', 'SUCCESSFUL')`,
+           WHERE contract_id IN (?, ?) AND tenant_id = ? AND UPPER(status) IN ${PAID_STATUS_SQL}`,
           [contract_id, contract_id, tenant_id]
         );
         const totalPaid = parseFloat(paySum[0]?.total_paid || 0);
